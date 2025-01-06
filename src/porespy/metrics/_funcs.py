@@ -9,7 +9,10 @@ from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from porespy import settings
-from porespy.filters import local_thickness
+from porespy.filters import (
+    local_thickness,
+    pc_to_seq,
+)
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
@@ -1028,14 +1031,14 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
     ----------
     pc : ndarray
         A numpy array with each voxel containing the capillary pressure at which
-        it was invaded. `-inf` indicates voxels which are already filled with
-        non-wetting fluid, and `+inf` indicates voxels that are not invaded by
-        non-wetting fluid (e.g., trapped wetting phase). Values in the solid
-        phase are masked by `im` so are ignored.
+        it was invaded. `-inf` indicates voxels which are filled with non-wetting
+        fluid at all pressures, and `+inf` indicates voxels that are filled by
+        wetting fluid at all pressures. Values in the solid phase are masked by
+        `im` so are ignored.
     im : ndarray
         A numpy array with `True` values indicating the void space and `False`
         elsewhere. This is necessary to define the total void volume of the domain
-        for computing the saturation.
+        when computing the saturation.
     seq : ndarray, optional
         A numpy array with each voxel containing the sequence at which it was
         invaded. This is required when analyzing results from invasion percolation
@@ -1043,6 +1046,7 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
         they were filled.
     mode : str
         Indicates whether the invasion was a drainage or an imbibition process.
+        Options are 'drainage' and 'imbibition'.
 
     Returns
     -------
@@ -1065,14 +1069,24 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
     """
     pc = np.copy(pc)
     pc[~im] = np.inf  # Ensure solid voxels are set to inf invasion pressure
+
     if seq is None:
-        pcs, counts = np.unique(pc, return_counts=True)
-    else:
-        pc[seq == -1] = np.inf
-        vals, index, counts = np.unique(seq, return_index=True, return_counts=True)
-        pcs = pc.flatten()[index]
+        seq = pc_to_seq(im=im, pc=pc, mode=mode)
+        # if mode.startswith('dr'):
+        #     seq = np.digitize(x=pc.flatten(), bins=np.unique(pc))
+        # elif mode.startswith('imb'):
+        #     seq = np.digitize(x=pc.flatten(), bins=np.flip(np.unique(pc)))
+        # seq = np.reshape(seq, im.shape)
+
+    seq = seq.astype(float)
+    seq[~im] = np.inf
+    seq[seq == -1] = np.inf
+
+    vals, index, counts = np.unique(seq, return_index=True, return_counts=True)
+    pcs = pc.flatten()[index]
     snwp = np.cumsum(counts[pcs < np.inf])/im.sum()
     pcs = pcs[pcs < np.inf]
+
     if mode.startswith('im'):
         snwp = 1 - snwp
 

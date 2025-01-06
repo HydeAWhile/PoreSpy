@@ -280,13 +280,13 @@ def pc_to_seq(pc, im, mode='drainage'):
     to view online example.
     """
     pc = np.copy(pc)
-    inf = pc == np.inf  # save for later
+    inf = (pc == np.inf) + (pc == -np.inf)  # save for later
     if mode == 'drainage':
         bins = np.unique(pc)
         a = np.digitize(pc, bins=bins, right=False)
     elif mode == 'imbibition':
-        pc[pc == -np.inf] = np.inf
-        bins = np.unique(pc)[::-1]
+        # pc[pc == -np.inf] = np.inf
+        bins = np.flip(np.unique(pc))
         a = np.digitize(pc, bins=bins, right=True)
     a[np.where(inf)] = -1
     a[~im] = 0

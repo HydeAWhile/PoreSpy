@@ -44,7 +44,7 @@ def imbibition(
     pc : ndarray
         An array containing precomputed capillary pressure values in each
         voxel. This can include gravity effects or not. This can be generated
-        by ``capillary_transform``. It not provided that `2/dt` is used.
+        by ``capillary_transform``. If not provided then `2/dt` is used.
     inlets : ndarray
         An image the same shape as ``im`` with ``True`` values indicating the
         wetting fluid inlet(s).  If ``None`` then the wetting film is able to
@@ -104,6 +104,7 @@ def imbibition(
 
     if pc is None:
         pc = 2/dt
+
     pc = np.copy(pc)
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
@@ -118,10 +119,11 @@ def imbibition(
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
     strel = ball(1) if im.ndim == 3 else disk(1)
-    for i in tqdm(range(len(Ps)), **settings.tqdm):
+    step = 0
+    for P in tqdm(Ps, **settings.tqdm):
         # This can be made faster if I find a way to get only seeds on edge, so
         # less spheres need to be drawn
-        invadable = (pc <= Ps[i])*im
+        invadable = (pc <= P)*im
         nwp_mask = np.zeros_like(im, dtype=bool)
         if np.any(invadable):
             coords = np.where(invadable)
@@ -144,8 +146,10 @@ def imbibition(
             nwp_mask = nwp_mask * ~residual
 
         mask = (nwp_mask == 0) * (im_seq == 0) * im
-        im_seq[mask] = i
-        im_pc[mask] = Ps[i]
+        if np.any(mask):
+            im_seq[mask] = step
+            im_pc[mask] = P
+            step += 1
 
     trapped = None
     if outlets is not None:
@@ -229,29 +233,32 @@ if __name__ == '__main__':
     cm.set_over('k')
 
     i = np.random.randint(1, 100000)  # bad: 38364, good: 65270, 71698
+    i = 95063
     print(i)
     im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
     im = ps.filters.fill_blind_pores(im, surface=True)
 
-    inlets = np.zeros_like(im)
-    inlets[0, ...] = True
-    outlets = ps.generators.borders(im.shape, mode='faces')
+    inlets = ps.generators.faces(im.shape, inlet=0)
+    outlets = ps.generators.faces(im.shape, outlet=0)
     lt = ps.filters.local_thickness(im)
     residual = (lt < 8)*im
     pc = ps.filters.capillary_transform(im=im, voxel_size=1e-4)
 
     imb1 = imbibition(im=im, pc=pc, inlets=inlets)
-    imb2 = imbibition(im=im, pc=pc, inlets=inlets, residual=residual, outlets=outlets)
+    imb2 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets)
 
     # %%
 
-    fig, ax = plt.subplots(1, 3)
+    fig, ax = plt.subplots(1, 3, figsize=[12, 4])
     imb1.im_pc[~im] = -1
     ax[0].imshow(imb1.im_seq/im, origin='lower', cmap=cm, vmin=0)
 
     vmax = imb2.im_seq.max()
     ax[1].imshow(imb2.im_seq/im, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-    ax[2].semilogx(imb1.pc, imb1.snwp, 'b->', label='imbibition')
-    ax[2].semilogx(imb2.pc, imb2.snwp, 'r-<', label='imbibition with trapping')
+    pc, s = ps.metrics.pc_map_to_pc_curve(pc=imb1.im_pc, im=im, mode='imbibition')
+    ax[2].semilogx(pc, s, 'b->', label='imbibition')
+
+    pc, s = ps.metrics.pc_map_to_pc_curve(pc=imb2.im_pc, im=im, mode='imbibition')
+    ax[2].semilogx(pc, s, 'r-<', label='imbibition with trapping')
     ax[2].legend()
