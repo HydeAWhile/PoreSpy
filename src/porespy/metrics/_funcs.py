@@ -4,7 +4,7 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
-from skimage.morphology import skeletonize_3d
+from skimage.morphology import skeletonize
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
@@ -1314,7 +1314,7 @@ def bond_number(
         before computing the average value using the specified `method`.
     """
     if mask is True:
-        mask = skeletonize_3d(im)
+        mask = skeletonize(im)
     else:
         mask = im
 

@@ -5,7 +5,7 @@ import scipy.ndimage as spim
 from pandas import DataFrame
 from skimage.measure import mesh_surface_area, regionprops
 from skimage.measure._regionprops import RegionProperties
-from skimage.morphology import ball, skeletonize_3d
+from skimage.morphology import ball, skeletonize
 
 from porespy.tools import bbox_to_slices, extract_subsection
 
@@ -196,7 +196,7 @@ def regionprops_3D(im):
             as the region to the actual surface area of the region.
 
         'skeleton'
-            The medial axis of the region obtained using the ``skeletonize_3D``
+            The medial axis of the region obtained using the ``skeletonize``
             method from **skimage**.
 
         'convex_volume'
@@ -279,7 +279,7 @@ class RegionPropertiesPS(RegionProperties):
 
     @property
     def skeleton(self):
-        return skeletonize_3d(self.mask)
+        return skeletonize(self.mask)
 
     @property
     def surface_area(self):
