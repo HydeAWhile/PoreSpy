@@ -34,7 +34,7 @@ dependencies = [
     "pandas",
     "psutil",
     "rich",
-    "scikit-image",
+    "scikit-image<0.25.0",
     "scipy",
     "tqdm",
     "pywavelets",
@@ -152,6 +152,7 @@ packages = ["src/porespy"]
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = [
+    "--assert=plain",
     "-ra -v",
     "--ignore=docs/conf.py",
     "--ignore=examples/generators/reference/fractal_noise.ipynb",
@@ -164,6 +165,7 @@ python_classes = "*Test"
 python_functions = "test_*"
 testpaths = ["test", "examples"]
 norecursedirs = [".git", ".github", ".ipynb_checkpoints", "build", "dist"]
+
 
 [tool.coverage.run]
 source = ["src/porespy"]
