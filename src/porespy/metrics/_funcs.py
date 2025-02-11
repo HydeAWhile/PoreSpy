@@ -321,7 +321,7 @@ def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
     log : boolean
         If ``True`` the size data is converted to log (base-10)
         values before processing.  This can help to plot wide size
-        distributions or to better visualize the in the small size region.
+        distributions or to better visualize the radii in the small size region.
         Note that you should not anti-log the radii values in the retunred
         ``tuple``, since the binning is performed on the logged radii values.
     voxel_size : scalar
