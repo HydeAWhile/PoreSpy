@@ -1,4 +1,5 @@
 import heapq as hq
+import logging
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
@@ -20,6 +21,7 @@ from porespy.filters import (
 )
 
 
+logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
 
 
@@ -264,6 +266,8 @@ def _find_trapped_regions_cluster(
     seq[mask] = -1
     trapped[mask] = False
     seq[trapped] = -1
+    seq[seq == 0] = -1  # This seems necessary for finding blind pores
+    seq[im == 0] = 0
     seq = make_contiguous(seq, mode='symmetric')
     return seq
 
@@ -288,13 +292,14 @@ def _find_trapped_regions_queue(
     # Note which sites have been added to heap already
     edge = out_temp*np.atleast_3d(im) + np.atleast_3d(~im)
     # seq = np.copy(np.atleast_3d(seq))
-    trapped = _trapped_regions_inner_loop(
+    trapped, step = _trapped_regions_inner_loop(
         seq=seq_temp,
         edge=edge,
         trapped=im_trapped,
         outlets=out_temp,
         conn=conn,
     )
+    logger.info(f"Exited after {step} steps")
     # Finalize images
     seq = np.squeeze(seq)
     trapped = np.squeeze(trapped)
@@ -325,7 +330,6 @@ def _trapped_regions_inner_loop(
         if len(bd):  # Put next site into pts list
             pts = [hq.heappop(bd)]
         else:
-            print(f"Exiting after {step} steps")
             break
         # Also pop any other points in list with same value
         while len(bd) and (bd[0][0] == pts[0][0]):
@@ -341,10 +345,8 @@ def _trapped_regions_inner_loop(
             for n in neighbors:
                 hq.heappush(bd, [seq[n], n[0], n[1], n[2]])
                 edge[n[0], n[1], n[2]] = True
-        # if step % 1000 == 0:
-        #     print(f'completed {str(step)} steps')
         step += 1
-    return trapped
+    return trapped, step
 
 
 @njit
