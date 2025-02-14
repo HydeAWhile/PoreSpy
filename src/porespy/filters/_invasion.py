@@ -6,7 +6,7 @@ import scipy.ndimage as spim
 from typing import Literal
 from numba import njit
 from porespy import settings
-from porespy.filters import flood
+from porespy.filters import flood, find_disconnected_voxels
 from porespy.tools import (
     make_contiguous,
     get_tqdm,
@@ -239,8 +239,9 @@ def _find_trapped_regions_cluster(
         strel = ps_round(r=1, ndim=seq.ndim, smooth=False)
     elif conn == 'max':
         strel = ps_rect(w=3, ndim=seq.ndim)
-    # All uninvaded regions should be given sequence number of lowest nearby fluid
+    non_perc = find_disconnected_voxels(im, surface=True)
     mask = seq < 0  # This is used again at the end of the function to fix seq
+    # All uninvaded regions should be given sequence number of lowest nearby fluid
     if np.any(mask):
         mask_dil = spim.binary_dilation(mask, structure=strel)*im
         tmp = seq*mask_dil
@@ -266,9 +267,9 @@ def _find_trapped_regions_cluster(
     seq[mask] = -1
     trapped[mask] = False
     seq[trapped] = -1
-    seq[seq == 0] = -1  # This seems necessary for finding blind pores
     seq[im == 0] = 0
     seq = make_contiguous(seq, mode='symmetric')
+    seq[non_perc] = -1
     return seq
 
 

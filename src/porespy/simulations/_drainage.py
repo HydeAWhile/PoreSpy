@@ -3,7 +3,7 @@ import numpy.typing as npt
 from typing import Literal
 from skimage.morphology import ball, disk, cube, square
 from porespy import settings
-from porespy.metrics import pc_curve
+from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     _insert_disks_at_points,
     _insert_disks_at_points_parallel,
@@ -299,7 +299,12 @@ def ibop(
         im_size[im_pc == np.inf] = np.inf
         im_size[im_pc == -np.inf] = -np.inf
         results.im_size = im_size
-    results.pc, results.snwp = pc_curve(im=im, pc=results.im_pc)
+    results.pc, results.snwp = pc_map_to_pc_curve(
+        im=im,
+        pc=results.im_pc,
+        seq=results.im_seq,
+        mode='drainage',
+    )
     return results
 
 

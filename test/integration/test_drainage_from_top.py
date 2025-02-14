@@ -8,9 +8,7 @@ except ModuleNotFoundError:
 
 
 def test_drainage_from_top():
-    np.random.seed(0)
-
-    im = ps.generators.blobs(shape=[300, 300], porosity=0.75, blobiness=1.5)
+    im = ps.generators.blobs(shape=[300, 300], porosity=0.75, blobiness=1.5, seed=0)
     inlets = np.zeros_like(im)
     inlets[-1, :] = True
     outlets = np.zeros_like(im)
