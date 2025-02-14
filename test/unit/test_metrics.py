@@ -344,10 +344,10 @@ class MetricsTest():
         mio = ps.filters.porosimetry(im)
         trapped = im*(~ps.filters.fill_blind_pores(im))
         residual = im*(~trapped)*(mio < mio.mean())
-        pc = -2*0.072*np.cos(np.radians(110))/(mio*vx)
+        pc = ps.filters.capillary_transform(im, voxel_size=vx, sigma=0.072, theta=110)
         pc[trapped] = np.inf
         pc[residual] = -np.inf
-        d = ps.metrics.pc_map_to_pc_curve(pc, im)
+        d = ps.metrics.pc_map_to_pc_curve(pc=pc, im=im, mode='drainage')
         assert d.snwp[0] == residual.sum()/im.sum()
         assert d.snwp[-1] == (im.sum() - trapped.sum())/im.sum()
 

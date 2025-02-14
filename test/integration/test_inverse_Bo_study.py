@@ -55,7 +55,7 @@ def test_inverse_Bo_study():
     smin, smax = 0.1, 0.90
     for h in range(len(inv_Bo)):
         for s in np.arange(0.2, 1.0, 0.1):
-            prof = ps.metrics.satn_profile(satn=sim1[h].im_satn, s=s, span=1,
+            prof = ps.metrics.satn_profile(satn=sim1[h].im_snwp, s=s, span=1,
                                            mode='slide')
             if 0:
                 plt.plot(prof.position,

@@ -80,13 +80,13 @@ def test_drainage_from_top():
     # %% Visualize the invasion configurations for each scenario
     if plot:
         fig, ax = plt.subplots(2, 2, facecolor=bg)
-        ax[0][0].imshow(drn1.im_satn/im, origin='lower')
+        ax[0][0].imshow(drn1.im_snwp/im, origin='lower')
         ax[0][0].set_title("No trapping, no residual")
-        ax[0][1].imshow(drn2.im_satn/im, origin='lower')
+        ax[0][1].imshow(drn2.im_snwp/im, origin='lower')
         ax[0][1].set_title("With trapping, no residual")
-        ax[1][0].imshow(drn3.im_satn/im, origin='lower')
+        ax[1][0].imshow(drn3.im_snwp/im, origin='lower')
         ax[1][0].set_title("No trapping, with residual")
-        ax[1][1].imshow(drn4.im_satn/im, origin='lower')
+        ax[1][1].imshow(drn4.im_snwp/im, origin='lower')
         ax[1][1].set_title("With trapping, with residual")
 
     # %% Visualize the capillary pressure map for each scenario

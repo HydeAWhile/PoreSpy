@@ -1023,7 +1023,7 @@ def pc_curve(im, pc, seq=None):
     return pc_curve
 
 
-def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
+def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=None):
     r"""
     Converts a pc map into a capillary pressure curve
 
@@ -1068,27 +1068,50 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
     both return capillary pressure maps which can be passed directly as `pc`.
     """
     pc = np.copy(pc)
-    pc[~im] = np.inf  # Ensure solid voxels are set to inf invasion pressure
 
     if seq is None:
         seq = pc_to_seq(im=im, pc=pc, mode=mode)
+        # Or stand alone code
         # if mode.startswith('dr'):
-        #     seq = np.digitize(x=pc.flatten(), bins=np.unique(pc))
+        #     seq = np.digitize(x=pc.flatten(), bins=np.unique(pc[im]))
         # elif mode.startswith('imb'):
         #     seq = np.digitize(x=pc.flatten(), bins=np.flip(np.unique(pc)))
         # seq = np.reshape(seq, im.shape)
 
-    seq = seq.astype(float)
-    seq[~im] = np.inf
-    seq[seq == -1] = np.inf
+    if mode.startswith('dr'):
+        seq = seq.astype(float)
+        seq[seq == -1] = np.inf
+        vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
+        pcs = pc[im][index]
+        snwp = np.cumsum(counts)/im.sum()
+        # If pc does not have residual phase (-inf), then add new point at snwp=0
+        if pcs[0] != -np.inf:
+            pcs = np.hstack(([pcs[0]], pcs))
+            snwp = np.hstack(([0], snwp))
+        if pcs[-1] == np.inf:
+            snwp[-1] = snwp[-2]
 
-    vals, index, counts = np.unique(seq, return_index=True, return_counts=True)
-    pcs = pc.flatten()[index]
-    snwp = np.cumsum(counts[pcs < np.inf])/im.sum()
-    pcs = pcs[pcs < np.inf]
+    elif mode.startswith('imb'):
+        # seq[seq == -1] = -np.inf
+        swp_r = (seq[im] == 0).sum(dtype=np.int64)/im.sum(dtype=np.int64)
+        vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
+        pcs = pc[im][index]
+        idx = np.argsort(pcs)[-1::-1]  # Because -inf lands on wrong end
+        pcs = pcs[idx]
+        counts = counts[idx]
+        snwp = 1 - np.cumsum(counts)/im.sum()
+        # if pcs[0] != np.inf:
+        #     snwp = 1 - np.cumsum(counts)/im.sum()
+        # else:
+        #     snwp = 1 - np.cumsum(counts[1:])/im.sum()
+        #     snwp = np.hstack(([snwp[0]], snwp))
+        if pcs[-1] == -np.inf:
+            snwp[-1] = snwp[-2]
 
-    if mode.startswith('im'):
-        snwp = 1 - snwp
+
+    # Apply clipping to Pc values
+    if pc_min or pc_max:
+        pcs = np.clip(pcs, a_min=pc_min, a_max=pc_max)
 
     results = Results()
     results.pc = pcs

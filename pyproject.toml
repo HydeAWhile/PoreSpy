@@ -29,7 +29,7 @@ dependencies = [
     "edt",
     "matplotlib",
     "numba",
-    "numpy",
+    "numpy<2.0",
     "openpnm",
     "pandas",
     "psutil",
@@ -39,6 +39,7 @@ dependencies = [
     "tqdm",
     "pywavelets",
     "setuptools",
+    "trimesh>=4.5.3",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"

@@ -119,7 +119,7 @@ def imbibition(
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
     strel = ball(1) if im.ndim == 3 else disk(1)
-    step = 0
+    step = 1
     for P in tqdm(Ps, **settings.tqdm):
         # This can be made faster if I find a way to get only seeds on edge, so
         # less spheres need to be drawn
@@ -169,13 +169,14 @@ def imbibition(
         im_pc[residual] = np.inf
         im_seq[residual] = 0
     satn = seq_to_satn(im=im, seq=im_seq, mode='imbibition')
-    pc_curve = pc_map_to_pc_curve(pc=im_pc, im=im, seq=im_seq, mode='imbibition')
     # Collect data in a Results object
     results = Results()
+    results.im_snwp = satn.copy()
     results.im_seq = im_seq
     results.im_pc = im_pc
-    results.im_snwp = satn
     results.im_trapped = trapped
+
+    pc_curve = pc_map_to_pc_curve(pc=im_pc, im=im, seq=im_seq, mode='imbibition')
     results.pc = pc_curve.pc
     results.snwp = pc_curve.snwp
     return results

@@ -155,7 +155,7 @@ def size_to_satn(size, im=None, bins=None, mode='drainage'):
     return satn
 
 
-def seq_to_satn(seq, im=None, mode='drainage'):
+def seq_to_satn(seq, im, mode='drainage'):
     r"""
     Converts an image of invasion sequence values to invading phase saturation
     values.
@@ -163,12 +163,12 @@ def seq_to_satn(seq, im=None, mode='drainage'):
     Parameters
     ----------
     seq : ndarray
-        The image containing invasion sequence values in each voxel. Solid
-        should be indicated as 0's and uninvaded voxels as -1.
-    im : ndarray, optional
+        The image containing invasion sequence values in each voxel. Residual phase
+        should be indicated as 0's and uninvaded (i.e. trapped) voxels as -1.
+        `im` is used to mask to remove solid voxels from computation
+    im : ndarray
         A binary image of the porous media, with ``True`` indicating the
-        void space and ``False`` indicating the solid phase. If not given
-        then it is assumed that the solid is identified as ``seq == 0``.
+        void space and ``False`` indicating the solid phase.
     mode : str
         Controls how the sequences are converted to saturations. The options are:
 
@@ -199,30 +199,23 @@ def seq_to_satn(seq, im=None, mode='drainage'):
     to view online example.
     """
     seq = np.copy(seq).astype(int)
-    if im is None:
-        solid_mask = seq == 0
-    else:
-        solid_mask = im == 0
-    uninvaded_mask = seq == -1  # Store uninvaded locations
-    if mode.startswith('im'):
-        seq[seq < 0] = 0
-        seq = seq.max() - seq + 1
-        seq[solid_mask] = 0
-        seq[uninvaded_mask] = 0
+    trapped_mask = seq == -1  # Store uninvaded locations
+    residual_mask = (seq == 0)*im
+    seq[trapped_mask] = seq.max() + 1  # Assign trapped voxels with highest seq
+    seq += 1  # Increment by 1 so residual voxels are 1 instead of 0
+    seq[~im] = 0  # Set solid voxels to 0
+    seq[residual_mask] = 1  # Set residual to 1
+    b = np.bincount(seq.flatten())  # Count number of voxels with each sequence
+    if mode.startswith('imb'):
+        c = 1 - np.cumsum(b[1:])/im.sum(dtype=np.int64)  # Convert to saturation
     elif mode.startswith('drain'):
-        seq[seq <= 0] = 0  # Set uninvaded to solid for next steps
+        c = np.cumsum(b[1:])/im.sum(dtype=np.int64)  # Convert to saturation
     else:
         raise Exception('Unrecognized mode')
-    seq = rankdata(seq, method='dense') - 1
-    b = np.bincount(seq)
-    if (solid_mask.sum(dtype=np.int64) > 0) or \
-            (uninvaded_mask.sum(dtype=np.int64) > 0):
-        b[0] = 0
-    c = np.cumsum(b)
-    seq = np.reshape(seq, solid_mask.shape)
-    satn = c[seq]/(seq.size - solid_mask.sum(dtype=np.int64))
-    satn[solid_mask] = 0
-    satn[uninvaded_mask] = -1
+    c = np.hstack(([0], c))  # Add 0 for solid
+    satn = c[seq]
+    satn[~im] = 0.0  # Ensure solids are 0
+    satn[trapped_mask] = -1.0  # Update trapped voxels to have -1 still
     return satn
 
 
@@ -236,11 +229,12 @@ def pc_to_seq(pc, im, mode='drainage'):
         A Numpy array with the value in each voxel indicating the capillary
         pressure at which it was invaded. In order to accommodate the
         possibility of both positive and negative capillary pressure values,
-        uninvaded voxels should be indicated by ``+inf`` and residual phase
-        by ``-inf``. Solid vs void phase is defined by ``im`` which is
-        mandatory.
+        trapped or residual wetting phase should be indicated by ``+inf`` and
+        residual or trapped non-wetting phase by ``-inf``.
     im : ndarray
-        A Numpy array with ``True`` values indicating the void space
+        A Numpy array with ``True`` values indicating the void space. This is
+        used to mask the ``pc`` image so it does not matter what values are placed
+        in the solid voxels of ``pc``.
     mode : str
         Controls how the pressures are converted to sequence. The options are:
 
@@ -248,15 +242,15 @@ def pc_to_seq(pc, im, mode='drainage'):
         `mode`        Description
         ============= ==============================================================
         'drainage'    The pressures are assumed to have been filled from smallest to
-                      largest. Voxels with -np.inf are treated as though they are
-                      invaded by non-wetting fluid at the start of the process, and
-                      voxels with +np.inf are treated as though they are never
+                      largest. Voxels with $-inf$ are treated as though they are
+                      invaded by non-wetting fluid at the start of the process,
+                      and voxels with $inf$ are treated as though they are never
                       invaded.
         'imbibition'  The pressures are assumed to have been filled from largest to
-                      smallest. Voxels with -np.inf are treated as though they are
+                      smallest. Voxels with $-inf$ are treated as though they are
                       already occupied by non-wetting fluid at the start of the
-                      process, and voxels with +np.inf are treated as though they
-                      are filled with wetting phase.
+                      process, and voxels with $inf$ are treated as though they
+                      are initially filled with wetting phase.
         ============= ==============================================================
 
     Returns
@@ -264,7 +258,9 @@ def pc_to_seq(pc, im, mode='drainage'):
     seq : ndarray
         A Numpy array the same shape as `pc`, with each voxel value indicating
         the sequence at which it was invaded, according to the specified `mode`.
-        Uninvaded voxels are set to -1 and solids are 0.
+        Uninvaded voxels (either trapped wp during drainage or trapped nwp during
+        imbibion) are set to -1.  Preinvaded voxel (either residual nwp during
+        drainage or residual wp during imbition) are set to 0.
 
     Notes
     -----
@@ -280,15 +276,16 @@ def pc_to_seq(pc, im, mode='drainage'):
     to view online example.
     """
     pc = np.copy(pc)
-    inf = (pc == np.inf) + (pc == -np.inf)  # save for later
     if mode == 'drainage':
         bins = np.unique(pc)
-        a = np.digitize(pc, bins=bins, right=False)
+        a = np.digitize(pc, bins=bins, right=False) + 1  # To ensure no voxels are 0
+        a[pc == -np.inf] = 0  # Set residual nwp to lowest sequence (i.e. 0)
+        a[pc == np.inf] = -1  # Set trapped wp to -1 (only option)
     elif mode == 'imbibition':
-        # pc[pc == -np.inf] = np.inf
         bins = np.flip(np.unique(pc))
         a = np.digitize(pc, bins=bins, right=True)
-    a[np.where(inf)] = -1
+        a[pc == np.inf] = 0
+        a[pc == -np.inf] = -1
     a[~im] = 0
     a = make_contiguous(a, mode='symmetric')
     return a
