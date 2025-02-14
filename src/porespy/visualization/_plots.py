@@ -23,7 +23,7 @@ def show_panels(im, rc=[3, 3], axis=0):
     ----------
     im : ndarray
         The 3D image to visualize
-    rc : list if ints
+    rc : list of ints
         The number of rows and columns to create
     axis : int
         The axis along which to create the slices
