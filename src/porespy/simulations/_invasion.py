@@ -223,7 +223,7 @@ def qbip(
     # Create results object for collected returned values
     results = Results()
     results.im_seq = sequence
-    results.im_snwp = seq_to_satn(sequence)  # convert sequence to saturation
+    results.im_snwp = seq_to_satn(sequence, im=im)  # convert sequence to saturation
     if return_pressures:
         results.im_pc = pressure
     if return_sizes:
@@ -527,7 +527,7 @@ def ibip(
     results = Results()
     results.im_size = np.copy(sizes)
     results.im_seq = np.copy(seq)
-    results.im_snwp = seq_to_satn(seq)
+    results.im_snwp = seq_to_satn(seq=seq, im=im)
     return results
 
 
