@@ -128,8 +128,6 @@ def test_drainage(plot=False):
     assert Snwp.min() == snwp_r
     assert Snwp.max() < 1.0
 
-
-
     # %% Visualize the invasion configurations for each scenario
     if plot:
         fig, ax = plt.subplots(2, 2, facecolor=bg)
@@ -158,7 +156,7 @@ def test_drainage(plot=False):
         plt.step(
             Pc,
             Snwp,
-            'b-o',
+            'b-s',
             where='post',
             label="No trapping, no residual",
         )
@@ -203,7 +201,7 @@ def test_drainage(plot=False):
         plt.step(
             Pc,
             Snwp,
-            'm--o',
+            'm--^',
             where='post',
             label="With trapping, with residual",
         )

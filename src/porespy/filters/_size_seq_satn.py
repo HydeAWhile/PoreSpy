@@ -16,7 +16,7 @@ __all__ = [
 
 def size_to_seq(size, im=None, bins=None, mode='drainage'):
     r"""
-    Converts an image of invasion size values into invasion sequence values
+    Converts a size map to a sequence map
 
     Parameters
     ----------
@@ -85,7 +85,7 @@ def size_to_seq(size, im=None, bins=None, mode='drainage'):
 
 def size_to_satn(size, im=None, bins=None, mode='drainage'):
     r"""
-    Converts an image of invasion size values into non-wetting phase saturations.
+    Converts size map to a saturation map
 
     Parameters
     ----------
@@ -157,8 +157,7 @@ def size_to_satn(size, im=None, bins=None, mode='drainage'):
 
 def seq_to_satn(seq, im, mode='drainage'):
     r"""
-    Converts an image of invasion sequence values to invading phase saturation
-    values.
+    Converts a sequence map to a saturation map
 
     Parameters
     ----------
@@ -184,13 +183,16 @@ def seq_to_satn(seq, im, mode='drainage'):
     satn : ndarray
         An ndarray the same shape as ``seq`` but with sequence values replaced
         by the fraction of void space invaded at the sequence number, accounting
-        for the specified `mode`. Solid voxels and uninvaded voxels are represented
-        by 0 and -1, respectively.
+        for the specified `mode`. Residual fluid and uninvaded voxels are represented
+        by 0 and -1, respectively.  Solie phase is also represented as 0, so `im`
+        must be used as a mask.
 
     Notes
     -----
-    If any ``-1`` values are present in `seq` the maximum saturation will be less
-    than 1.0 since this means that not all defending phase was displaced.
+    If any `-1` values are present in `seq` the maximum saturation will be less
+    than 1.0 since this means that not all defending phase was displaced. If any
+    `0` are present in `seq` then the minimum saturation will be greater than 0,
+    since this means some invading phase was already present.
 
     Examples
     --------
@@ -221,7 +223,7 @@ def seq_to_satn(seq, im, mode='drainage'):
 
 def pc_to_seq(pc, im, mode='drainage'):
     r"""
-    Converts an image of capillary entry pressures to invasion sequence values
+    Converts a capillary pressure map to a sequence map
 
     Parameters
     ----------
@@ -244,13 +246,13 @@ def pc_to_seq(pc, im, mode='drainage'):
         'drainage'    The pressures are assumed to have been filled from smallest to
                       largest. Voxels with $-inf$ are treated as though they are
                       invaded by non-wetting fluid at the start of the process,
-                      and voxels with $inf$ are treated as though they are never
+                      and voxels with $+inf$ are treated as though they are never
                       invaded.
         'imbibition'  The pressures are assumed to have been filled from largest to
-                      smallest. Voxels with $-inf$ are treated as though they are
-                      already occupied by non-wetting fluid at the start of the
-                      process, and voxels with $inf$ are treated as though they
-                      are initially filled with wetting phase.
+                      smallest. Voxels with $+inf$ are treated as though they are
+                      already occupied by wetting fluid at the start of the
+                      process, and voxels with $*inf$ are treated as though they
+                      are never filled with wetting phase.
         ============= ==============================================================
 
     Returns
@@ -259,15 +261,8 @@ def pc_to_seq(pc, im, mode='drainage'):
         A Numpy array the same shape as `pc`, with each voxel value indicating
         the sequence at which it was invaded, according to the specified `mode`.
         Uninvaded voxels (either trapped wp during drainage or trapped nwp during
-        imbibion) are set to -1.  Preinvaded voxel (either residual nwp during
+        imbibion) are set to -1. Preinvaded voxels (either residual nwp during
         drainage or residual wp during imbition) are set to 0.
-
-    Notes
-    -----
-    Voxels with `+inf` are treated as though they were never invaded so are given a
-    sequence value of -1. Voxels with  `-inf` are treated as though they were
-    invaded by non-wetting phase at the start of the simulation so are given a
-    sequence number of 1 for both mode `drainage` and `imbibition`.
 
     Examples
     --------
@@ -293,7 +288,7 @@ def pc_to_seq(pc, im, mode='drainage'):
 
 def pc_to_satn(pc, im, mode='drainage'):
     r"""
-    Converts an image of capillary entry pressures to saturation values
+    Converts a capillary pressure map to a saturation map
 
     Parameters
     ----------
@@ -346,10 +341,9 @@ def pc_to_satn(pc, im, mode='drainage'):
     return satn
 
 
-def satn_to_seq(satn, im=None, mode='drainage'):
+def satn_to_seq(satn, im, residual=None, mode='drainage'):
     r"""
-    Converts an image of nonwetting phase saturations to invasion sequence
-    values
+    Converts a saturaiton map to a sequence map
 
     Parameters
     ----------
@@ -359,16 +353,19 @@ def satn_to_seq(satn, im=None, mode='drainage'):
         not invaded, and 0 indicates solid phase.
     im : ndarray
         A Numpy array with ``True`` values indicating the void space.
+    residual : ndarray
+        An `ndarray` with `True` values indicating the locations of any residual
+        phase.  If this is not provided, it will be assumed that no residual was
+        present, which will result in an incorrect conversion to sequence if this
+        assumption is not correct.
     mode : str
         Controls how the saturations are converted to sequence. The options are:
 
         ============= ==============================================================
         `mode`        Description
         ============= ==============================================================
-        'drainage'    The pressures are assumed to have been filled from smallest to
-                      largest, ignoring 0's and -1's
-        'imbibition'  The sizes are assumed to have been filled from largest to
-                      smallest, ignoring 0's and -1's
+        'drainage'    Non-wetting fluid displaces wetting fluid
+        'imbibition'  Wetting fluid dispalces the non-wetting fluid
         ============= ==============================================================
 
     Returns
@@ -385,13 +382,11 @@ def satn_to_seq(satn, im=None, mode='drainage'):
     to view online example.
 
     """
-    if im is None:
-        im = satn > 0
     uninvaded = satn == -1
     values = np.unique(satn)
     seq = np.digitize(satn, bins=values)
     # Set uninvaded to 0
-    seq[uninvaded] = 0
+    seq[uninvaded] = -1  # Not sure this is needed?
     # Set solids back to 0
     seq[~im] = 0
     # Ensure values are contiguous while keeping -1 and 0
@@ -400,6 +395,9 @@ def satn_to_seq(satn, im=None, mode='drainage'):
         seq = (seq.max() + 1) - seq
         seq[~im] = 0
     seq[uninvaded] = -1
+    if residual is not None:
+        seq[residual] = 0
+        seq = make_contiguous(im=seq, mode='symmetric')
     return seq
 
 
@@ -418,7 +416,7 @@ def size_to_pc(im, size, f=None, **kwargs):
         A function to compute the capillary pressure which receives `size` as
         the first argument, followed by any additional `**kwargs`. If not
         provided then the Washburn equation is used, which requires `theta` and
-        `sigma` to be specified as `kwargs`.
+        `sigma` to be specified as additional keyword arguments.
     **kwargs : Key word arguments
         All additional keyword arguments are passed on to `f`.
 
@@ -458,3 +456,59 @@ def size_to_pc(im, size, f=None, **kwargs):
 #     time = counts*(voxel_size**im.ndim)/flow_rate
 #     time_map = np.reshape(time[bins], im.shape)
 #     plt.imshow(time_map/im)
+
+
+if __name__ == "__main__":
+    import porespy as ps
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    im = np.ones([20, 20], dtype=bool)
+    im[-1, :] = False
+    im[0, :] = False
+    pc = ps.filters.capillary_transform(im)
+    inlets = ps.generators.faces(im.shape, inlet=1)
+    inv = ps.simulations.invasion(im, pc, inlets=inlets)
+
+    # Check drainage with trapping
+    tmp = np.copy(inv.im_seq)
+    tmp[tmp >= 12] = -1  # Set some to uninvaded/trapped
+    satn = ps.filters.seq_to_satn(seq=tmp, im=im, mode='drainage')
+    assert ((satn >= 0)*im).sum()/im.sum() == satn.max()
+    # Now convert it back!
+    seq = satn_to_seq(satn, im=im, mode='drainage')
+    assert np.all(seq == tmp)
+
+    # Check drainage wtih trapping and residual
+    tmp = np.copy(inv.im_seq)
+    tmp[tmp >= 12] = -1  # Set some to uninvaded/trapped
+    tmp[tmp > 0] -= 1
+    residual = (tmp == 0)*im
+    satn = ps.filters.seq_to_satn(seq=tmp, im=im, mode='drainage')
+    assert ((satn >= 0)*im).sum()/im.sum() == satn.max()
+    # Now convert it back!
+    seq = satn_to_seq(satn, im=im, residual=residual, mode='drainage')
+    assert np.all(seq == tmp)
+
+    # Now check imbibition with trapping
+    tmp = np.copy(inv.im_seq)
+    tmp[tmp == 1] = -1  # Set some to uninvaded/trapped
+    tmp[tmp > 0] = tmp.max() - tmp[tmp > 0] + 1  # Invert sequence numbers
+    satn = ps.filters.seq_to_satn(seq=tmp, im=im, mode='imb')
+    assert (1 - (satn > 0).sum()/im.sum()) == satn[satn > 0].min()
+    # Now convert it back!
+    seq = satn_to_seq(satn, im=im, mode='imbibition')
+    assert np.all(seq == tmp)
+
+    # Check drainage wtih trapping and residual
+    tmp = np.copy(inv.im_seq)
+    tmp[tmp == 1] = -1  # Set some to uninvaded/trapped
+    tmp[tmp > 0] = tmp.max() - tmp[tmp > 0] + 1  # Invert sequence numbers
+    tmp[(tmp > 0)*(tmp < 6)] = 0
+    tmp = ps.tools.make_contiguous(seq, mode='symmetric')
+    residual = (tmp == 0)*im
+    satn = ps.filters.seq_to_satn(seq=tmp, im=im, mode='drainage')
+    assert ((satn >= 0)*im).sum()/im.sum() == satn.max()
+    # Now convert it back!
+    seq = satn_to_seq(satn, im=im, residual=residual, mode='drainage')
+    assert np.all(seq == tmp)

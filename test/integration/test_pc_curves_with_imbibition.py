@@ -12,7 +12,7 @@ def test_drainage(plot=False):
         shape=[500, 500],
         porosity=0.708328,
         blobiness=2.5,
-        seed=6,
+        seed=7,
     )
     inlets = np.zeros_like(im)
     inlets[-1, :] = True

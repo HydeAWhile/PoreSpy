@@ -119,12 +119,12 @@ class SeqTest():
 
     def test_seq_to_satn_modes(self):
         seq = np.tile(np.atleast_2d(np.arange(0, 21)), [21, 1])
-        satn = ps.filters.seq_to_satn(seq, im=seq>0, mode='drainage')
+        satn = ps.filters.seq_to_satn(seq, im=seq!=0, mode='drainage')
         assert satn.max() == 1.0
         assert satn[-1, -1] == 1.0
         assert satn[0, 0] == 0
         assert satn[0, 1] == 0.05
-        satn = ps.filters.seq_to_satn(seq, im=seq>0, mode='imbition')
+        satn = ps.filters.seq_to_satn(seq, im=seq!=0, mode='imbition')
         # assert satn[-1, -1] == 0.05
         # assert satn.max() == 1.0
         assert satn[0, 0] == 0
@@ -133,19 +133,19 @@ class SeqTest():
         seq = np.tile(np.atleast_2d(np.arange(0, 21)), [21, 1]) - 1
         seq[:, 0] = 0
         seq[:, 1] = -1
-        satn = ps.filters.seq_to_satn(seq, im=seq>0, mode='drainage')
-        # assert satn.max() == 0.95
-        # assert satn[-1, -1] == 0.95
-        # assert satn[0, 0] == 0.0
+        satn = ps.filters.seq_to_satn(seq, im=seq!=0, mode='drainage')
+        assert satn.max() == 0.95
+        assert satn[-1, -1] == 0.95
+        assert satn[0, 0] == 0.0
         assert satn[0, 1] == -1
-        # assert satn[0, 2] == 0.05
+        assert satn[0, 2] == 0.05
 
-        satn = ps.filters.seq_to_satn(seq, im=seq>0, mode='imbibition')
-        # assert satn.max() == 0.95
+        satn = ps.filters.seq_to_satn(seq, im=seq!=0, mode='imbibition')
+        assert satn.max() == 0.95
         # assert satn[-1, -1] == 0.05
         assert satn[0, 0] == 0.0
         assert satn[0, 1] == -1
-        # assert satn[0, 2] == 0.95
+        assert satn[0, 2] == 0.95
 
     def test_size_to_satn(self):
         im = self.im2D
