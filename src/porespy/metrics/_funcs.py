@@ -1086,9 +1086,12 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=No
         snwp = np.cumsum(counts)/im.sum()
         # If pc does not have residual phase (-inf), then add new point at snwp=0
         if pcs[0] != -np.inf:
-            pcs = np.hstack(([pcs[0]], pcs))
+            pcs = np.hstack((pcs[0], pcs))
             snwp = np.hstack(([0], snwp))
-        if pcs[-1] == np.inf:
+        else:
+            pcs = np.hstack((pcs[0], pcs[1], pcs[1:]))
+            snwp = np.hstack((snwp[0], snwp[0], snwp[1:]))
+        if pcs[-1] == np.inf:  # If trapping occurred, as point at +inf
             snwp[-1] = snwp[-2]
 
     elif mode.startswith('imb'):
