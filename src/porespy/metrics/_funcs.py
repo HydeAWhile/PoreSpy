@@ -1081,7 +1081,8 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=No
     if mode.startswith('dr'):
         seq = seq.astype(float)
         seq[seq == -1] = np.inf
-        vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
+        vals, index, counts = \
+            np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
         snwp = np.cumsum(counts)/im.sum()
         # If pc does not have residual phase (-inf), then add new point at snwp=0
@@ -1097,20 +1098,17 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=No
     elif mode.startswith('imb'):
         # seq[seq == -1] = -np.inf
         swp_r = (seq[im] == 0).sum(dtype=np.int64)/im.sum(dtype=np.int64)
-        vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
+        vals, index, counts = \
+            np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
         idx = np.argsort(pcs)[-1::-1]  # Because -inf lands on wrong end
         pcs = pcs[idx]
         counts = counts[idx]
         snwp = 1 - np.cumsum(counts)/im.sum()
-        # if pcs[0] != np.inf:
-        #     snwp = 1 - np.cumsum(counts)/im.sum()
-        # else:
-        #     snwp = 1 - np.cumsum(counts[1:])/im.sum()
-        #     snwp = np.hstack(([snwp[0]], snwp))
+        snwp = np.hstack(([1.0-swp_r], snwp))
+        pcs = np.hstack((pcs[0], pcs))
         if pcs[-1] == -np.inf:
             snwp[-1] = snwp[-2]
-
 
     # Apply clipping to Pc values
     if pc_min or pc_max:
