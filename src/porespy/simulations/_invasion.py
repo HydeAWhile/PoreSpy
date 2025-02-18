@@ -48,102 +48,6 @@ def qbip(
     r"""
     Performs invasion percolation using a priority queue, optionally including
     the effect of gravity
-
-    Parameters
-    ----------
-    im : ndarray
-        A boolean image of the porous media with ``True`` values indicating
-        the void space
-    pc : ndarray, optional
-        Precomputed capillary pressure transform which is used to determine
-        the invadability of each voxel. If not provided then the negative of
-        the distance transform of `im` is used.
-    dt : ndarray (optional)
-        The distance transform of ``im``.  If not provided it will be
-        calculated, so supplying it saves time.
-    inlets : ndarray, optional
-        A boolean image with ``True`` values indicating the inlet locations.
-        If not provided then the beginning of the x-axis is assumed.
-    outlets : ndarray, optional
-        A boolean image with ``True`` values indicating the outlet locations.
-        If this is provided then trapped voxels of wetting phase are found and
-        all the output images are adjusted accordingly. Note that trapping can
-        be assessed during postprocessing as well.
-    return_sizes : bool, default = `False`
-        If `True` then an array containing the size of the sphere which first
-        overlapped each pixel is returned. This array is not computed by default
-        as computing it increases computation time.
-    return_pressures : bool, default = `False`
-        If `True` then an array containing the capillary pressure at which
-        each pixels was first invaded is returned. This array is not computed by
-        default as computing it increases computation time. If `pc` is not provided
-        then this arugment is ignored
-    maxiter : int
-        The maximum number of iteration to perform.  The default is equal to the
-        number of void pixels `im`.
-    conn : str
-        Controls the shape of the structuring element used to find neighboring
-        voxels.  Options are:
-
-        ========= ==================================================================
-        Option    Description
-        ========= ==================================================================
-        'min'     This corresponds to a cross with 4 neighbors in 2D and 6 neighbors
-                  in 3D.
-        'max'     This corresponds to a square or cube with 8 neighbors in 2D and
-                  26 neighbors in 3D.
-        ========= ==================================================================
-
-    min_size : int
-        Any clusters of trapped voxels smaller than this size will be set to not
-        trapped. This argument is only used if `outlets` is given. This is useful
-        to prevent small voxels along edges of the void space from being set to
-        trapped. These can appear to be trapped due to the jagged nature of the
-        digital image. The default is 0, meaning this adjustment is not applied,
-        but a value of 3 or 4 is recommended to activate this adjustment.
-
-    Returns
-    -------
-    results : Results object
-        A dataclass-like object with the following attributes:
-
-        ========== =================================================================
-        Attribute  Description
-        ========== =================================================================
-        im_seq     A numpy array with each voxel value containing the step at
-                   which it was invaded.  Uninvaded voxels are set to -1.
-        im_satn    A numpy array with each voxel value indicating the saturation
-                   present in the domain it was invaded. Solids are given 0, and
-                   uninvaded regions are given -1.
-        im_pc      If `return_pressures` was set to `True`, then a numpy array with
-                   each voxel value indicating the capillary pressure at which it
-                   was invaded. Uninvaded voxels have value of ``np.inf``.
-        im_size    If `return_sizes` was set to `True`, then a numpy array with
-                   each voxel containing the radius of the sphere, in voxels, that
-                   first overlapped it.
-        ========== =================================================================
-
-    Notes
-    -----
-    * This algorithm is described in [1]_. It operates differently than the original
-      ``ibip`` [2]_.  It is much faster and can include the effect of gravity. Here
-      a priority queue (via the `heapq` module from the standard libary) is used to
-      maintain an up-to-date list of which voxels should be invaded next.
-    * If `pc` is not given, `pc` is calculated as `2/dt`.  This allows for `qbip`
-      to be used in an abstract way, based only on voxel sizes instead of having
-      to define the fluid properties necesssary to compute the capillary transform.
-
-    References
-    ----------
-    .. [1] Gostick JT, Misaghian N*, A Irannezhad, B Zhao. A computationally
-       efficient queue-based algorithm for simulating volume-controlled drainage
-       under the influence of gravity on volumetric images. Advances in Water
-       Resources.
-    .. [2] Gostick JT, Misaghian N, Yang J, Boek ES. *Simulating volume-controlled
-       invasion of a non-wetting fluid in volumetric images using basic image
-       processing tools*. `Computers and the Geosciences
-       <https://doi.org/10.1016/j.cageo.2021.104978>`_. 158(1), 104978 (2022)
-
     """
     im = np.atleast_3d(im == 1)
     if maxiter is None:  # Compute numpy of pixels in image
@@ -167,13 +71,13 @@ def qbip(
     inv_seq = np.zeros_like(im, dtype=int)
     inv_pc = np.zeros_like(im, dtype=float)
     if return_pressures is False:
-        inv_pc *= -np.inf
+        inv_pc *= -np.inf  # This is a flag to the numba-jit function to ignore it
     inv_size = np.zeros_like(im, dtype=float)
     if return_sizes is False:
-        inv_size *= -np.inf
+        inv_size *= -np.inf  # This is a flag to the numba-jit function to ignore it
 
     # Call numba'd inner loop
-    sequence, pressure, size = _qbip_inner_loop(
+    sequence, pressure, size, step = _qbip_inner_loop(
         im=im,
         inlets=inlets,
         dt=dt,
@@ -184,6 +88,7 @@ def qbip(
         maxiter=maxiter,
         conn=conn,
     )
+    logger.info(f"Exiting after {step} steps")
     # Reduce back to 2D if necessary
     sequence = sequence.squeeze()
     pressure = pressure.squeeze()
@@ -254,7 +159,6 @@ def _qbip_inner_loop(
     step = 1  # Total step number
     for _ in range(1, maxiter):
         if len(bd) == 0:
-            print(f"Exiting after {step} steps")
             break
         pts = [hq.heappop(bd)]  # Put next site into pts list
         while len(bd) and (bd[0][0] == pts[0][0]):  # Pop any items with equal Pc
@@ -282,7 +186,7 @@ def _qbip_inner_loop(
                 hq.heappush(bd, [pc[n], dt[n], n[0], n[1], n[2]])
                 processed[n[0], n[1], n[2]] = True
         step += 1
-    return seq, pressure, size
+    return seq, pressure, size, step
 
 
 @njit
@@ -400,9 +304,12 @@ def _where(arr):
 def ibip(
     im: npt.NDArray,
     inlets: npt.NDArray = None,
+    outlets: npt.NDArray = None,
     dt: npt.NDArray = None,
     maxiter: int = 10000,
     return_sizes: bool = True,
+    conn: str = 'min',
+    min_size: int = 0,
 ):
     r"""
     Performs invasion percolation on given image using the IBIP algorithm [1]_
@@ -436,7 +343,7 @@ def ibip(
         ============= ===============================================================
         im_seq        A numpy array with each voxel value containing the step at
                       which it was invaded.  Uninvaded voxels are set to -1.
-        im_satn       A numpy array with each voxel value indicating the saturation
+        im_snwp       A numpy array with each voxel value indicating the saturation
                       present in the domain it was invaded. Solids are given 0, and
                       uninvaded regions are given -1.
         im_size       If `return_sizes` was set to `True`, then a numpy array with
@@ -472,8 +379,11 @@ def ibip(
     """
     # Process the boundary image
     if inlets is None:
-        inlets = get_border(shape=im.shape, mode='faces')
+        inlets = np.zeros_like(im)
+        inlets[0, ...] = True
     inlets = inlets*im
+    if maxiter is None:
+        maxiter = im.sum()
     bd = np.copy(inlets > 0)
     if dt is None:  # Find dt if not given
         dt = edt(im)
@@ -515,6 +425,7 @@ def ibip(
             v=1,
             smooth=False,
         )
+
     # Convert inv image so that uninvaded voxels are set to -1 and solid to 0
     temp = seq == 0  # Uninvaded voxels are set to -1 after _ibip
     seq[~im] = 0
@@ -524,18 +435,32 @@ def ibip(
     temp = sizes == 0
     sizes[~im] = 0
     sizes[temp] = -1
+
+    # Deal with trapping if outlets were specified
+    if outlets is not None:
+        logger.info('Computing trapping and adjusting outputs')
+        sequence = find_trapped_regions(
+            im=im,
+            seq=seq,
+            outlets=outlets,
+            return_mask=False,
+            conn=conn,
+            min_size=min_size,
+            method='queue',
+        )
+        trapped = (sequence == -1).squeeze()
+        # pressure = pressure.astype(float).squeeze()
+        # pressure[trapped] = np.inf
+        # size = size.astype(float)
+        # size[trapped] = np.inf
+        seq[trapped] = -1
+        sizes[trapped] = -1
+
     results = Results()
     results.im_size = np.copy(sizes)
     results.im_seq = np.copy(seq)
     results.im_snwp = seq_to_satn(seq=seq, im=im)
     return results
-
-
-@njit(parallel=False)
-def _where(arr):
-    inds = np.where(arr)
-    result = np.vstack(inds)
-    return result
 
 
 @njit()
@@ -553,30 +478,142 @@ def _update_dt_and_bd(dt, bd, pt):
 
 def invasion(
     im,
-    pc,
+    pc=None,
     dt=None,
     inlets=None,
     outlets=None,
     maxiter=None,
     return_sizes=False,
-    return_pressures=False,
+    return_pressures=True,
     conn='min',
+    min_size=0,
+    method='qbip',
 ):
-    results = qbip(
-        im=im,
-        pc=pc,
-        dt=dt,
-        inlets=inlets,
-        outlets=outlets,
-        maxiter=maxiter,
-        return_sizes=return_sizes,
-        return_pressures=return_pressures,
-        conn=conn,
-    )
+    r"""
+    Performs volume-controlled invasion of non-wetting fluid
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean image of the porous media with ``True`` values indicating
+        the void space
+    pc : ndarray, optional
+        Precomputed capillary pressure transform which is used to determine
+        the invadability of each voxel. If not provided then the `2/dt` is used,
+        which is equivalent to a surface tension and voxel size of unity, and a
+        contact angle of 180 degrees.
+    dt : ndarray (optional)
+        The distance transform of ``im``.  If not provided it will be
+        calculated, so supplying it saves time.
+    inlets : ndarray, optional
+        A boolean image with ``True`` values indicating the inlet locations.
+        If not provided then the beginning of the x-axis is assumed.
+    outlets : ndarray, optional
+        A boolean image with ``True`` values indicating the outlet locations.
+        If this is provided then trapped voxels of wetting phase are found and
+        all the output images are adjusted accordingly. Note that trapping can
+        be assessed during postprocessing as well.
+    return_sizes : bool, default = `False`
+        If `True` then an array containing the size of the sphere which first
+        overlapped each pixel is returned. This array is not computed by default
+        as computing it increases computation time.
+    return_pressures : bool, default = `True`
+        If `True` then an array containing the capillary pressure at which
+        each pixels was first invaded is returned.
+    maxiter : int
+        The maximum number of iteration to perform.  The default is equal to the
+        number of void pixels in `im`.
+    min_size : int
+        Any clusters of trapped voxels smaller than this size will be set to not
+        trapped. This argument is only used if `outlets` is given. This is useful
+        to prevent small voxels along edges of the void space from being set to
+        trapped. These can appear to be trapped due to the jagged nature of the
+        digital image. The default is 0, meaning this adjustment is not applied,
+        but a value of 3 or 4 is recommended to activate this adjustment.
+    conn : str
+        Controls the shape of the structuring element used to find neighboring
+        voxels.  Options are:
+
+        ========= ==================================================================
+        Option    Description
+        ========= ==================================================================
+        'min'     This corresponds to a cross with 4 neighbors in 2D and 6 neighbors
+                  in 3D.
+        'max'     This corresponds to a square or cube with 8 neighbors in 2D and
+                  26 neighbors in 3D.
+        ========= ==================================================================
+
+    method : str
+        Controls the method used perform the simulation.  Options are:
+
+        ========= ==================================================================
+        Option    Description
+        ========= ==================================================================
+        'qbip'    Uses 'queue-based invasion percolation' [1]_. This is the default.
+                  It is much faster.
+        'ibip'    Uses 'image-based invasion percolation' [2]_. This is only
+                  provided for completeness since it is the original algorithm.
+        ========= ==================================================================
+
+    Returns
+    -------
+    results : Results object
+        A dataclass-like object with the following attributes:
+
+        ========== =================================================================
+        Attribute  Description
+        ========== =================================================================
+        im_seq     A numpy array with each voxel value containing the step at
+                   which it was invaded.  Uninvaded voxels are set to -1.
+        im_snwp    A numpy array with each voxel value indicating the saturation
+                   present in the domain it was invaded. Solids are given 0, and
+                   uninvaded regions are given -1.
+        im_pc      If `return_pressures` was set to `True`, then a numpy array with
+                   each voxel value indicating the capillary pressure at which it
+                   was invaded. Uninvaded voxels have value of ``np.inf``.
+        im_size    If `return_sizes` was set to `True`, then a numpy array with
+                   each voxel containing the radius of the sphere, in voxels, that
+                   first overlapped it.
+        ========== =================================================================
+
+    References
+    ----------
+    .. [1] Gostick JT, Misaghian N*, A Irannezhad, B Zhao. *A computationally
+       efficient queue-based algorithm for simulating volume-controlled drainage
+       under the influence of gravity on volumetric images*. Advances in Water
+       Resources.
+    .. [2] Gostick JT, Misaghian N, Yang J, Boek ES. *Simulating volume-controlled
+       invasion of a non-wetting fluid in volumetric images using basic image
+       processing tools*. `Computers and the Geosciences
+       <https://doi.org/10.1016/j.cageo.2021.104978>`_. 158(1), 104978 (2022)
+
+
+    """
+    if method == 'qbip':
+        results = qbip(
+            im=im,
+            pc=pc,
+            dt=dt,
+            inlets=inlets,
+            outlets=outlets,
+            maxiter=maxiter,
+            return_sizes=return_sizes,
+            return_pressures=return_pressures,
+            conn=conn,
+            min_size=min_size,
+        )
+    elif method == 'ibip':
+        results = ibip(
+            im=im,
+            dt=dt,
+            inlets=inlets,
+            outlets=outlets,
+            maxiter=maxiter,
+            return_sizes=return_sizes,
+            conn=conn,
+            min_size=min_size,
+        )
     return results
-
-
-invasion.__doc__ = qbip.__doc__
 
 
 if __name__ == "__main__":
@@ -641,4 +678,11 @@ if __name__ == "__main__":
         interpolation='none',
         vmin=0.0001,
         cmap=cm,
+    )
+
+    ip2 = ps.simulations.invasion(
+        im=im,
+        inlets=inlets,
+        outlets=outlets,
+        method='ibip',
     )
