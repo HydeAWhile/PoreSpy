@@ -64,7 +64,6 @@ def qbip(
 
     if pc is None:
         pc = 2.0/dt
-        return_pressures = False  # Does not make sense if pc is not given
     pc = np.atleast_3d(pc)
 
     # Initialize arrays and do some preprocessing
@@ -451,15 +450,14 @@ def ibip(
         trapped = (sequence == -1).squeeze()
         # pressure = pressure.astype(float).squeeze()
         # pressure[trapped] = np.inf
-        # size = size.astype(float)
-        # size[trapped] = np.inf
         seq[trapped] = -1
         sizes[trapped] = -1
 
     results = Results()
-    results.im_size = np.copy(sizes)
     results.im_seq = np.copy(seq)
     results.im_snwp = seq_to_satn(seq=seq, im=im)
+    if return_sizes:
+        results.im_size = np.copy(sizes)
     return results
 
 
@@ -628,7 +626,7 @@ if __name__ == "__main__":
     inlets[0, :] = True
     inlets = inlets*im
     pc = ps.filters.capillary_transform(im)
-    ip = qbip(im, pc=pc, inlets=inlets, return_sizes=True)
+    ip = invasion(im, pc=pc, inlets=inlets, return_sizes=True)
 
     outlets = np.zeros_like(im)
     outlets[-1, :] = True
