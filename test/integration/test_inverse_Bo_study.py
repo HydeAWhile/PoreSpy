@@ -47,7 +47,7 @@ def test_inverse_Bo_study():
             im=im,
             inlets=inlets,
             pc=pc,
-            bins=25,
+            steps=25,
         )
 
     # %%  Process data to make 1/Bo vs H plot

@@ -578,8 +578,9 @@ def invasion(
     ----------
     .. [1] Gostick JT, Misaghian N*, A Irannezhad, B Zhao. *A computationally
        efficient queue-based algorithm for simulating volume-controlled drainage
-       under the influence of gravity on volumetric images*. Advances in Water
-       Resources.
+       under the influence of gravity on volumetric images*. `Advances in Water
+       Resources <https://doi.org/10.1016/j.advwatres.2024.104799>`_. 193(11),
+       104799 (2024)
     .. [2] Gostick JT, Misaghian N, Yang J, Boek ES. *Simulating volume-controlled
        invasion of a non-wetting fluid in volumetric images using basic image
        processing tools*. `Computers and the Geosciences

@@ -26,12 +26,12 @@ tqdm = get_tqdm()
 
 def imbibition(
     im,
-    pc,
+    pc=None,
     dt=None,
     inlets=None,
     outlets=None,
     residual=None,
-    bins=25,
+    steps=25,
     min_size=0,
 ):
     r"""
@@ -45,6 +45,9 @@ def imbibition(
         An array containing precomputed capillary pressure values in each
         voxel. This can include gravity effects or not. This can be generated
         by ``capillary_transform``. If not provided then `2/dt` is used.
+    dt : ndarray (optional)
+        The distance transform of ``im``.  If not provided it will be
+        calculated, so supplying it saves time.
     inlets : ndarray
         An image the same shape as ``im`` with ``True`` values indicating the
         wetting fluid inlet(s).  If ``None`` then the wetting film is able to
@@ -52,9 +55,9 @@ def imbibition(
     residual : ndarray, optional
         A boolean mask the same shape as ``im`` with ``True`` values
         indicating to locations of residual wetting phase.
-    bins : int or array_like (default = 25)
+    steps : int or array_like (default = 25)
         The range of pressures to apply. If an integer is given
-        then bins will be created between the lowest and highest pressures
+        then steps will be created between the lowest and highest pressures
         in ``pc``. If a list is given, each value in the list is used
         directly in order.
     min_size : int
@@ -108,12 +111,12 @@ def imbibition(
     pc = np.copy(pc)
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
-    if isinstance(bins, int):
+    if isinstance(steps, int):
         vmax = pc[pc < np.inf].max()
         vmin = pc[im][pc[im] > -np.inf].min()
-        Ps = np.logspace(np.log10(np.ceil(vmax)), np.log10(np.floor(vmin)), bins)
+        Ps = np.linspace(np.ceil(vmax), np.floor(vmin), steps)
     else:
-        Ps = np.unique(bins)[::-1]  # To ensure they are in descending order
+        Ps = np.unique(steps)[::-1]  # To ensure they are in descending order
 
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)

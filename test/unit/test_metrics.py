@@ -374,7 +374,7 @@ class MetricsTest():
         inlets = ps.tools.get_border(shape=im.shape, mode='faces')
 
         # Do drainage without sequence
-        drn = ps.simulations.drainage(im, bins=None, return_sizes=True)
+        drn = ps.simulations.drainage(im, steps=None, return_sizes=True)
         pc1 = ps.filters.size_to_pc(
             im=im, size=drn.im_size, sigma=0.072, theta=110, voxel_size=vx)
         d1 = ps.metrics.pc_map_to_pc_curve(pc=pc1, im=im)
@@ -392,7 +392,7 @@ class MetricsTest():
 
         bins = np.unique(pc3)
         drn4 = ps.simulations.drainage(
-            im=im, inlets=inlets, bins=bins, return_sizes=True)
+            im=im, inlets=inlets, steps=bins, return_sizes=True)
         pc4 = ps.filters.size_to_pc(
             im=im, size=drn4.im_size, sigma=0.072, theta=110, voxel_size=vx)
         d4 = ps.metrics.pc_map_to_pc_curve(pc=pc4, im=im)

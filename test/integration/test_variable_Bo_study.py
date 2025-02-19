@@ -38,7 +38,7 @@ def test_variable_Bo_study():
                                               sigma=sigma,
                                               delta_rho=delta_rho,
                                               g=g,
-                                              bins=25)
+                                              steps=25)
 
     # %%  Repeat with trapping
     outlets = np.zeros_like(im)
@@ -55,7 +55,7 @@ def test_variable_Bo_study():
                                               sigma=sigma,
                                               delta_rho=delta_rho,
                                               g=g,
-                                              bins=25)
+                                              steps=25)
 
     # %%  Plot pseudo capillary pressure curves for each angle/Bo
     if plot:
