@@ -4,12 +4,15 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
-from skimage.morphology import skeletonize_3d
+from skimage.morphology import skeletonize
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from porespy import settings
-from porespy.filters import local_thickness
+from porespy.filters import (
+    local_thickness,
+    pc_to_seq,
+)
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
@@ -1020,7 +1023,7 @@ def pc_curve(im, pc, seq=None):
     return pc_curve
 
 
-def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
+def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=None):
     r"""
     Converts a pc map into a capillary pressure curve
 
@@ -1028,14 +1031,14 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
     ----------
     pc : ndarray
         A numpy array with each voxel containing the capillary pressure at which
-        it was invaded. `-inf` indicates voxels which are already filled with
-        non-wetting fluid, and `+inf` indicates voxels that are not invaded by
-        non-wetting fluid (e.g., trapped wetting phase). Values in the solid
-        phase are masked by `im` so are ignored.
+        it was invaded. `-inf` indicates voxels which are filled with non-wetting
+        fluid at all pressures, and `+inf` indicates voxels that are filled by
+        wetting fluid at all pressures. Values in the solid phase are masked by
+        `im` so are ignored.
     im : ndarray
         A numpy array with `True` values indicating the void space and `False`
         elsewhere. This is necessary to define the total void volume of the domain
-        for computing the saturation.
+        when computing the saturation.
     seq : ndarray, optional
         A numpy array with each voxel containing the sequence at which it was
         invaded. This is required when analyzing results from invasion percolation
@@ -1043,6 +1046,7 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
         they were filled.
     mode : str
         Indicates whether the invasion was a drainage or an imbibition process.
+        Options are 'drainage' and 'imbibition'.
 
     Returns
     -------
@@ -1064,17 +1068,51 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
     both return capillary pressure maps which can be passed directly as `pc`.
     """
     pc = np.copy(pc)
-    pc[~im] = np.inf  # Ensure solid voxels are set to inf invasion pressure
+
     if seq is None:
-        pcs, counts = np.unique(pc, return_counts=True)
-    else:
-        pc[seq == -1] = np.inf
-        vals, index, counts = np.unique(seq, return_index=True, return_counts=True)
-        pcs = pc.flatten()[index]
-    snwp = np.cumsum(counts[pcs < np.inf])/im.sum()
-    pcs = pcs[pcs < np.inf]
-    if mode.startswith('im'):
-        snwp = 1 - snwp
+        seq = pc_to_seq(im=im, pc=pc, mode=mode)
+        # Or stand alone code
+        # if mode.startswith('dr'):
+        #     seq = np.digitize(x=pc.flatten(), bins=np.unique(pc[im]))
+        # elif mode.startswith('imb'):
+        #     seq = np.digitize(x=pc.flatten(), bins=np.flip(np.unique(pc)))
+        # seq = np.reshape(seq, im.shape)
+
+    if mode.startswith('dr'):
+        seq = seq.astype(float)
+        seq[seq == -1] = np.inf
+        vals, index, counts = \
+            np.unique(seq[im], return_index=True, return_counts=True)
+        pcs = pc[im][index]
+        snwp = np.cumsum(counts)/im.sum()
+        # If pc does not have residual phase (-inf), then add new point at snwp=0
+        if pcs[0] != -np.inf:
+            pcs = np.hstack((pcs[0], pcs))
+            snwp = np.hstack(([0], snwp))
+        else:
+            pcs = np.hstack((pcs[0], pcs[1], pcs[1:]))
+            snwp = np.hstack((snwp[0], snwp[0], snwp[1:]))
+        if pcs[-1] == np.inf:  # If trapping occurred, as point at +inf
+            snwp[-1] = snwp[-2]
+
+    elif mode.startswith('imb'):
+        # seq[seq == -1] = -np.inf
+        swp_r = (seq[im] == 0).sum(dtype=np.int64)/im.sum(dtype=np.int64)
+        vals, index, counts = \
+            np.unique(seq[im], return_index=True, return_counts=True)
+        pcs = pc[im][index]
+        idx = np.argsort(pcs)[-1::-1]  # Because -inf lands on wrong end
+        pcs = pcs[idx]
+        counts = counts[idx]
+        snwp = 1 - np.cumsum(counts)/im.sum()
+        snwp = np.hstack(([1.0-swp_r], snwp))
+        pcs = np.hstack((pcs[0], pcs))
+        if pcs[-1] == -np.inf:
+            snwp[-1] = snwp[-2]
+
+    # Apply clipping to Pc values
+    if pc_min or pc_max:
+        pcs = np.clip(pcs, a_min=pc_min, a_max=pc_max)
 
     results = Results()
     results.pc = pcs
@@ -1300,7 +1338,7 @@ def bond_number(
         before computing the average value using the specified `method`.
     """
     if mask is True:
-        mask = skeletonize_3d(im)
+        mask = skeletonize(im)
     else:
         mask = im
 
