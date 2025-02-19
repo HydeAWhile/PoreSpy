@@ -100,6 +100,9 @@ def imbibition(
 
     Examples
     --------
+    `Click here
+    <https://porespy.org/examples/simulations/reference/imbibition.html>`_
+    to view online example.
 
     """
     if dt is None:

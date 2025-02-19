@@ -586,6 +586,12 @@ def invasion(
        processing tools*. `Computers and the Geosciences
        <https://doi.org/10.1016/j.cageo.2021.104978>`_. 158(1), 104978 (2022)
 
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/simulations/reference/invasion.html>`_
+    to view online example.
+
 
     """
     if method == 'qbip':
