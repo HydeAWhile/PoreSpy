@@ -545,8 +545,8 @@ class ToolsTest():
         assert im[slabs[-1]].sum() == 30*30*10
 
         im = np.ones([30, 30, 30])
-        slabs1 = ps.tools.get_slabs(im, span=10, step=10, mode='slide')
-        slabs2 = ps.tools.get_slabs(im, span=10, step=10, mode='tile')
+        slabs1 = ps.tools.im_to_slabs(im, span=10, step=10, mode='slide')
+        slabs2 = ps.tools.im_to_slabs(im, span=10, step=10, mode='tile')
         assert slabs1 == slabs2
 
     def test_im_to_slabs_2D(self):
