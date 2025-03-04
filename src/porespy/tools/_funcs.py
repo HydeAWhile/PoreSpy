@@ -69,7 +69,7 @@ def get_slabs(im, axis=0, span=50, step=1, mode='tile'):
     span : int (Default = 50)
         The thickness of the slabs
     step : int (Default = 1)
-        The spacing between slabs *if* `mode='slide'`. This is ignored otherwise.
+        The spacing between the starting location of the slabs *if* `mode='slide'`.
     mode : str (Default = 'tile')
         Determines how the images is sliced into slabs. Options are:
 
