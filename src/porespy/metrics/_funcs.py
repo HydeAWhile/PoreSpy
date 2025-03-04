@@ -18,7 +18,7 @@ from porespy.tools import (
     _check_for_singleton_axes,
     extend_slice,
     get_tqdm,
-    get_slabs,
+    im_to_slabs,
 )
 try:
     from pyedt import edt
@@ -313,7 +313,7 @@ def porosity_profile(im, axis=0, span=1, step=1, mode='tile'):
     """
     if axis >= im.ndim:
         raise Exception('axis out of range')
-    slices = get_slabs(im=im, axis=axis, span=span, step=step, mode=mode)
+    slices = im_to_slabs(im=im, axis=axis, span=span, step=step, mode=mode)
     eps = np.zeros(len(slices))
     z = np.zeros_like(eps)
     for i, s in enumerate(slices):
@@ -1230,7 +1230,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
         if satn.max() < s:
             raise Exception(msg)
 
-    slices = get_slabs(im=satn, axis=axis, span=span, step=1, mode=mode)
+    slices = im_to_slabs(im=satn, axis=axis, span=span, step=1, mode=mode)
     y = np.zeros(len(slices))
     z = np.zeros_like(y)
     for i, slab in enumerate(slices):

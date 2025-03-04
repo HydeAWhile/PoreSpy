@@ -32,8 +32,8 @@ __all__ = [
     'find_outer_region',
     'find_bbox',
     'get_border',
-    'get_slabs',
     'get_planes',
+    'im_to_slabs',
     'insert_cylinder',
     'insert_sphere',
     'in_hull',
@@ -56,7 +56,7 @@ __all__ = [
 ]
 
 
-def get_slabs(im, axis=0, span=50, step=1, mode='tile'):
+def im_to_slabs(im, axis=0, span=50, step=1, mode='tile'):
     r"""
     Generates a list of slice objects which can be used to obtain slabs of an image
 

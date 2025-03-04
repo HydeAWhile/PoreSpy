@@ -514,32 +514,32 @@ class ToolsTest():
         im3 = ~ps.tools.points_to_spheres(im=~im1)
         assert np.all(im2 == im3)
 
-    def test_get_slabs_3D_tile(self):
+    def test_im_to_slabs_3D_tile(self):
         im = np.ones([30, 30, 30])
-        slabs = ps.tools.get_slabs(im, span=10, mode='tile')
+        slabs = ps.tools.im_to_slabs(im, span=10, mode='tile')
         assert len(slabs) == 3
         assert im[slabs[0]].sum() == 30*30*10
         assert im[slabs[1]].sum() == 30*30*10
         assert im[slabs[2]].sum() == 30*30*10
 
         im = np.ones([30, 30, 40])
-        slabs = ps.tools.get_slabs(im, span=10, axis=2, mode='tile')
+        slabs = ps.tools.im_to_slabs(im, span=10, axis=2, mode='tile')
         assert len(slabs) == 4
         assert im[slabs[0]].sum() == 30*30*10
         assert im[slabs[1]].sum() == 30*30*10
         assert im[slabs[2]].sum() == 30*30*10
         assert im[slabs[3]].sum() == 30*30*10
 
-    def test_get_slabs_3D_slide(self):
+    def test_im_to_slabs_3D_slide(self):
         im = np.ones([30, 30, 30])
         span = 10
-        slabs = ps.tools.get_slabs(im, span=span, mode='slide')
+        slabs = ps.tools.im_to_slabs(im, span=span, mode='slide')
         assert len(slabs) == im.shape[0] - span + 1
         assert im[slabs[0]].sum() == 30*30*10
         assert im[slabs[-1]].sum() == 30*30*10
 
         im = np.ones([30, 30, 40])
-        slabs = ps.tools.get_slabs(im, span=span, axis=2, mode='slide')
+        slabs = ps.tools.im_to_slabs(im, span=span, axis=2, mode='slide')
         assert len(slabs) == im.shape[2] - span + 1
         assert im[slabs[0]].sum() == 30*30*10
         assert im[slabs[-1]].sum() == 30*30*10
@@ -549,10 +549,10 @@ class ToolsTest():
         slabs2 = ps.tools.get_slabs(im, span=10, step=10, mode='tile')
         assert slabs1 == slabs2
 
-    def test_get_slabs_2D(self):
+    def test_im_to_slabs_2D(self):
         im = np.ones([30, 30])
         span = 10
-        slabs = ps.tools.get_slabs(im, span=span, mode='slide')
+        slabs = ps.tools.im_to_slabs(im, span=span, mode='slide')
         assert len(slabs[0]) == im.ndim
         assert len(slabs) == im.shape[0] - span + 1
         assert im[slabs[0]].sum() == 30*10
