@@ -32,6 +32,7 @@ __all__ = [
     'find_outer_region',
     'find_bbox',
     'get_border',
+    'get_slabs',
     'get_planes',
     'insert_cylinder',
     'insert_sphere',
@@ -53,6 +54,62 @@ __all__ = [
     'jit_extend_slice',
     'pad',
 ]
+
+
+def get_slabs(im, axis=0, span=50, step=1, mode='tile'):
+    r"""
+    Generates a list of slice objects which can be used to obtain slabs of an image
+
+    Parameters
+    ----------
+    im : ndarray
+        The image for which the slices are desired
+    axis : int (Default = 0)
+        The axis along which the image will be sliced into slabs
+    span : int (Default = 50)
+        The thickness of the slabs
+    step : int (Default = 1)
+        The spacing between slabs *if* `mode='slide'`. This is ignored otherwise.
+    mode : str (Default = 'tile')
+        Determines how the images is sliced into slabs. Options are:
+
+        =========== ================================================================
+        `mode`      Description
+        =========== ================================================================
+        'tile'      The returned slice objects produce discrete non-overlapping
+                    slabs with a thickness of `span`.
+        'slide'     The returned slice objects produce overlapping slabs
+                    representing a moving window of size `span` and the start of
+                    each slab is offsets from the start of the previous one by
+                    `step`.
+        =========== ================================================================
+
+    Returns
+    -------
+    slices : list of tuples contains `slice` objects
+        The retuned list contains `tuples` for each slab, with each `tuple`
+        containing `ndim` slice objects. These can be used to obtain slabs of
+        `im` using `slab_i = im[slices[i]]`.
+
+    Notes
+    -----
+    When `span=step` the result is identical for `mode` of `'tile'` or `'slide'`.
+
+    """
+    im = np.swapaxes(im, 0, axis)
+    s = [slice(0, im.shape[i], None) for i in range(im.ndim)]
+    slices = []
+    if mode.startswith('tile'):
+        for i in range(int(im.shape[0]/span)):
+            s[axis] = slice(i*span, (i+1)*span, None)
+            slices.append(tuple(s))
+    elif mode.startswith('slide'):
+        for i in range(0, int(im.shape[0]-span+1), step):
+            s[axis] = slice(i, i+span, None)
+            slices.append(tuple(s))
+    else:
+        raise Exception(f"Unrecognized mode {mode}")
+    return slices
 
 
 def unpad(im, pad_width):
