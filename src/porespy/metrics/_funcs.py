@@ -201,7 +201,7 @@ def representative_elementary_volume(im, npoints=1000):
     return profile
 
 
-def porosity(im):
+def porosity(im, mask=None):
     r"""
     Calculates the porosity of an image assuming 1's are void space and 0's
     are solid phase.
@@ -215,6 +215,12 @@ def porosity(im):
         Image of the void space with 1's indicating void phase (or ``True``)
         and 0's indicating the solid phase (or ``False``). All other values
         are ignored (see Notes).
+    mask : ndarray
+        An image the same size as `im` with `True` values indicting the domain. This
+        argument is optional, but can be provided for images that don't fill the
+        entire array, like cylindrical cores.  Note that setting values in `im`
+        to 2 will also exclude them from consideration so provides the same effect
+        as `mask`, but providing a `mask` is usually much easier.
 
     Returns
     -------
@@ -244,7 +250,8 @@ def porosity(im):
     to view online example.
 
     """
-    im = np.array(im, dtype=np.int64)
+    if mask is not None:
+        im = np.array(im, dtype=np.int64)*mask
     Vp = np.sum(im == 1, dtype=np.int64)
     Vs = np.sum(im == 0, dtype=np.int64)
     e = Vp / (Vs + Vp)
