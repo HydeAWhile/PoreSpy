@@ -18,6 +18,7 @@ from porespy.tools import (
     _check_for_singleton_axes,
     extend_slice,
     get_tqdm,
+    im_to_slabs,
 )
 try:
     from pyedt import edt
@@ -200,7 +201,7 @@ def representative_elementary_volume(im, npoints=1000):
     return profile
 
 
-def porosity(im):
+def porosity(im, mask=None):
     r"""
     Calculates the porosity of an image assuming 1's are void space and 0's
     are solid phase.
@@ -214,6 +215,12 @@ def porosity(im):
         Image of the void space with 1's indicating void phase (or ``True``)
         and 0's indicating the solid phase (or ``False``). All other values
         are ignored (see Notes).
+    mask : ndarray
+        An image the same size as `im` with `True` values indicting the domain. This
+        argument is optional, but can be provided for images that don't fill the
+        entire array, like cylindrical cores.  Note that setting values in `im`
+        to 2 will also exclude them from consideration so provides the same effect
+        as `mask`, but providing a `mask` is usually much easier.
 
     Returns
     -------
@@ -243,14 +250,15 @@ def porosity(im):
     to view online example.
 
     """
-    im = np.array(im, dtype=np.int64)
+    if mask is not None:
+        im = np.array(im, dtype=np.int64)*mask
     Vp = np.sum(im == 1, dtype=np.int64)
     Vs = np.sum(im == 0, dtype=np.int64)
     e = Vp / (Vs + Vp)
     return e
 
 
-def porosity_profile(im, axis=0):
+def porosity_profile(im, axis=0, span=1, mode='tile'):
     r"""
     Computes the porosity profile along the specified axis
 
@@ -260,9 +268,34 @@ def porosity_profile(im, axis=0):
         The volumetric image for which to calculate the porosity profile.  All
         voxels with a value of 1 (or ``True``) are considered as void.
     axis : int
-        The axis (0, 1, or 2) along which to calculate the profile.  For
-        instance, if `axis` is 0, then the porosity in each YZ plane is
-        calculated and returned as 1D array with 1 value for each X position.
+        The axis along which to profile should be measured
+    span : int (Default = 1)
+        The thickness of layers to include in the moving average calculation.
+    mode : str (Default = 'tile')
+        How the moving average should be applied. Options are:
+
+        ======== ==============================================================
+        mode     description
+        ======== ==============================================================
+        'tile'   The average is computed for discrete non-overlapping
+                 tiles of a size given by ``span``
+        'slide'  The average is computed in a moving window starting at
+                 ``span/2`` and sliding by a single voxel. This method
+                 provides more data points but is slower.
+        ======== ==============================================================
+
+    Returns
+    -------
+    results : dataclass
+        Results is a custom porespy class with the following attributes:
+
+        ============= =========================================================
+        Attribute     Description
+        ============= =========================================================
+        position      The position along the given axis at which porosity
+                      values are computed.  The units are in voxels.
+        porosity      The local porosity value at each position.
+        ============= =========================================================
 
     Returns
     -------
@@ -278,12 +311,18 @@ def porosity_profile(im, axis=0):
     """
     if axis >= im.ndim:
         raise Exception('axis out of range')
-    im = np.atleast_3d(im)
-    a = set(range(im.ndim)).difference(set([axis]))
-    a1, a2 = a
-    tmp = np.sum(np.sum(im == 1, axis=a2, dtype=np.int64), axis=a1, dtype=np.int64)
-    prof = tmp / (im.shape[a2] * im.shape[a1])
-    return prof
+    slices = im_to_slabs(im=im, axis=axis, span=span, mode=mode)
+    eps = np.zeros(len(slices))
+    z = np.zeros_like(eps)
+    for i, s in enumerate(slices):
+        num = (im[s] == 1).sum(dtype=np.float64)
+        denom = ((im[s] == 1) + (im[s] == 0)).sum(dtype=np.float64)
+        eps[i] = num/denom
+        z[i] = (s[axis].start + s[axis].stop)/2
+    results = Results()
+    results.position = z
+    results.porosity = eps
+    return results
 
 
 def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
@@ -1141,7 +1180,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
     axis : int
         The axis along which to profile should be measured
     span : int
-        The number of layers to include in the moving average saturation
+        The width of layers to include in the moving average saturation
         calculation.
     mode : str
         How the moving average should be applied. Options are:
@@ -1189,24 +1228,15 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
         if satn.max() < s:
             raise Exception(msg)
 
-    satn = np.swapaxes(satn, 0, axis)
-    if mode == 'tile':
-        y = np.zeros(int(satn.shape[0]/span))
-        z = np.zeros_like(y)
-        for i in range(int(satn.shape[0]/span)):
-            void = satn[i*span:(i+1)*span, ...] != 0
-            nwp = (satn[i*span:(i+1)*span, ...] <= s) \
-                * (satn[i*span:(i+1)*span, ...] > 0)
-            y[i] = nwp.sum(dtype=np.int64)/void.sum(dtype=np.int64)
-            z[i] = i*span + (span-1)/2
-    if mode == 'slide':
-        y = np.zeros(int(satn.shape[0]-span))
-        z = np.zeros_like(y)
-        for i in range(int(satn.shape[0]-span)):
-            void = satn[i:i+span, ...] != 0
-            nwp = (satn[i:i+span, ...] <= s)*(satn[i:i+span, ...] > 0)
-            y[i] = nwp.sum(dtype=np.int64)/void.sum(dtype=np.int64)
-            z[i] = i + (span-1)/2
+    slices = im_to_slabs(im=satn, axis=axis, span=span, mode=mode)
+    y = np.zeros(len(slices))
+    z = np.zeros_like(y)
+    for i, slab in enumerate(slices):
+        void = satn[slab] != 0
+        nwp = (satn[slab] <= s) * (satn[slab] > 0)
+        y[i] = nwp.sum(dtype=np.int64)/void.sum(dtype=np.int64)
+        z[i] = (slab[axis].start + slab[axis].stop)/2
+
     results = Results()
     results.position = z
     results.saturation = y

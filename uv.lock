@@ -2720,13 +2720,14 @@ wheels = [
 
 [[package]]
 name = "porespy"
-version = "3.0.0a0.dev13"
+version = "3.0.0a0.dev14"
 source = { editable = "." }
 dependencies = [
     { name = "dask" },
     { name = "deprecated" },
     { name = "edt" },
     { name = "matplotlib" },
+    { name = "matplotlib-inline" },
     { name = "numba" },
     { name = "numpy" },
     { name = "openpnm" },
@@ -2808,6 +2809,7 @@ requires-dist = [
     { name = "jupyter", marker = "extra == 'interactive'" },
     { name = "jupyterlab-widgets", marker = "extra == 'interactive'" },
     { name = "matplotlib" },
+    { name = "matplotlib-inline", specifier = ">=0.1.7" },
     { name = "mock", marker = "extra == 'docs'" },
     { name = "myst-nb", marker = "extra == 'docs'" },
     { name = "nanomesh", marker = "extra == 'extras'" },
