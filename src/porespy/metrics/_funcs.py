@@ -315,8 +315,8 @@ def porosity_profile(im, axis=0, span=1, step=1, mode='tile'):
         eps[i] = num/denom
         z[i] = (s[axis].start + s[axis].stop)/2
     results = Results()
-    results.porosity = eps
     results.position = z
+    results.porosity = eps
     return results
 
 
