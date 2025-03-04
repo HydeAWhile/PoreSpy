@@ -56,7 +56,7 @@ __all__ = [
 ]
 
 
-def im_to_slabs(im, axis=0, span=50, step=1, mode='tile'):
+def im_to_slabs(im, axis=0, span=50, step=None, mode='tile'):
     r"""
     Generates a list of slice objects which can be used to obtain slabs of an image
 
@@ -68,8 +68,12 @@ def im_to_slabs(im, axis=0, span=50, step=1, mode='tile'):
         The axis along which the image will be sliced into slabs
     span : int (Default = 50)
         The thickness of the slabs
-    step : int (Default = 1)
-        The spacing between the starting location of the slabs *if* `mode='slide'`.
+    step : int (Default = None)
+        The spacing between the midpoints of the slabs. The default is `None` which
+        sets `step=1` voxel if `mode='slide'` and `step=span` if `mode='tile'`.
+        This can be used to create overlaps between slabs when `mode='tile'` by
+        setting `step<span`, or to reduce the number of slabs created when
+        `mode='slide'` by setting `step>1`.
     mode : str (Default = 'tile')
         Determines how the images is sliced into slabs. Options are:
 
@@ -96,19 +100,20 @@ def im_to_slabs(im, axis=0, span=50, step=1, mode='tile'):
     When `span=step` the result is identical for `mode` of `'tile'` or `'slide'`.
 
     """
-    im = np.swapaxes(im, 0, axis)
+    if mode not in ['slide', 'tile']:
+        raise Exception(f"Unrecognized mode {mode}")
+    if step is None:
+        step = 1 if mode == 'slide' else span
+    if step < 1:
+        raise Exception("Step size must be positive")
     s = [slice(0, im.shape[i], None) for i in range(im.ndim)]
     slices = []
-    if mode.startswith('tile'):
-        for i in range(int(im.shape[0]/span)):
-            s[axis] = slice(i*span, (i+1)*span, None)
-            slices.append(tuple(s))
-    elif mode.startswith('slide'):
-        for i in range(0, int(im.shape[0]-span+1), step):
-            s[axis] = slice(i, i+span, None)
-            slices.append(tuple(s))
-    else:
-        raise Exception(f"Unrecognized mode {mode}")
+    for i in range(0, int(im.shape[axis]), step):
+        if i+span > im.shape[axis]:
+            s[axis] = slice(i, im.shape[axis], None)
+            break
+        s[axis] = slice(i, i+span, None)
+        slices.append(tuple(s))
     return slices
 
 

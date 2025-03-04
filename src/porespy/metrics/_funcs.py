@@ -258,7 +258,7 @@ def porosity(im, mask=None):
     return e
 
 
-def porosity_profile(im, axis=0, span=1, step=1, mode='tile'):
+def porosity_profile(im, axis=0, span=1, mode='tile'):
     r"""
     Computes the porosity profile along the specified axis
 
@@ -271,8 +271,6 @@ def porosity_profile(im, axis=0, span=1, step=1, mode='tile'):
         The axis along which to profile should be measured
     span : int (Default = 1)
         The thickness of layers to include in the moving average calculation.
-    step : int (Default = 1)
-        The spacing between starting locations of the layers *if* `mode='slide'`.
     mode : str (Default = 'tile')
         How the moving average should be applied. Options are:
 
@@ -313,7 +311,7 @@ def porosity_profile(im, axis=0, span=1, step=1, mode='tile'):
     """
     if axis >= im.ndim:
         raise Exception('axis out of range')
-    slices = im_to_slabs(im=im, axis=axis, span=span, step=step, mode=mode)
+    slices = im_to_slabs(im=im, axis=axis, span=span, mode=mode)
     eps = np.zeros(len(slices))
     z = np.zeros_like(eps)
     for i, s in enumerate(slices):
@@ -1182,7 +1180,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
     axis : int
         The axis along which to profile should be measured
     span : int
-        The number of layers to include in the moving average saturation
+        The width of layers to include in the moving average saturation
         calculation.
     mode : str
         How the moving average should be applied. Options are:
@@ -1230,7 +1228,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
         if satn.max() < s:
             raise Exception(msg)
 
-    slices = im_to_slabs(im=satn, axis=axis, span=span, step=1, mode=mode)
+    slices = im_to_slabs(im=satn, axis=axis, span=span, mode=mode)
     y = np.zeros(len(slices))
     z = np.zeros_like(y)
     for i, slab in enumerate(slices):

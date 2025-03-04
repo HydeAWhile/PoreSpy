@@ -515,20 +515,36 @@ class ToolsTest():
         assert np.all(im2 == im3)
 
     def test_im_to_slabs_3D_tile(self):
-        im = np.ones([30, 30, 30])
+        im = np.ones([30, 40, 50])
         slabs = ps.tools.im_to_slabs(im, span=10, mode='tile')
         assert len(slabs) == 3
-        assert im[slabs[0]].sum() == 30*30*10
-        assert im[slabs[1]].sum() == 30*30*10
-        assert im[slabs[2]].sum() == 30*30*10
+        assert im[slabs[0]].sum() == 10*40*50
+        assert im[slabs[1]].sum() == 10*40*50
+        assert im[slabs[2]].sum() == 10*40*50
 
-        im = np.ones([30, 30, 40])
         slabs = ps.tools.im_to_slabs(im, span=10, axis=2, mode='tile')
+        assert len(slabs) == 5
+        assert im[slabs[0]].sum() == 30*40*10
+        assert im[slabs[1]].sum() == 30*40*10
+        assert im[slabs[2]].sum() == 30*40*10
+        assert im[slabs[3]].sum() == 30*40*10
+        assert im[slabs[4]].sum() == 30*40*10
+
+        slabs = ps.tools.im_to_slabs(im, span=10, step=5, axis=2, mode='tile')
+        assert len(slabs) == 9
+        assert im[slabs[0]].sum() == 30*40*10
+        assert im[slabs[-1]].sum() == 30*40*10
+
+        slabs = ps.tools.im_to_slabs(im, span=10, step=15, axis=1, mode='tile')
+        assert len(slabs) == 3
+        assert im[slabs[0]].sum() == 30*10*50
+        assert im[slabs[1]].sum() == 30*10*50
+        assert im[slabs[2]].sum() == 30*10*50
+
+        slabs = ps.tools.im_to_slabs(im, span=5, step=10, axis=1, mode='tile')
         assert len(slabs) == 4
-        assert im[slabs[0]].sum() == 30*30*10
-        assert im[slabs[1]].sum() == 30*30*10
-        assert im[slabs[2]].sum() == 30*30*10
-        assert im[slabs[3]].sum() == 30*30*10
+        assert im[slabs[0]].sum() == 30*5*50
+        assert im[slabs[-1]].sum() == 30*5*50
 
     def test_im_to_slabs_3D_slide(self):
         im = np.ones([30, 30, 30])
