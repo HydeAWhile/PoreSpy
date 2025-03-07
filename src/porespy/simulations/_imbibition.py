@@ -114,7 +114,7 @@ def imbibition(
     if isinstance(steps, int):
         vmax = pc[pc < np.inf].max()
         vmin = pc[im][pc[im] > -np.inf].min()
-        Ps = np.linspace(np.ceil(vmax), np.floor(vmin), steps)
+        Ps = np.logspace(np.log10(np.ceil(vmax)), np.log10(np.floor(vmin)), steps)
     else:
         Ps = np.unique(steps)[::-1]  # To ensure they are in descending order
 
