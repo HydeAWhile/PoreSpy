@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
-
 import numpy as np
+
 import porespy as ps
 import pytest
 import scipy.ndimage as spim
@@ -410,6 +410,55 @@ class MetricsTest():
         # plt.step(d1.pc, d1.snwp, 'r-o', where='post')
         # plt.step(d2.pc, d2.snwp, 'g.-', where='post')
         # plt.step(d3.pc, d3.snwp, 'b--', where='post')
+
+    def test_pc_map_to_pc_curve_end_points_drainage(self):
+        im = ps.generators.blobs(
+            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0)
+        assert im.sum()/im.size == 0.6185
+        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        inlets = ps.generators.faces(shape=im.shape, inlet=0)
+        pc = ps.filters.capillary_transform(im)
+        drn = ps.simulations.drainage(im=im, pc=pc, inlets=inlets)
+        pc_curve = ps.metrics.pc_map_to_pc_curve(
+            im=im, pc=drn.im_pc, mode='drainage', fix_ends=True)
+        assert pc_curve.pc[0] == pc_curve.pc[1]
+        assert pc_curve.snwp[0] == 0
+        assert pc_curve.snwp[-1] == 1
+
+        pc_curve = ps.metrics.pc_map_to_pc_curve(
+            im=im, pc=drn.im_pc, mode='drainage', fix_ends=False)
+        assert pc_curve.pc[0] != pc_curve.pc[1]
+        assert pc_curve.snwp[0] > 0
+        assert pc_curve.snwp[-1] == 1
+        assert np.all(np.unique(drn.im_pc[im]) == pc_curve.pc)
+
+    def test_pc_map_to_pc_curve_end_points_imbibition(self):
+        im = ps.generators.blobs(
+            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0)
+        assert im.sum()/im.size == 0.6185
+        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        inlets = ps.generators.faces(shape=im.shape, inlet=0)
+        pc = ps.filters.capillary_transform(im=im)
+        imb = ps.simulations.imbibition(im=im, pc=pc, inlets=inlets)
+
+        pc_curve = ps.metrics.pc_map_to_pc_curve(
+            im=im, pc=imb.im_pc, mode='imbibition', fix_ends=True)
+        assert pc_curve.pc[0] == pc_curve.pc[1]
+        assert pc_curve.snwp[-1] == 0
+        assert pc_curve.snwp[0] == 1
+
+        pc_curve = ps.metrics.pc_map_to_pc_curve(
+            im=im, pc=imb.im_pc, mode='imbibition', fix_ends=False)
+        assert pc_curve.pc[0] != pc_curve.pc[1]
+        assert pc_curve.snwp[-1] == 0
+        assert pc_curve.snwp[0] < 1
+        assert np.all(np.unique(imb.im_pc[im])[::-1] == pc_curve.pc)
+
+        pc_curve = ps.metrics.pc_map_to_pc_curve(
+            im=im, pc=imb.im_pc, seq=imb.im_seq, mode='imbibition', fix_ends=True)
+        assert pc_curve.pc[0] == pc_curve.pc[1]
+        assert pc_curve.snwp[-1] == 0
+        assert pc_curve.snwp[0] == 1
 
     def test_qbip_and_ibip_are_equivalent(self):
         im = ps.generators.blobs(

@@ -65,9 +65,8 @@ def ibop(
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
     if isinstance(steps, int):  # Use values in pc for invasion steps
-        vmax = pc[pc < np.inf].max()
-        vmin = pc[im][pc[im] > -np.inf].min()
-        Ps = np.logspace(np.log10(vmin), np.log10(vmax), steps)
+        mask = np.isfinite(pc)*im
+        Ps = np.logspace(np.log10(pc[mask].min()), np.log10(pc[mask].max()), steps)
     elif steps is None:
         Ps = np.unique(pc[im])
     else:
