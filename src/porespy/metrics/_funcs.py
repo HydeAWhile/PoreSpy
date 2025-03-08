@@ -1062,7 +1062,15 @@ def pc_curve(im, pc, seq=None):
     return pc_curve
 
 
-def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=None):
+def pc_map_to_pc_curve(
+    pc,
+    im,
+    seq=None,
+    mode='drainage',
+    pc_min=None,
+    pc_max=None,
+    fix_ends=True,
+):
     r"""
     Converts a pc map into a capillary pressure curve
 
@@ -1086,6 +1094,13 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=No
     mode : str
         Indicates whether the invasion was a drainage or an imbibition process.
         Options are 'drainage' and 'imbibition'.
+    fix_ends : bool (default is `True`)
+        A flag to control whether to adjust the endpoints of the curve or not.
+        The default is `True`, which will put add a point at the beginning and end
+        the curves corresponding to residual and trapped invading phase saturations.
+        This makes the curves look better when plotted. Disabling this correction
+        ensures that the (Pc, Snwp) data match the values in the displacement maps,
+        which is useful for making animations for instance.
 
     Returns
     -------
@@ -1125,14 +1140,15 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=No
         pcs = pc[im][index]
         snwp = np.cumsum(counts)/im.sum()
         # If pc does not have residual phase (-inf), then add new point at snwp=0
-        if pcs[0] != -np.inf:
-            pcs = np.hstack((pcs[0], pcs))
-            snwp = np.hstack(([0], snwp))
-        else:
-            pcs = np.hstack((pcs[0], pcs[1], pcs[1:]))
-            snwp = np.hstack((snwp[0], snwp[0], snwp[1:]))
-        if pcs[-1] == np.inf:  # If trapping occurred, as point at +inf
-            snwp[-1] = snwp[-2]
+        if fix_ends:
+            if pcs[0] != -np.inf:
+                pcs = np.hstack((pcs[0], pcs))
+                snwp = np.hstack(([0], snwp))
+            else:
+                pcs = np.hstack((pcs[0], pcs[1], pcs[1:]))
+                snwp = np.hstack((snwp[0], snwp[0], snwp[1:]))
+            if pcs[-1] == np.inf:  # If trapping occurred, as point at +inf
+                snwp[-1] = snwp[-2]
 
     elif mode.startswith('imb'):
         # seq[seq == -1] = -np.inf
@@ -1144,10 +1160,11 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage', pc_min=None, pc_max=No
         pcs = pcs[idx]
         counts = counts[idx]
         snwp = 1 - np.cumsum(counts)/im.sum()
-        snwp = np.hstack(([1.0-swp_r], snwp))
-        pcs = np.hstack((pcs[0], pcs))
-        if pcs[-1] == -np.inf:
-            snwp[-1] = snwp[-2]
+        if fix_ends:
+            snwp = np.hstack(([1.0-swp_r], snwp))
+            pcs = np.hstack((pcs[0], pcs))
+            if pcs[-1] == -np.inf:
+                snwp[-1] = snwp[-2]
 
     # Apply clipping to Pc values
     if pc_min or pc_max:

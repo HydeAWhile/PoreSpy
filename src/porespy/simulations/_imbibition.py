@@ -112,9 +112,8 @@ def imbibition(
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
     if isinstance(steps, int):
-        vmax = pc[pc < np.inf].max()
-        vmin = pc[im][pc[im] > -np.inf].min()
-        Ps = np.linspace(np.ceil(vmax), np.floor(vmin), steps)
+        mask = np.isfinite(pc)*im
+        Ps = np.logspace(np.log10(pc[mask].max()), np.log10(pc[mask].min()*.99), steps)
     else:
         Ps = np.unique(steps)[::-1]  # To ensure they are in descending order
 
@@ -144,7 +143,7 @@ def imbibition(
                 im=(~nwp_mask)*im,
                 inlets=inlets,
                 strel=strel,
-            )
+            )*im
         if residual is not None:
             nwp_mask = nwp_mask * ~residual
 
@@ -174,7 +173,7 @@ def imbibition(
     satn = seq_to_satn(im=im, seq=im_seq, mode='imbibition')
     # Collect data in a Results object
     results = Results()
-    results.im_snwp = satn.copy()
+    results.im_snwp = satn
     results.im_seq = im_seq
     results.im_pc = im_pc
     results.im_trapped = trapped
@@ -261,7 +260,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplot_mosaic(
         [['(a)', '(b)', '(e)', '(e)'],
          ['(c)', '(d)', '(e)', '(e)']],
-         figsize=[12, 8],
+        figsize=[12, 8],
      )
     # imb1.im_pc[~im] = -1
     ax['(a)'].imshow(imb1.im_seq/im, origin='lower', cmap=cm, vmin=0)
@@ -273,16 +272,20 @@ if __name__ == '__main__':
 
     ax['(d)'].imshow(imb4.im_seq/im, origin='lower', cmap=cm, vmin=0)
 
-    pc, s = ps.metrics.pc_map_to_pc_curve(pc=imb1.im_pc, seq=imb1.im_seq, im=im, mode='imbibition')
+    pc, s = ps.metrics.pc_map_to_pc_curve(
+        pc=imb1.im_pc, seq=imb1.im_seq, im=im, mode='imbibition')
     ax['(e)'].semilogx(pc, s, 'b->', label='imbibition')
 
-    pc, s = ps.metrics.pc_map_to_pc_curve(pc=imb2.im_pc, seq=imb2.im_seq, im=im, mode='imbibition')
+    pc, s = ps.metrics.pc_map_to_pc_curve(
+        pc=imb2.im_pc, seq=imb2.im_seq, im=im, mode='imbibition')
     ax['(e)'].semilogx(pc, s, 'r-<', label='imbibition w trapping')
 
-    pc, s = ps.metrics.pc_map_to_pc_curve(pc=imb3.im_pc, seq=imb3.im_seq, im=im, mode='imbibition')
+    pc, s = ps.metrics.pc_map_to_pc_curve(
+        pc=imb3.im_pc, seq=imb3.im_seq, im=im, mode='imbibition')
     ax['(e)'].semilogx(pc, s, 'g-^', label='imbibition w residual')
 
-    pc, s = ps.metrics.pc_map_to_pc_curve(pc=imb4.im_pc, seq=imb4.im_seq, im=im, mode='imbibition')
+    pc, s = ps.metrics.pc_map_to_pc_curve(
+        pc=imb4.im_pc, seq=imb4.im_seq, im=im, mode='imbibition')
     ax['(e)'].semilogx(pc, s, 'm-*', label='imbibition w residual & trapping')
 
     ax['(e)'].legend()

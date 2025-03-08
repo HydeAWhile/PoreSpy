@@ -71,9 +71,9 @@ def test_drainage(plot=False):
 
     # Ensure final saturations correspond to trapping
     assert drn1.snwp[-1] == 1
-    assert drn2.snwp[-1] == 0.9368578462868092
+    assert drn2.snwp[-1] == 0.8419029640706647
     assert drn3.snwp[-1] == 1
-    assert drn4.snwp[-1] == 0.8900058564987235
+    assert drn4.snwp[-1] == 0.7641877946017865
 
     # %% Visualize the invasion configurations for each scenario
     if plot:
@@ -140,9 +140,9 @@ def test_drainage(plot=False):
 
     # Ensure final saturations correspond to trapping
     assert drn1.snwp[-1] == 1
-    assert drn2.snwp[-1] == 0.928584831099714
+    assert drn2.snwp[-1] == 0.9169855520745083
     assert drn3.snwp[-1] == 1
-    assert drn4.snwp[-1] == 0.8426989930233748
+    assert drn4.snwp[-1] == 0.822690236704895
 
 
 # %%

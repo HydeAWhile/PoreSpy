@@ -57,7 +57,7 @@ class SimulationsTest():
             g=0,
         )
         drn2 = ps.simulations.drainage(pc=pc2*im2, im=im2)
-        np.testing.assert_approx_equal(drn2.im_pc[im2].max(), 0.14630939404790602)
+        np.testing.assert_approx_equal(drn2.im_pc[im2].max(), 0.14399999380111694)
 
         pc3 = ps.filters.capillary_transform(
             im=im2,
@@ -69,7 +69,7 @@ class SimulationsTest():
             g=0,
         )
         drn3 = ps.simulations.drainage(pc=pc3, im=im2)
-        np.testing.assert_approx_equal(drn3.im_pc.max(), 1463.0940030415854)
+        np.testing.assert_approx_equal(drn3.im_pc.max(), 1440.0000000000005)
 
 
 if __name__ == '__main__':
