@@ -54,12 +54,12 @@ def show_panels(im, rc=[3, 3], axis=0):
 
 def bar(results, h='pdf', **kwargs):  # pragma: no cover
     r"""
-    Convenience wrapper for matplotlib's ``bar``.
+    Convenience wrapper for matplotlib's `bar`.
 
     This automatically:
 
-        * fetches the ``bin_centers``
-        * fetches the bin heights from the specified ``h``
+        * fetches the `bin_centers`
+        * fetches the bin heights from the specified `h`
         * sets the bin widths
         * sets the edges to black
 
@@ -67,14 +67,14 @@ def bar(results, h='pdf', **kwargs):  # pragma: no cover
     ----------
     results : object
         The objects returned by various functions in the
-        ``porespy.metrics`` submodule, such as ``chord_length_distribution``.
+        `porespy.metrics` submodule, such as `chord_length_distribution`.
     h : str
-        The value to use for bin heights.  The default is ``pdf``, but
-        ``cdf`` is another option. Depending on the function the named-tuple
+        The value to use for bin heights.  The default is `pdf`, but
+        `cdf` is another option. Depending on the function the named-tuple
         may have different options.
     kwargs : keyword arguments
-        All other keyword arguments are passed to ``bar``, including
-        ``edgecolor`` if you wish to overwrite the default black.
+        All other keyword arguments are passed to `bar`, including
+        `edgecolor` if you wish to overwrite the default black.
 
     Returns
     -------
@@ -98,7 +98,7 @@ def bar(results, h='pdf', **kwargs):  # pragma: no cover
 
 def imshow(*im, ind=None, axis=None, **kwargs):  # pragma: no cover
     r"""
-    Convenience wrapper for matplotlib's ``imshow``.
+    Convenience wrapper for matplotlib's `imshow`.
 
     This automatically:
 
@@ -113,19 +113,19 @@ def imshow(*im, ind=None, axis=None, **kwargs):  # pragma: no cover
         The 2D or 3D image (or images) to show.  If 2D then all other
         arguments are ignored.
     ind : int
-        The slice to show if ``im`` is 3D.  If not given then the middle of
+        The slice to show if `im` is 3D.  If not given then the middle of
         the image is used.
     axis : int
-        The axis to show if ``im`` is 3D.  If not given, then the last
+        The axis to show if `im` is 3D.  If not given, then the last
         axis of the image is used, so an 'lower' slice is shown.
 
     **kwargs
-        All other keyword arguments are passed to ``plt.imshow``
+        All other keyword arguments are passed to `plt.imshow`
 
     Note
     ----
-    ``im`` can also be a series of unnamed arguments, in which case all
-    received images will be shown using ``subplot``.
+    `im` can also be a series of unnamed arguments, in which case all
+    received images will be shown using `subplot`.
 
     Examples
     --------
@@ -154,13 +154,13 @@ def imshow(*im, ind=None, axis=None, **kwargs):  # pragma: no cover
 
 def show_mesh(mesh):  # pragma: no cover
     r"""
-    Visualizes the mesh of a region as obtained by ``get_mesh`` function in
-    the ``metrics`` submodule.
+    Visualizes the mesh of a region as obtained by `get_mesh` function in the
+    `metrics` submodule.
 
     Parameters
     ----------
     mesh : tuple
-        A mesh returned by ``skimage.measure.marching_cubes``
+        A mesh returned by `skimage.measure.marching_cubes`
 
     Returns
     -------

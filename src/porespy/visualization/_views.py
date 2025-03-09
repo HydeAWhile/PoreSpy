@@ -181,7 +181,7 @@ def xray(im, axis=0):  # pragma: no cover
     Returns
     -------
     image : ndarray
-        A 2D greyscale image suitable for use in matplotlib\'s ```imshow```
+        A 2D greyscale image suitable for use in matplotlib's `imshow`
         function.
 
     Examples
@@ -196,5 +196,5 @@ def xray(im, axis=0):  # pragma: no cover
     if axis == 2:
         im = np.transpose(im, axes=[2, 1, 0])
     im = np.sum(im, axis=0, dtype=np.int64)
-    im = im / np.max(im)
+    im = 1 - im / np.max(im)
     return im
