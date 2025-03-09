@@ -65,9 +65,8 @@ def ibop(
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
     if isinstance(steps, int):  # Use values in pc for invasion steps
-        vmax = pc[pc < np.inf].max()
-        vmin = pc[im][pc[im] > -np.inf].min()
-        Ps = np.linspace(vmin, vmax*1.1, steps)
+        mask = np.isfinite(pc)*im
+        Ps = np.logspace(np.log10(pc[mask].min()), np.log10(pc[mask].max()), steps)
     elif steps is None:
         Ps = np.unique(pc[im])
     else:
@@ -290,7 +289,7 @@ def drainage(
         ========== ============================================================
         im_seq     An ndarray with each voxel indicating the step number at
                    which it was first invaded by non-wetting phase
-        im_satn    A numpy array with each voxel value indicating the global
+        im_snwp    A numpy array with each voxel value indicating the global
                    value of the non-wetting phase saturation at the point it
                    was invaded
         im_size    If `return_sizes` was set to `True`, then a numpy array with

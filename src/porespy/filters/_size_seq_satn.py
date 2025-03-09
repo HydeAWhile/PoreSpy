@@ -272,12 +272,12 @@ def pc_to_seq(pc, im, mode='drainage'):
     """
     pc = np.copy(pc)
     if mode == 'drainage':
-        bins = np.unique(pc)
+        bins = np.unique(pc[im])
         a = np.digitize(pc, bins=bins, right=False) + 1  # To ensure no voxels are 0
         a[pc == -np.inf] = 0  # Set residual nwp to lowest sequence (i.e. 0)
         a[pc == np.inf] = -1  # Set trapped wp to -1 (only option)
     elif mode == 'imbibition':
-        bins = np.flip(np.unique(pc))
+        bins = np.flip(np.unique(pc[im]))
         a = np.digitize(pc, bins=bins, right=True)
         a[pc == np.inf] = 0
         a[pc == -np.inf] = -1

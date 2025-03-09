@@ -275,10 +275,6 @@ def find_disconnected_voxels(im, conn: int = None, surface: bool = False):
     --------
     fill_blind_pores, trim_floating_solid
 
-    Notes
-    -----
-    This function is just a convenient wrapper around the ``clear_border``
-    function of ``scikit-image``.
 
     Examples
     --------
@@ -329,18 +325,24 @@ def fill_blind_pores(im, conn: int = None, surface: bool = False):
     Returns
     -------
     im : ndarray
-        A version of ``im`` but with all the disconnected pores removed.
+        A Boolean image, with `True` values indicating the phase of interest.
     conn : int
         For 2D the options are 4 and 8 for square and diagonal neighbors,
         while for the 3D the options are 6 and 26, similarily for square
         and diagonal neighbors. The default is the maximum option.
     surface : bool
-        If ``True``, any isolated pore regions that are connected to the
+        If `True`, any isolated pore regions that are connected to the
         sufaces of the image are but not connected to the main percolating
         path are also removed. When this is enabled, only the voxels
         belonging to the largest region are kept. This can be
         problematic if image contains non-intersecting tube-like structures,
         for instance, since only the largest tube will be preserved.
+
+    Returns
+    -------
+    im : ndarray
+        A version of `im` but with all the blind or disconnected pores converted
+        to solid (i.e. `False`)
 
     See Also
     --------
