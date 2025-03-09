@@ -146,6 +146,6 @@ def sierpinski_foam(
                         None) for ax in range(im.ndim)]
     elif mode == 'upper':
         slices = [slice(0, shape[ax], None) for ax in range(im.ndim)]
-    im = im[*slices]
+    im = im[tuple(slices)]
     im = im == 0  # Invert image
     return im
