@@ -510,8 +510,7 @@ class FilterTest():
 
     def test_prune_branches_n2(self):
         from skimage.morphology import skeletonize
-        im = ps.generators.random_spheres(
-            shape=[100, 100, 100], r=4, seed=0, periodic=False,)
+        im = ps.generators.random_spheres(shape=[100, 100, 100], r=4, seed=0)
         skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1, iterations=1)
         skel3 = ps.filters.prune_branches(skel1, iterations=2)

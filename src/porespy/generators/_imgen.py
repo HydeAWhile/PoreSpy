@@ -1099,7 +1099,7 @@ def blobs(
     if isinstance(blobiness, int):
         blobiness = [blobiness]*len(shape)
     blobiness = np.array(blobiness)
-    mode = 'wrap' if periodic else 'mirror'
+    mode = 'wrap' if periodic else 'reflect'
     parallel = False
     if isinstance(divs, int):
         divs = [divs]*len(shape)
