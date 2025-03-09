@@ -289,7 +289,7 @@ def drainage(
         ========== ============================================================
         im_seq     An ndarray with each voxel indicating the step number at
                    which it was first invaded by non-wetting phase
-        im_satn    A numpy array with each voxel value indicating the global
+        im_snwp    A numpy array with each voxel value indicating the global
                    value of the non-wetting phase saturation at the point it
                    was invaded
         im_size    If `return_sizes` was set to `True`, then a numpy array with

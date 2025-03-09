@@ -30,7 +30,6 @@ image, but with altered values.
     filters.hold_peaks
     filters.ibip
     filters.ibip_gpu
-    filters.imagej
     filters.local_thickness
     filters.nl_means_layered
     filters.nphase_border
@@ -56,7 +55,6 @@ image, but with altered values.
 
 """
 
-from . import imagej
 from ._fftmorphology import *
 from ._funcs import *
 from ._nlmeans import *

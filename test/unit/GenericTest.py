@@ -4,9 +4,6 @@ class GenericTest:
 
     hr = '―' * 78
 
-    def __init__(self):
-        print(self.hr)
-
     def setup_class(self):
         pass
 

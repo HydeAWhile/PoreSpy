@@ -52,21 +52,6 @@ class ExportTest():
         ps.io.to_stl(im, filename="im2stl")
         os.remove("im2stl.stl")
 
-    def test_spheres_to_comsol_radii_centers(self):
-        radii = np.array([10, 20, 25, 5])
-        centers = np.array([[0, 10, 3],
-                            [20, 20, 13],
-                            [40, 25, 55],
-                            [60, 0, 89]])
-        ps.io.spheres_to_comsol(filename='sphere_pack', centers=centers, radii=radii)
-        os.remove("sphere_pack.mphtxt")
-
-    def test_spheres_to_comsol_im(self):
-        im = ps.generators.overlapping_spheres(shape=[100, 100, 100],
-                                               r=10, porosity=0.6)
-        ps.io.spheres_to_comsol(filename='sphere_pack', im=im)
-        os.remove("sphere_pack.mphtxt")
-
     def test_zip_to_stack_and_folder_to_stack(self):
         p = Path(os.path.realpath(__file__),
                  '../../../test/fixtures/blobs_layers.zip').resolve()

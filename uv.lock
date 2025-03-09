@@ -2720,7 +2720,7 @@ wheels = [
 
 [[package]]
 name = "porespy"
-version = "3.0.0a0.dev14"
+version = "3.0.0a0.dev18"
 source = { editable = "." }
 dependencies = [
     { name = "dask" },
@@ -2730,6 +2730,7 @@ dependencies = [
     { name = "matplotlib-inline" },
     { name = "numba" },
     { name = "numpy" },
+    { name = "numpy-stl" },
     { name = "openpnm" },
     { name = "pandas" },
     { name = "psutil" },
@@ -2816,6 +2817,7 @@ requires-dist = [
     { name = "nbval", marker = "extra == 'test'" },
     { name = "numba" },
     { name = "numpy", specifier = "<2.0" },
+    { name = "numpy-stl", specifier = ">=3.2.0" },
     { name = "numpy-stl", marker = "extra == 'extras'" },
     { name = "numpy-stl", marker = "extra == 'extras-macos'" },
     { name = "openpnm" },
