@@ -58,10 +58,10 @@ def bar(results, h='pdf', **kwargs):  # pragma: no cover
 
     This automatically:
 
-        * fetches the `bin_centers`
-        * fetches the bin heights from the specified `h`
-        * sets the bin widths
-        * sets the edges to black
+        * Fetches the `bin_centers`
+        * Fetches the bin heights from the specified `h`
+        * Sets the bin widths
+        * Sets the edges to black
 
     Parameters
     ----------
@@ -88,15 +88,20 @@ def bar(results, h='pdf', **kwargs):  # pragma: no cover
     """
     if 'edgecolor' not in kwargs:
         kwargs['edgecolor'] = 'k'
-    fig = plt.bar(x=results.bin_centers, height=getattr(results, h),
-                  width=results.bin_widths, **kwargs)
+    fig, ax = plt.subplots()
+    ax.bar(
+        x=results.bin_centers,
+        height=getattr(results, h),
+        width=results.bin_widths,
+        **kwargs,
+    )
     xlab = [attr for attr in results.__dir__() if not attr.startswith('_')][0]
-    plt.xlabel(xlab)
-    plt.ylabel(h)
-    return fig
+    ax.set_xlabel(xlab)
+    ax.set_ylabel(h)
+    return fig, ax
 
 
-def imshow(*im, ind=None, axis=None, **kwargs):  # pragma: no cover
+def imshow(im, ind=None, axis=None, **kwargs):  # pragma: no cover
     r"""
     Convenience wrapper for matplotlib's `imshow`.
 
@@ -110,8 +115,7 @@ def imshow(*im, ind=None, axis=None, **kwargs):  # pragma: no cover
     Parameters
     ----------
     im : ndarray
-        The 2D or 3D image (or images) to show.  If 2D then all other
-        arguments are ignored.
+        The 2D or 3D image to show.  If 2D then all other arguments are ignored.
     ind : int
         The slice to show if `im` is 3D.  If not given then the middle of
         the image is used.
@@ -137,19 +141,16 @@ def imshow(*im, ind=None, axis=None, **kwargs):  # pragma: no cover
         kwargs['origin'] = 'lower'
     if 'interpolation' not in kwargs.keys():
         kwargs['interpolation'] = 'none'
-    if not isinstance(im, tuple):
-        im = tuple([im])
-    for i, image in enumerate(im):
-        if image.ndim == 3:
-            if axis is None:
-                axis = 2
-            if ind is None:
-                ind = int(image.shape[axis]/2)
-            image = image.take(indices=ind, axis=axis)
-        image = np.ma.array(image, mask=image == 0)
-        fig = plt.subplot(1, len(im), i+1)
-        plt.imshow(image, **kwargs)
-    return fig
+    if im.ndim == 3:
+        if axis is None:
+            axis = 2
+        if ind is None:
+            ind = int(im.shape[axis]/2)
+        im = im.take(indices=ind, axis=axis)
+    im = np.ma.array(im, mask=(im == 0))
+    fig, ax = plt.subplots()
+    ax.imshow(im, **kwargs)
+    return fig, ax
 
 
 def show_mesh(mesh):  # pragma: no cover
@@ -197,4 +198,4 @@ def show_mesh(mesh):  # pragma: no cover
     ax.set_ylim(lim_min[1], lim_max[1])
     ax.set_zlim(lim_min[2], lim_max[2])
 
-    return fig
+    return fig, ax
