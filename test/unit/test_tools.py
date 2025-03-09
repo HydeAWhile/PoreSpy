@@ -23,35 +23,38 @@ class ToolsTest():
         self.im = np.random.randint(0, 10, 20)
         self.blobs = ps.generators.blobs(shape=[101, 101],
                                          seed=0,
-                                         porosity=0.49259876482697773)
+                                         porosity=0.49259876482697773,
+                                         periodic=False,)
         assert self.blobs.sum()/self.blobs.size == 0.49259876482697773
         self.im2D = ps.generators.blobs(shape=[51, 51],
                                         seed=0,
-                                        porosity=0.48212226066897346)
+                                        porosity=0.48212226066897346,
+                                        periodic=False,)
         assert self.im2D.sum()/self.im2D.size == 0.48212226066897346
         self.im3D = ps.generators.blobs(shape=[51, 51, 51],
                                         seed=0,
-                                        porosity=0.49954391599007925)
+                                        porosity=0.49954391599007925,
+                                        periodic=False,)
         assert self.im3D.sum()/self.im3D.size == 0.49954391599007925
         self.labels, N = spim.label(input=self.blobs)
 
     def test_unpad(self):
         pad_width = [10, 20]
-        im = ps.generators.blobs([200, 300], porosity=0.3, seed=0)
+        im = ps.generators.blobs([200, 300], porosity=0.3, seed=0, periodic=False,)
         im1 = np.pad(im, pad_width, mode="constant", constant_values=1)
         im2 = ps.tools.unpad(im1, pad_width)
         assert np.all(im == im2)
 
     def test_unpad_int_padwidth(self):
         pad_width = 10
-        im = ps.generators.blobs([200, 300], porosity=0.3, seed=0)
+        im = ps.generators.blobs([200, 300], porosity=0.3, seed=0, periodic=False,)
         im1 = np.pad(im, pad_width, mode="constant", constant_values=1)
         im2 = ps.tools.unpad(im1, pad_width)
         assert np.all(im == im2)
 
     def test_unpad_different_padwidths_on_each_axis(self):
         pad_width = [[10, 20], [30, 40]]
-        im = ps.generators.blobs([200, 300], porosity=0.3, seed=0)
+        im = ps.generators.blobs([200, 300], porosity=0.3, seed=0, periodic=False,)
         im1 = np.pad(im, pad_width, mode="constant", constant_values=1)
         im2 = ps.tools.unpad(im1, pad_width)
         assert np.all(im == im2)

@@ -8,7 +8,8 @@ ps.settings.tqdm['disable'] = True
 
 class QBIPTest(GenericTest):
     def setup_class(self):
-        self.im2D = ps.generators.blobs([300, 150], porosity=0.6, seed=0)
+        self.im2D = ps.generators.blobs(
+            shape=[300, 150], porosity=0.6, seed=0, periodic=False,)
 
     def test_qbip_no_pc(self):
         r1 = ps.simulations.qbip(im=self.im2D, pc=None)

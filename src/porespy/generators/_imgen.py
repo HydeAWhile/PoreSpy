@@ -608,7 +608,8 @@ def polydisperse_spheres(
     dist,
     nbins: int = 5,
     r_min: int = 5,
-    seed=None):
+    seed=None,
+):
     r"""
     Create an image of randomly placed, overlapping spheres with a
     distribution of radii.
@@ -1028,7 +1029,7 @@ def blobs(
     blobiness: int = 1,
     divs: int = 1,
     seed: int = None,
-    periodic: bool = False,
+    periodic: bool = True,
 ):
     """
     Generates an image containing amorphous blobs
@@ -1057,9 +1058,10 @@ def blobs(
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
         ``np.random.state(seed)`` prior to calling this function will be respected.
-    periodic : bool, default = `False`
+    periodic : bool, default = `True`
         If `True` the blobs will be periodic, meaning that the image can be tiled
-        and the phases will be continuous.
+        and the phases will be continuous. `False` will provide the "legacy" version
+        of an image, which has high-porosity artifacts at the image boundaries.
 
     Returns
     -------
@@ -1097,7 +1099,7 @@ def blobs(
     if isinstance(blobiness, int):
         blobiness = [blobiness]*len(shape)
     blobiness = np.array(blobiness)
-    mode = 'wrap' if periodic is True else 'mirror'
+    mode = 'wrap' if periodic else 'mirror'
     parallel = False
     if isinstance(divs, int):
         divs = [divs]*len(shape)
