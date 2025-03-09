@@ -1,9 +1,3 @@
-import os
-import sys
-from os.path import realpath
-from pathlib import Path
-from platform import system
-
 import numpy as np
 import porespy as ps
 import pytest
@@ -98,23 +92,6 @@ class NetworkExtractionTest():
         assert np.allclose(net1['pore.coords'][:, 0], net2['pore.coords'][:, 0])
         assert np.allclose(net1['pore.coords'][:, 1], net2['pore.coords'][:, 2])
         assert np.allclose(net1['pore.coords'][:, 0], net3['pore.coords'][:, 1])
-
-    @pytest.mark.skipif(not sys.platform.startswith("win"), reason="Windows-only!")
-    def test_max_ball(self):
-        path = Path(realpath(__file__), '../../fixtures/pnextract.exe')
-        if system() == 'Windows':
-            ps.networks.maximal_ball_wrapper(im=self.im3d,
-                                             prefix='test_maxball',
-                                             path_to_exe=path,
-                                             voxel_size=1e-6)
-            assert os.path.isfile("test_maxball_link1.dat")
-            assert os.path.isfile("test_maxball_link2.dat")
-            assert os.path.isfile("test_maxball_node1.dat")
-            assert os.path.isfile("test_maxball_node2.dat")
-            os.remove("test_maxball_link1.dat")
-            os.remove("test_maxball_link2.dat")
-            os.remove("test_maxball_node1.dat")
-            os.remove("test_maxball_node2.dat")
 
 
 if __name__ == '__main__':

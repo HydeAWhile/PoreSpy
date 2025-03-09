@@ -59,14 +59,21 @@ def set_mpl_style():  # pragma: no cover
     plt.rc('figure', **figure_props)
     plt.rc('image', **image_props)
 
-    if ps.settings.notebook:
-        import IPython
-        IPython.display.set_matplotlib_formats('retina')
+    import matplotlib_inline
+    matplotlib_inline.backend_inline.set_matplotlib_formats('retina')
 
 
-def satn_to_movie(im, satn, cmap='viridis',
-                  c_under='grey', c_over='white',
-                  v_under=1e-3, v_over=1.0, fps=10, repeat=True):
+def satn_to_movie(
+    im,
+    satn,
+    cmap='viridis',
+    c_under='grey',
+    c_over='white',
+    v_under=1e-3,
+    v_over=1.0,
+    fps=10,
+    repeat=True,
+):
     r"""
     Converts a saturation map into an animation that can be saved
 
@@ -81,12 +88,12 @@ def satn_to_movie(im, satn, cmap='viridis',
     cmap : str
         The name of the matplotlib color map to use. These are listed on
         matplotlib's website
-        `here <https://matplotlib.org/stable/gallery/color/colormap_reference.html>`__
+        `here <https://matplotlib.org/stable/gallery/color/colormap_reference.html>`_
     c_under, c_over : str
         The color to insert for values that are less than `v_under`
         (greater than `v_over`).  The string value of colors are given on
         matplotlib's website
-        `here <https://matplotlib.org/stable/gallery/color/named_colors.html>`__
+        `here <https://matplotlib.org/stable/gallery/color/named_colors.html>`_
     v_under, v_over : scalar
         The values in ``satn`` that should be considered the lower and upper
         threshold, beyond which the colors given in `c_under` and `c_over`
@@ -135,7 +142,14 @@ def satn_to_movie(im, satn, cmap='viridis',
     return ani
 
 
-def satn_to_panels(satn, im, bins=None, axis=0, slice=None, **kwargs):
+def satn_to_panels(
+    satn,
+    im,
+    bins=None,
+    axis=0,
+    slice=None,
+    **kwargs,
+):
     r"""
     Produces a set of images with each panel containing one saturation
 
@@ -210,7 +224,12 @@ def satn_to_panels(satn, im, bins=None, axis=0, slice=None, **kwargs):
     return fig, ax
 
 
-def prep_for_imshow(im, mask=None, axis=0, slice=None):
+def prep_for_imshow(
+    im,
+    mask=None,
+    axis=0,
+    slice=None,
+):
     r"""
     Adjusts the range of greyscale values in an image to improve visualization
     by ``matplotlib.pyplot.imshow``
@@ -243,7 +262,7 @@ def prep_for_imshow(im, mask=None, axis=0, slice=None):
         ``plt.imshow(\*\*data)``).  It contains the following key-value pairs:
 
         =============== =======================================================
-        key               value
+        key             value
         =============== =======================================================
         'X'             The adjusted image with ``+inf`` replaced by
                         ``vmax + 1``, and all solid voxels replacd by
@@ -284,6 +303,11 @@ def prep_for_imshow(im, mask=None, axis=0, slice=None):
     im[(im == np.inf)] = vmax + 1
     vmin = np.amin((im*(im > -np.inf))[mask])
     im[(im == -np.inf)] = vmin - 1
-
-    return {'X': im, 'vmin': vmin, 'vmax': vmax,
-            'interpolation': 'none', 'origin': 'lower'}
+    d = {
+        'X': im,
+        'vmin': vmin,
+        'vmax': vmax,
+        'interpolation': 'none',
+        'origin': 'lower',
+    }
+    return d

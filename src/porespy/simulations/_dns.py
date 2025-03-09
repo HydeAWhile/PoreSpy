@@ -44,7 +44,7 @@ def tortuosity_fd(im, axis, solver=None):
 
         formation_factor    Found as :math:`D_{AB}/D_{eff}`.
 
-        concentration       An image containing the concentration values from
+        im_conc             An image containing the concentration values from
                             the simulation.
         =================== ===================================================
 
@@ -123,7 +123,7 @@ def tortuosity_fd(im, axis, solver=None):
     result.effective_porosity = eps
     conc = np.zeros(im.size, dtype=float)
     conc[net["pore.template_indices"]] = fd["pore.concentration"]
-    result.concentration = conc.reshape(im.shape)
+    result.im_conc = conc.reshape(im.shape)
     result.time = t/1e9
 
     # Free memory

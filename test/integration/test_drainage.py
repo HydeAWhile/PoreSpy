@@ -7,7 +7,7 @@ except ModuleNotFoundError:
     from edt import edt
 
 
-def test_drainage():
+def test_drainage(plot=False):
     im = ps.generators.blobs(
         shape=[500, 500],
         porosity=0.708328,
@@ -71,24 +71,24 @@ def test_drainage():
 
     # Ensure final saturations correspond to trapping
     assert drn1.snwp[-1] == 1
-    assert drn2.snwp[-1] == 0.9368578462868092
+    assert drn2.snwp[-1] == 0.8419029640706647
     assert drn3.snwp[-1] == 1
-    assert drn4.snwp[-1] == 0.8900058564987235
+    assert drn4.snwp[-1] == 0.7641877946017865
 
     # %% Visualize the invasion configurations for each scenario
-    if 0:
+    if plot:
         fig, ax = plt.subplots(2, 2, facecolor=bg)
-        ax[0][0].imshow(drn1.im_satn/im, origin='lower')
+        ax[0][0].imshow(drn1.im_snwp/im, origin='lower')
         ax[0][0].set_title("No trapping, no residual")
-        ax[0][1].imshow(drn2.im_satn/im, origin='lower')
+        ax[0][1].imshow(drn2.im_snwp/im, origin='lower')
         ax[0][1].set_title("With trapping, no residual")
-        ax[1][0].imshow(drn3.im_satn/im, origin='lower')
+        ax[1][0].imshow(drn3.im_snwp/im, origin='lower')
         ax[1][0].set_title("No trapping, with residual")
-        ax[1][1].imshow(drn4.im_satn/im, origin='lower')
+        ax[1][1].imshow(drn4.im_snwp/im, origin='lower')
         ax[1][1].set_title("With trapping, with residual")
 
     # %% Plot the capillary pressure curves for each scenario
-    if 0:
+    if plot:
         plt.figure(facecolor=bg)
         ax = plt.axes()
         ax.set_facecolor(bg)
@@ -140,11 +140,11 @@ def test_drainage():
 
     # Ensure final saturations correspond to trapping
     assert drn1.snwp[-1] == 1
-    assert drn2.snwp[-1] == 0.928584831099714
+    assert drn2.snwp[-1] == 0.9169855520745083
     assert drn3.snwp[-1] == 1
-    assert drn4.snwp[-1] == 0.8426989930233748
+    assert drn4.snwp[-1] == 0.822690236704895
 
 
 # %%
 if __name__ == "__main__":
-    test_drainage()
+    test_drainage(plot=True)

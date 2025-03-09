@@ -17,14 +17,12 @@ Contains functions for analysing images as pore networks.
     networks.label_boundaries
     networks.label_phases
     networks.map_to_regions
-    networks.maximal_ball_wrapper
     networks.regions_to_network
     networks.snow2
 
 """
 
 from ._funcs import *
-from ._maximal_ball import *
 from ._utils import *
 from ._size_factors import *
 from ._getnet_orig import *

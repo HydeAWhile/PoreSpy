@@ -13,12 +13,8 @@ from porespy.tools import get_border, subdivide, recombine
 from porespy.tools import unpad, extract_subsection
 from porespy.tools import ps_disk, ps_ball, ps_round
 from porespy import settings
-from porespy.tools import get_tqdm
+from porespy.tools import get_tqdm, get_edt
 from typing import Literal
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -45,7 +41,7 @@ __all__ = [
     "trim_small_clusters",
 ]
 
-
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
@@ -72,7 +68,7 @@ def apply_padded(im, pad_width, func, pad_val=1, **kwargs):
 
     Notes
     -----
-    A use case for this is when using ``skimage.morphology.skeletonize_3d``
+    A use case for this is when using ``skimage.morphology.skeletonize``
     to ensure that the skeleton extends beyond the edges of the image.
 
     Examples
@@ -279,10 +275,6 @@ def find_disconnected_voxels(im, conn: int = None, surface: bool = False):
     --------
     fill_blind_pores, trim_floating_solid
 
-    Notes
-    -----
-    This function is just a convenient wrapper around the ``clear_border``
-    function of ``scikit-image``.
 
     Examples
     --------
@@ -333,18 +325,24 @@ def fill_blind_pores(im, conn: int = None, surface: bool = False):
     Returns
     -------
     im : ndarray
-        A version of ``im`` but with all the disconnected pores removed.
+        A Boolean image, with `True` values indicating the phase of interest.
     conn : int
         For 2D the options are 4 and 8 for square and diagonal neighbors,
         while for the 3D the options are 6 and 26, similarily for square
         and diagonal neighbors. The default is the maximum option.
     surface : bool
-        If ``True``, any isolated pore regions that are connected to the
+        If `True`, any isolated pore regions that are connected to the
         sufaces of the image are but not connected to the main percolating
         path are also removed. When this is enabled, only the voxels
         belonging to the largest region are kept. This can be
         problematic if image contains non-intersecting tube-like structures,
         for instance, since only the largest tube will be preserved.
+
+    Returns
+    -------
+    im : ndarray
+        A version of `im` but with all the blind or disconnected pores converted
+        to solid (i.e. `False`)
 
     See Also
     --------

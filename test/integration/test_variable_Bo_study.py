@@ -38,7 +38,7 @@ def test_variable_Bo_study():
                                               sigma=sigma,
                                               delta_rho=delta_rho,
                                               g=g,
-                                              bins=25)
+                                              steps=25)
 
     # %%  Repeat with trapping
     outlets = np.zeros_like(im)
@@ -55,7 +55,7 @@ def test_variable_Bo_study():
                                               sigma=sigma,
                                               delta_rho=delta_rho,
                                               g=g,
-                                              bins=25)
+                                              steps=25)
 
     # %%  Plot pseudo capillary pressure curves for each angle/Bo
     if plot:
@@ -73,7 +73,7 @@ def test_variable_Bo_study():
         cmap.set_under(color='red')
         cmap.set_over(color='black')
         fig, ax = plt.subplots(1, 1)
-        temp = sim1[angle].im_satn
+        temp = sim1[angle].im_snwp
         vmin = np.amin(temp)
         vmax = np.amax(temp)
         temp[temp == 0] = vmin - 1
@@ -87,7 +87,7 @@ def test_variable_Bo_study():
     if plot:
         s = 0.09
         angle = 30
-        satn = sim1[angle].im_satn
+        satn = sim1[angle].im_snwp
         fig, ax = plt.subplots(1, 1)
         temp = (satn < s)*(satn > 0)
         ax.imshow(~temp, cmap=plt.cm.bone, origin='lower')

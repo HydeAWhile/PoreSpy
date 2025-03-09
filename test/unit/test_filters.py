@@ -2,7 +2,7 @@ import numpy as np
 import porespy as ps
 import pytest
 import scipy.ndimage as spim
-from skimage.morphology import ball, disk, skeletonize_3d
+from skimage.morphology import disk, ball
 from skimage.util import random_noise
 import matplotlib.pyplot as plt
 try:
@@ -488,27 +488,34 @@ class FilterTest():
                                     overlap=5)
 
     def test_prune_branches(self):
-        im = ps.generators.lattice_spheres(shape=[100, 100, 100], r=4)
-        skel1 = skeletonize_3d(im)
+        from skimage.morphology import skeletonize
+        im = ps.generators.random_spheres([100, 100, 100], r=4, seed=0)
+        skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1)
         # TODO: This is failing on github
         # assert skel1.sum() > skel2.sum()
 
     def test_prune_branches_n2(self):
-        im = ps.generators.lattice_spheres(shape=[100, 100, 100], r=4)
-        skel1 = skeletonize_3d(im)
+        from skimage.morphology import skeletonize
+        im = ps.generators.random_spheres([100, 100, 100], r=4, seed=0)
+        skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1, iterations=1)
         skel3 = ps.filters.prune_branches(skel1, iterations=2)
-        # TODO: These are failing on github
-        # assert skel1.sum() > skel2.sum()
-        # assert skel2.sum() == skel3.sum()
+        assert skel1.sum() > skel2.sum()
+        assert skel2.sum() > skel3.sum()
+        skel4 = ps.filters.prune_branches(skel1, iterations=3)
+        assert skel3.sum() > skel4.sum()
 
     def test_apply_padded(self):
-        im = ps.generators.blobs(shape=[100, 100], porosity=0.5051, seed=0)
-        assert im.sum()/im.size == 0.5051
-        skel1 = skeletonize_3d(im)
-        skel2 = ps.filters.apply_padded(im=im, pad_width=20, pad_val=1,
-                                        func=skeletonize_3d)
+        from skimage.morphology import skeletonize
+        im = ps.generators.blobs(shape=[100, 100])
+        skel1 = skeletonize(im)
+        skel2 = ps.filters.apply_padded(
+            im=im,
+            pad_width=20,
+            pad_val=1,
+            func=skeletonize,
+        )
         assert (skel1.astype(bool)).sum() != (skel2.astype(bool)).sum()
 
     def test_trim_small_clusters(self):
@@ -605,7 +612,7 @@ class FilterTest():
         inlets[0, :] = True
         outlets = np.zeros_like(im)
         outlets[:, -1] = True
-        inv = ps.simulations.ibop(im, inlets=inlets)
+        inv = ps.simulations.drainage(im, inlets=inlets)
         trp1 = ps.filters.find_trapped_regions(
             im=im,
             seq=inv.im_seq,
@@ -613,7 +620,7 @@ class FilterTest():
             method='cluster',
             return_mask=True,
             )
-        inv = ps.simulations.ibop(im, inlets=inlets)
+        inv = ps.simulations.drainage(im, inlets=inlets)
         trp2 = ps.filters.find_trapped_regions(
             im=im,
             seq=inv.im_seq,
@@ -660,7 +667,7 @@ class FilterTest():
             outlets=outlets,
             method='cluster',
             return_mask=False,
-            )
+        )
         inv = ps.simulations.ibop(im, inlets=inlets)
         trp2 = ps.filters.find_trapped_regions(
             im=im,
@@ -669,6 +676,7 @@ class FilterTest():
             method='queue',
             return_mask=False,
         )
+
         assert np.all(trp1 == trp2)
 
         fig, ax = plt.subplots(1, 3)

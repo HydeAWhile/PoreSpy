@@ -35,7 +35,7 @@ class DNSTest():
         im = ps.generators.blobs(shape=[15, 20, 25], porosity=0.85, blobiness=1.5)
         for axis in range(3):
             out = ps.simulations.tortuosity_fd(im, axis=axis)
-            c = out["concentration"]
+            c = out["im_conc"]
             J = ps.beta.flux(c, axis=axis, k=im)
             normal_axes = tuple(i for i in range(im.ndim) if i != axis)
             rate = J.sum(axis=normal_axes)
@@ -46,7 +46,7 @@ class DNSTest():
         im = ps.generators.blobs(shape=[15, 20, 25], porosity=0.85, blobiness=1.5)
         for axis in range(3):
             out = ps.simulations.tortuosity_fd(im, axis=axis)
-            c = out["concentration"]
+            c = out["im_conc"]
             tau_fd = out["tortuosity"]
             tau = ps.beta.tau_from_cmap(c, im, axis=axis)
             np.testing.assert_allclose(tau, tau_fd, rtol=1e-5)

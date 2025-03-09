@@ -23,7 +23,7 @@ def test_ibip():
     # %% Generate images and plots
     plot = False
     if plot:
-        inv_satn = ps.filters.seq_to_satn(result.im_seq)
+        inv_satn = ps.filters.seq_to_satn(result.im_seq, im=im)
         cmap = copy(plt.cm.viridis)
         cmap.set_under(color='black')
         plt.imshow(result.im_seq, cmap=cmap, vmin=1e-3,

@@ -16,8 +16,10 @@ class NetworkSizeFactorTest():
         regions = self.snow.regions
         net = self.snow.network
         conns = net['throat.conns']
-        size_factors = ps.networks.diffusive_size_factor_DNS(regions,
-                                                             throat_conns=conns)
+        size_factors = ps.networks.diffusive_size_factor_DNS(
+            regions,
+            throat_conns=conns,
+        )
         values = np.array([1.43456123, 0.9612569, 1.22389664,
                            0.14359343, 0.18617079, 1.30144843,
                            0.22238891, 1.32222092])
@@ -28,9 +30,11 @@ class NetworkSizeFactorTest():
         regions = self.snow.regions
         net = self.snow.network
         conns = net['throat.conns']
-        size_factors = ps.networks.diffusive_size_factor_DNS(regions,
-                                                             throat_conns=conns,
-                                                             voxel_size=voxel_size)
+        size_factors = ps.networks.diffusive_size_factor_DNS(
+            regions,
+            throat_conns=conns,
+            voxel_size=voxel_size,
+        )
         values = np.array([1.43456123, 0.9612569, 1.22389664,
                            0.14359343, 0.18617079, 1.30144843,
                            0.22238891, 1.32222092])*voxel_size

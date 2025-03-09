@@ -4,17 +4,21 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
-from skimage.morphology import skeletonize_3d
+from skimage.morphology import skeletonize
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from porespy import settings
-from porespy.filters import local_thickness
+from porespy.filters import (
+    local_thickness,
+    pc_to_seq,
+)
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
     extend_slice,
     get_tqdm,
+    im_to_slabs,
 )
 try:
     from pyedt import edt
@@ -197,7 +201,7 @@ def representative_elementary_volume(im, npoints=1000):
     return profile
 
 
-def porosity(im):
+def porosity(im, mask=None):
     r"""
     Calculates the porosity of an image assuming 1's are void space and 0's
     are solid phase.
@@ -211,6 +215,12 @@ def porosity(im):
         Image of the void space with 1's indicating void phase (or ``True``)
         and 0's indicating the solid phase (or ``False``). All other values
         are ignored (see Notes).
+    mask : ndarray
+        An image the same size as `im` with `True` values indicting the domain. This
+        argument is optional, but can be provided for images that don't fill the
+        entire array, like cylindrical cores.  Note that setting values in `im`
+        to 2 will also exclude them from consideration so provides the same effect
+        as `mask`, but providing a `mask` is usually much easier.
 
     Returns
     -------
@@ -240,14 +250,15 @@ def porosity(im):
     to view online example.
 
     """
-    im = np.array(im, dtype=np.int64)
+    if mask is not None:
+        im = np.array(im, dtype=np.int64)*mask
     Vp = np.sum(im == 1, dtype=np.int64)
     Vs = np.sum(im == 0, dtype=np.int64)
     e = Vp / (Vs + Vp)
     return e
 
 
-def porosity_profile(im, axis=0):
+def porosity_profile(im, axis=0, span=1, mode='tile'):
     r"""
     Computes the porosity profile along the specified axis
 
@@ -257,9 +268,34 @@ def porosity_profile(im, axis=0):
         The volumetric image for which to calculate the porosity profile.  All
         voxels with a value of 1 (or ``True``) are considered as void.
     axis : int
-        The axis (0, 1, or 2) along which to calculate the profile.  For
-        instance, if `axis` is 0, then the porosity in each YZ plane is
-        calculated and returned as 1D array with 1 value for each X position.
+        The axis along which to profile should be measured
+    span : int (Default = 1)
+        The thickness of layers to include in the moving average calculation.
+    mode : str (Default = 'tile')
+        How the moving average should be applied. Options are:
+
+        ======== ==============================================================
+        mode     description
+        ======== ==============================================================
+        'tile'   The average is computed for discrete non-overlapping
+                 tiles of a size given by ``span``
+        'slide'  The average is computed in a moving window starting at
+                 ``span/2`` and sliding by a single voxel. This method
+                 provides more data points but is slower.
+        ======== ==============================================================
+
+    Returns
+    -------
+    results : dataclass
+        Results is a custom porespy class with the following attributes:
+
+        ============= =========================================================
+        Attribute     Description
+        ============= =========================================================
+        position      The position along the given axis at which porosity
+                      values are computed.  The units are in voxels.
+        porosity      The local porosity value at each position.
+        ============= =========================================================
 
     Returns
     -------
@@ -275,12 +311,18 @@ def porosity_profile(im, axis=0):
     """
     if axis >= im.ndim:
         raise Exception('axis out of range')
-    im = np.atleast_3d(im)
-    a = set(range(im.ndim)).difference(set([axis]))
-    a1, a2 = a
-    tmp = np.sum(np.sum(im == 1, axis=a2, dtype=np.int64), axis=a1, dtype=np.int64)
-    prof = tmp / (im.shape[a2] * im.shape[a1])
-    return prof
+    slices = im_to_slabs(im=im, axis=axis, span=span, mode=mode)
+    eps = np.zeros(len(slices))
+    z = np.zeros_like(eps)
+    for i, s in enumerate(slices):
+        num = (im[s] == 1).sum(dtype=np.float64)
+        denom = ((im[s] == 1) + (im[s] == 0)).sum(dtype=np.float64)
+        eps[i] = num/denom
+        z[i] = (s[axis].start + s[axis].stop)/2
+    results = Results()
+    results.position = z
+    results.porosity = eps
+    return results
 
 
 def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
@@ -321,7 +363,7 @@ def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
     log : boolean
         If ``True`` the size data is converted to log (base-10)
         values before processing.  This can help to plot wide size
-        distributions or to better visualize the in the small size region.
+        distributions or to better visualize the radii in the small size region.
         Note that you should not anti-log the radii values in the retunred
         ``tuple``, since the binning is performed on the logged radii values.
     voxel_size : scalar
@@ -1020,7 +1062,15 @@ def pc_curve(im, pc, seq=None):
     return pc_curve
 
 
-def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
+def pc_map_to_pc_curve(
+    pc,
+    im,
+    seq=None,
+    mode='drainage',
+    pc_min=None,
+    pc_max=None,
+    fix_ends=True,
+):
     r"""
     Converts a pc map into a capillary pressure curve
 
@@ -1028,14 +1078,14 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
     ----------
     pc : ndarray
         A numpy array with each voxel containing the capillary pressure at which
-        it was invaded. `-inf` indicates voxels which are already filled with
-        non-wetting fluid, and `+inf` indicates voxels that are not invaded by
-        non-wetting fluid (e.g., trapped wetting phase). Values in the solid
-        phase are masked by `im` so are ignored.
+        it was invaded. `-inf` indicates voxels which are filled with non-wetting
+        fluid at all pressures, and `+inf` indicates voxels that are filled by
+        wetting fluid at all pressures. Values in the solid phase are masked by
+        `im` so are ignored.
     im : ndarray
         A numpy array with `True` values indicating the void space and `False`
         elsewhere. This is necessary to define the total void volume of the domain
-        for computing the saturation.
+        when computing the saturation.
     seq : ndarray, optional
         A numpy array with each voxel containing the sequence at which it was
         invaded. This is required when analyzing results from invasion percolation
@@ -1043,6 +1093,14 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
         they were filled.
     mode : str
         Indicates whether the invasion was a drainage or an imbibition process.
+        Options are 'drainage' and 'imbibition'.
+    fix_ends : bool (default is `True`)
+        A flag to control whether to adjust the endpoints of the curve or not.
+        The default is `True`, which will put add a point at the beginning and end
+        the curves corresponding to residual and trapped invading phase saturations.
+        This makes the curves look better when plotted. Disabling this correction
+        ensures that the (Pc, Snwp) data match the values in the displacement maps,
+        which is useful for making animations for instance.
 
     Returns
     -------
@@ -1064,17 +1122,53 @@ def pc_map_to_pc_curve(pc, im, seq=None, mode='drainage'):
     both return capillary pressure maps which can be passed directly as `pc`.
     """
     pc = np.copy(pc)
-    pc[~im] = np.inf  # Ensure solid voxels are set to inf invasion pressure
+
     if seq is None:
-        pcs, counts = np.unique(pc, return_counts=True)
-    else:
-        pc[seq == -1] = np.inf
-        vals, index, counts = np.unique(seq, return_index=True, return_counts=True)
-        pcs = pc.flatten()[index]
-    snwp = np.cumsum(counts[pcs < np.inf])/im.sum()
-    pcs = pcs[pcs < np.inf]
-    if mode.startswith('im'):
-        snwp = 1 - snwp
+        seq = pc_to_seq(im=im, pc=pc, mode=mode)
+        # Or stand alone code
+        # if mode.startswith('dr'):
+        #     seq = np.digitize(x=pc.flatten(), bins=np.unique(pc[im]))
+        # elif mode.startswith('imb'):
+        #     seq = np.digitize(x=pc.flatten(), bins=np.flip(np.unique(pc)))
+        # seq = np.reshape(seq, im.shape)
+
+    if mode.startswith('dr'):
+        seq = seq.astype(float)
+        seq[seq == -1] = np.inf
+        vals, index, counts = \
+            np.unique(seq[im], return_index=True, return_counts=True)
+        pcs = pc[im][index]
+        snwp = np.cumsum(counts)/im.sum()
+        # If pc does not have residual phase (-inf), then add new point at snwp=0
+        if fix_ends:
+            if pcs[0] != -np.inf:
+                pcs = np.hstack((pcs[0], pcs))
+                snwp = np.hstack(([0], snwp))
+            else:
+                pcs = np.hstack((pcs[0], pcs[1], pcs[1:]))
+                snwp = np.hstack((snwp[0], snwp[0], snwp[1:]))
+            if pcs[-1] == np.inf:  # If trapping occurred, as point at +inf
+                snwp[-1] = snwp[-2]
+
+    elif mode.startswith('imb'):
+        # seq[seq == -1] = -np.inf
+        swp_r = (seq[im] == 0).sum(dtype=np.int64)/im.sum(dtype=np.int64)
+        vals, index, counts = \
+            np.unique(seq[im], return_index=True, return_counts=True)
+        pcs = pc[im][index]
+        idx = np.argsort(pcs)[-1::-1]  # Because -inf lands on wrong end
+        pcs = pcs[idx]
+        counts = counts[idx]
+        snwp = 1 - np.cumsum(counts)/im.sum()
+        if fix_ends:
+            snwp = np.hstack(([1.0-swp_r], snwp))
+            pcs = np.hstack((pcs[0], pcs))
+            if pcs[-1] == -np.inf:
+                snwp[-1] = snwp[-2]
+
+    # Apply clipping to Pc values
+    if pc_min or pc_max:
+        pcs = np.clip(pcs, a_min=pc_min, a_max=pc_max)
 
     results = Results()
     results.pc = pcs
@@ -1103,7 +1197,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
     axis : int
         The axis along which to profile should be measured
     span : int
-        The number of layers to include in the moving average saturation
+        The width of layers to include in the moving average saturation
         calculation.
     mode : str
         How the moving average should be applied. Options are:
@@ -1151,24 +1245,15 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
         if satn.max() < s:
             raise Exception(msg)
 
-    satn = np.swapaxes(satn, 0, axis)
-    if mode == 'tile':
-        y = np.zeros(int(satn.shape[0]/span))
-        z = np.zeros_like(y)
-        for i in range(int(satn.shape[0]/span)):
-            void = satn[i*span:(i+1)*span, ...] != 0
-            nwp = (satn[i*span:(i+1)*span, ...] <= s) \
-                * (satn[i*span:(i+1)*span, ...] > 0)
-            y[i] = nwp.sum(dtype=np.int64)/void.sum(dtype=np.int64)
-            z[i] = i*span + (span-1)/2
-    if mode == 'slide':
-        y = np.zeros(int(satn.shape[0]-span))
-        z = np.zeros_like(y)
-        for i in range(int(satn.shape[0]-span)):
-            void = satn[i:i+span, ...] != 0
-            nwp = (satn[i:i+span, ...] <= s)*(satn[i:i+span, ...] > 0)
-            y[i] = nwp.sum(dtype=np.int64)/void.sum(dtype=np.int64)
-            z[i] = i + (span-1)/2
+    slices = im_to_slabs(im=satn, axis=axis, span=span, mode=mode)
+    y = np.zeros(len(slices))
+    z = np.zeros_like(y)
+    for i, slab in enumerate(slices):
+        void = satn[slab] != 0
+        nwp = (satn[slab] <= s) * (satn[slab] > 0)
+        y[i] = nwp.sum(dtype=np.int64)/void.sum(dtype=np.int64)
+        z[i] = (slab[axis].start + slab[axis].stop)/2
+
     results = Results()
     results.position = z
     results.saturation = y
@@ -1300,7 +1385,7 @@ def bond_number(
         before computing the average value using the specified `method`.
     """
     if mask is True:
-        mask = skeletonize_3d(im)
+        mask = skeletonize(im)
     else:
         mask = im
 

@@ -504,29 +504,18 @@ class GeneratorTest():
         assert not np.all(im1 == im3)
 
     def test_sierpinski_foam(self):
-        im2D = ps.generators.sierpinski_foam(4, 4, 2)
-        assert im2D.shape == (324, 324)
-        im3D = ps.generators.sierpinski_foam(4, 4, 3)
-        assert im3D.shape == (324, 324, 324)
-        im3D = ps.generators.sierpinski_foam(4, 4, 3, max_size=1000)
-        assert im3D.shape == (12, 12, 12)
-        im2D = ps.generators.sierpinski_foam(4, 2, 2)
-        np.testing.assert_allclose(im2D.sum()/im2D.size, 0.7901234567901234)
-        im2D = ps.generators.sierpinski_foam(4, 3, 2)
-        np.testing.assert_allclose(im2D.sum()/im2D.size, 0.7023319615912208)
-        im2D = ps.generators.sierpinski_foam(4, 4, 2)
+        im2D = ps.generators.sierpinski_foam(shape=[100, 100], n=4, mode='centered')
+        assert im2D.shape == (100, 100)
+        im3D = ps.generators.sierpinski_foam(shape=[100, 100, 100], n=4, mode='centered')
+        assert im3D.shape == (100, 100, 100)
+        im3D = ps.generators.sierpinski_foam([100, 100], n=4, mode=None)
+        assert im3D.shape == (243, 243)
+        im2D = ps.generators.sierpinski_foam([100, 100], n=4, mode=None)
         np.testing.assert_allclose(im2D.sum()/im2D.size, 0.6242950769699741)
-        # Ensure the exact same image is produced each time
-        im2D = ps.generators.sierpinski_foam(4, 2, 2)
-        np.testing.assert_allclose(im2D.sum()/im2D.size, 0.7901234567901234)
-
-    def test_sierpinski_foam2(self):
-        im2D = ps.generators.sierpinski_foam2(shape=[100, 100], n=3)
-        assert np.all(im2D.shape == (100, 100))
-        im3D = ps.generators.sierpinski_foam2(shape=[100, 100, 100], n=3)
-        assert np.all(im3D.shape == (100, 100, 100))
-        im2Dn5 = ps.generators.sierpinski_foam2(shape=[100, 100], n=5)
-        assert im2D.sum() > im2Dn5.sum()
+        im2D = ps.generators.sierpinski_foam([100, 100], n=4, mode='centered')
+        np.testing.assert_allclose(im2D.sum()/im2D.size, 0.68)
+        im2D = ps.generators.sierpinski_foam([100, 100], n=4, mode='upper')
+        np.testing.assert_allclose(im2D.sum()/im2D.size, 0.6407)
 
     def test_border_thickness_1(self):
         s = (10, 10)

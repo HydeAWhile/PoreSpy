@@ -34,6 +34,7 @@ __all__ = [
     'find_bbox',
     'get_border',
     'get_planes',
+    'im_to_slabs',
     'insert_cylinder',
     'insert_sphere',
     'in_hull',
@@ -56,6 +57,67 @@ __all__ = [
 ]
 
 
+def im_to_slabs(im, axis=0, span=50, step=None, mode='tile'):
+    r"""
+    Generates a list of slice objects which can be used to obtain slabs of an image
+
+    Parameters
+    ----------
+    im : ndarray
+        The image for which the slices are desired
+    axis : int (Default = 0)
+        The axis along which the image will be sliced into slabs
+    span : int (Default = 50)
+        The thickness of the slabs
+    step : int (Default = None)
+        The spacing between the midpoints of the slabs. The default is `None` which
+        sets `step=1` voxel if `mode='slide'` and `step=span` if `mode='tile'`.
+        This can be used to create overlaps between slabs when `mode='tile'` by
+        setting `step<span`, or to reduce the number of slabs created when
+        `mode='slide'` by setting `step>1`.
+    mode : str (Default = 'tile')
+        Determines how the images is sliced into slabs. Options are:
+
+        =========== ================================================================
+        `mode`      Description
+        =========== ================================================================
+        'tile'      The returned slice objects produce discrete non-overlapping
+                    slabs with a thickness of `span`.
+        'slide'     The returned slice objects produce overlapping slabs
+                    representing a moving window of size `span` and the start of
+                    each slab is offsets from the start of the previous one by
+                    `step`.
+        =========== ================================================================
+
+    Returns
+    -------
+    slices : list of tuples contains `slice` objects
+        The retuned list contains `tuples` for each slab, with each `tuple`
+        containing `ndim` slice objects. These can be used to obtain slabs of
+        `im` using `slab_i = im[slices[i]]`.
+
+    Notes
+    -----
+    When `span=step` the result is identical for `mode` of `'tile'` or `'slide'`.
+
+    """
+    if mode not in ['slide', 'tile']:
+        raise Exception(f"Unrecognized mode {mode}")
+    if step is None:
+        step = 1 if mode == 'slide' else span
+    if step < 1:
+        raise Exception("Step size must be positive")
+    s = [slice(0, im.shape[i], None) for i in range(im.ndim)]
+    slices = []
+    for i in range(0, int(im.shape[axis]), step):
+        if i+span > im.shape[axis]:
+            s[axis] = slice(i, im.shape[axis], None)
+            break
+        s[axis] = slice(i, i+span, None)
+        slices.append(tuple(s))
+    return slices
+
+
 def unpad(im, pad_width):
     r"""
     Remove padding from a previously padded image given original pad widths
@@ -71,7 +133,7 @@ def unpad(im, pad_width):
 
     Notes
     -----
-    A use case for this is when using ``skimage.morphology.skeletonize_3d``
+    A use case for this is when using ``skimage.morphology.skeletonize``
     to ensure that the skeleton extends beyond the edges of the image, but the
     padding should be subsequently removed.
 
