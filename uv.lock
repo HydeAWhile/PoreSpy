@@ -2734,7 +2734,6 @@ dependencies = [
     { name = "openpnm" },
     { name = "pandas" },
     { name = "psutil" },
-    { name = "pyedt" },
     { name = "pyevtk" },
     { name = "pywavelets" },
     { name = "rich" },
@@ -2826,7 +2825,6 @@ requires-dist = [
     { name = "pandoc", marker = "extra == 'docs'" },
     { name = "psutil" },
     { name = "pydata-sphinx-theme", marker = "extra == 'docs'", specifier = "==0.9" },
-    { name = "pyedt", specifier = ">=0.1.4" },
     { name = "pyevtk", specifier = ">=1.6.0" },
     { name = "pyevtk", marker = "extra == 'extras'" },
     { name = "pyevtk", marker = "extra == 'extras-macos'" },
@@ -2982,22 +2980,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/44/91ced397138f853b5bf2fe5327d7698f1c68759e13244ef688ce34f1a60c/pydata_sphinx_theme-0.9.0.tar.gz", hash = "sha256:03598a86915b596f4bf80bef79a4d33276a83e670bf360def699dbb9f99dc57a", size = 1138747 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4f/67/716affe92e74cb55a15cb433853c1727e5bf20ddad024d31a25ded9ae816/pydata_sphinx_theme-0.9.0-py3-none-any.whl", hash = "sha256:b22b442a6d6437e5eaf0a1f057169ffcb31eaa9f10be7d5481a125e735c71c12", size = 3328145 },
-]
-
-[[package]]
-name = "pyedt"
-version = "0.1.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "matplotlib" },
-    { name = "numba" },
-    { name = "numpy" },
-    { name = "pytest" },
-    { name = "scipy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/2b/8d/ea942fc386693470c25de3c04097739377488c37caef1a2d14a9da3a0ed0/pyedt-0.1.4.tar.gz", hash = "sha256:e3cf316eac79ef34570ac35faa310459e6cc139eaa95297354cad43eef3a7726", size = 12470 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/c6/287104e12cdd0f37bb52cbb0cf59afc3c11bd5c6a5f1ff792ae71247b231/pyedt-0.1.4-py3-none-any.whl", hash = "sha256:b04970b220bc0e641c03bdb587b6cefd93708ad30e9a58cdf16d226a26265b5e", size = 10584 },
 ]
 
 [[package]]
