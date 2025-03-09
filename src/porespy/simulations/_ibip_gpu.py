@@ -51,11 +51,11 @@ def ibip_gpu(im, dt=None, inlets=None, maxiter=10000):  # pragma: no cover
     results : Results object
         A custom object with the following two arrays as attributes:
 
-        'inv_sequence'
+        'im_seq'
             An ndarray the same shape as ``im`` with each voxel labelled by
             the sequence at which it was invaded.
 
-        'inv_size'
+        'im_size'
             An ndarray the same shape as ``im`` with each voxel labelled by
             the ``inv_size`` at which was filled.
 
@@ -120,8 +120,8 @@ def ibip_gpu(im, dt=None, inlets=None, maxiter=10000):  # pragma: no cover
     inv_sequence = cp.asnumpy(inv_seq_gpu)
     inv_size = cp.asnumpy(sizes_gpu)
     results = Results()
-    results.inv_sequence = inv_sequence
-    results.inv_size = inv_size
+    results.im_seq = inv_sequence
+    results.im_size = inv_size
     return results
 
 
