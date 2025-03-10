@@ -8,7 +8,6 @@ import scipy.ndimage as spim
 from skimage.morphology import reconstruction
 from skimage.segmentation import clear_border
 from skimage.morphology import ball, disk, square, cube, diamond, octahedron
-from porespy.generators import borders
 from porespy.tools import _check_for_singleton_axes
 from porespy.tools import get_border, subdivide, recombine
 from porespy.tools import unpad, extract_subsection
@@ -339,6 +338,7 @@ def find_hidden_pores(im, conn='min'):
         A array containing boolean values indicating voxels which belong to hidden
         pores.
     """
+    from porespy.generators import borders
     se = strel[im.ndim][conn]
     labels, N = spim.label(input=im, structure=se)
     mask = borders(im.shape, mode='faces')
