@@ -1277,8 +1277,19 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
 
     Returns
     -------
-    h : scalar
-        The height of the two-phase zone
+    A dataclass-like object with the following attributes:
+
+        =========== ================================================================
+        Attribute   Description
+        =========== ================================================================
+        `zmax`      The position where the saturation first exceeds `smax`
+        `zmin`      The position where the saturation first exceeds `smin`
+        `smax`      The value defining the start of the saturation profile
+        `smin`      The value defining the end of the saturation profile
+        `h`         The total distance in voxels between `zmax` and `zmin`
+        `valid`     A flag indicating whether the requested saturation difference
+                    (between `smin` and `smax`) was found.
+        =========== ================================================================
 
     See Also
     --------
@@ -1286,8 +1297,9 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
 
     Notes
     -----
-    The ``satn_profile`` function can be used to obtain the ``saturation``
-    and ``position`` from an image.
+    The `satn_profile` function can be used to obtain the ``saturation``
+    and `position` from an image, such as a displacement map produced by
+    `drainage` or `imbibition`.
 
     Examples
     --------
