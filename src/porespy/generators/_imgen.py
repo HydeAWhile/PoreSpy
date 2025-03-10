@@ -608,7 +608,8 @@ def polydisperse_spheres(
     dist,
     nbins: int = 5,
     r_min: int = 5,
-    seed=None):
+    seed=None,
+):
     r"""
     Create an image of randomly placed, overlapping spheres with a
     distribution of radii.
@@ -1027,7 +1028,8 @@ def blobs(
     porosity: float = 0.5,
     blobiness: int = 1,
     divs: int = 1,
-    seed=None,
+    seed: int = None,
+    periodic: bool = True,
 ):
     """
     Generates an image containing amorphous blobs
@@ -1042,7 +1044,7 @@ def blobs(
         prior to returning.  If ``None`` is specified, then the scalar
         noise field is converted to a uniform distribution and returned
         without thresholding.
-    blobiness : int or list of ints(default = 1)
+    blobiness : int or list of ints (default = 1)
         Controls the morphology of the blobs.  A higher number results in
         a larger number of small blobs.  If a list is supplied then the
         blobs are anisotropic.
@@ -1052,10 +1054,14 @@ def blobs(
         equivalent to ``[2, 2, 2]`` for a 3D image.  The number of cores
         used is specified in ``porespy.settings.ncores`` and defaults to
         all cores.
-    seed : int, optional, default = `None`
+    seed : int, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
         ``np.random.state(seed)`` prior to calling this function will be respected.
+    periodic : bool, default = `True`
+        If `True` the blobs will be periodic, meaning that the image can be tiled
+        and the phases will be continuous. `False` will provide the "legacy" version
+        of an image, which has high-porosity artifacts at the image boundaries.
 
     Returns
     -------
@@ -1093,6 +1099,7 @@ def blobs(
     if isinstance(blobiness, int):
         blobiness = [blobiness]*len(shape)
     blobiness = np.array(blobiness)
+    mode = 'wrap' if periodic else 'reflect'
     parallel = False
     if isinstance(divs, int):
         divs = [divs]*len(shape)
@@ -1107,7 +1114,7 @@ def blobs(
                           input=im, sigma=sigma,
                           divs=divs, overlap=overlap)
     else:
-        im = spim.gaussian_filter(im, sigma=sigma)
+        im = spim.gaussian_filter(im, sigma=sigma, mode=mode)
     im = all_to_uniform(im, scale=[0, 1])
     if porosity:
         im = im < porosity

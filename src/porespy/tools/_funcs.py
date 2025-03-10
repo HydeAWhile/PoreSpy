@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 import scipy.ndimage as spim
+from scipy.stats import rankdata
 from numba import boolean, njit
 from skimage.morphology import ball, disk
 from skimage.segmentation import relabel_sequential
@@ -1097,6 +1098,9 @@ def all_to_uniform(im, scale=None):
     """
     if scale is None:
         scale = [im.min(), im.max()]
+    # Alternative, might be faster
+    # im2 = rankdata(im).reshape(im.shape)
+    # im = (im2 - im2.min())/(im2.max() - im2.min())*(scale[1] - scale[0]) + scale[0]
     aargsort_im = np.argsort(np.argsort(im.flatten()))  # Twice for the inverse permutation
     linspace_im = np.linspace(scale[0], scale[1], len(aargsort_im), endpoint=True)
     uniform_flatten_im = linspace_im[aargsort_im]

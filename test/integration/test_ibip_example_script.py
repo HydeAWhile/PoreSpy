@@ -9,7 +9,12 @@ def test_ibip():
     np.random.seed(0)
 
     # Generate or load a test image
-    im = ps.generators.blobs(shape=[200, 200], porosity=0.605475, blobiness=2)
+    im = ps.generators.blobs(
+        shape=[200, 200],
+        porosity=0.605475,
+        blobiness=2,
+        periodic=False,
+    )
 
     bd = np.zeros_like(im)
     bd[:, 0] = True

@@ -11,7 +11,8 @@ ps.settings.tqdm['disable'] = True
 class IBOPTest(GenericTest):
 
     def setup_class(self):
-        self.im2D = ps.generators.blobs([300, 150], porosity=0.6, seed=0)
+        self.im2D = ps.generators.blobs(
+            shape=[300, 150], porosity=0.6, seed=0, periodic=False,)
 
     def test_ibop_w_and_wo_pc(self):
         # bins must be none to ensure they both use same bins (i.e. all of them)

@@ -20,13 +20,19 @@ class SimulationsTest():
         self.im = ps.generators.blobs(shape=[100, 100, 100],
                                       blobiness=2,
                                       seed=0,
-                                      porosity=0.499829)
+                                      porosity=0.499829,
+                                      periodic=False,
+                                      )
         assert self.im.sum()/self.im.size == 0.499829
         self.im_dt = edt(self.im)
 
     def test_drainage_with_gravity(self):
-        im = ps.generators.blobs(shape=[100, 100, 100], porosity=0.7066, seed=0)
-        # im = ps.generators.blobs(shape=[400, 400], porosity=0.7066, seed=2)
+        im = ps.generators.blobs(
+            shape=[100, 100, 100],
+            porosity=0.7066,
+            seed=0,
+            periodic=False,
+        )
         assert im.sum()/im.size == 0.7066
         dt = edt(im)
         pc = ps.filters.capillary_transform(

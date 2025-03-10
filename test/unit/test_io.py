@@ -14,7 +14,8 @@ class ExportTest():
     def test_export_to_palabos(self):
         X = Y = Z = 20
         S = X * Y * Z
-        im = ps.generators.blobs(shape=[X, Y, Z], porosity=0.7, blobiness=1)
+        im = ps.generators.blobs(
+            shape=[X, Y, Z], porosity=0.7, blobiness=1, periodic=False,)
         tmp = os.path.join(self.path, 'palabos.dat')
         ps.io.to_palabos(im, tmp, solid=0)
         assert os.path.isfile(tmp)
@@ -26,19 +27,19 @@ class ExportTest():
         os.remove(tmp)
 
     def test_to_vtk_2d(self):
-        im = ps.generators.blobs(shape=[20, 20])
+        im = ps.generators.blobs(shape=[20, 20], periodic=False,)
         ps.io.to_vtk(im, filename='vtk_func_test')
         assert os.stat('vtk_func_test.vti').st_size == 831
         os.remove('vtk_func_test.vti')
 
     def test_to_vtk_3d(self):
-        im = ps.generators.blobs(shape=[20, 20, 20])
+        im = ps.generators.blobs(shape=[20, 20, 20], periodic=False,)
         ps.io.to_vtk(im, filename='vtk_func_test')
         assert os.stat('vtk_func_test.vti').st_size == 8433
         os.remove('vtk_func_test.vti')
 
     def test_dict_to_vtk(self):
-        im = ps.generators.blobs(shape=[20, 20, 20])
+        im = ps.generators.blobs(shape=[20, 20, 20], periodic=False,)
         ps.io.dict_to_vtk({'im': im}, filename="dictvtk")
         a = os.stat('dictvtk.vti').st_size
         os.remove('dictvtk.vti')
@@ -48,7 +49,7 @@ class ExportTest():
         os.remove('dictvtk.vti')
 
     def test_to_stl(self):
-        im = ps.generators.blobs(shape=[50, 50, 50])
+        im = ps.generators.blobs(shape=[50, 50, 50], periodic=False,)
         ps.io.to_stl(im, filename="im2stl")
         os.remove("im2stl.stl")
 

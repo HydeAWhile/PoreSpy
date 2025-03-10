@@ -251,19 +251,19 @@ class GeneratorTest():
         assert N == 1241
 
     def test_blobs_1d_shape(self):
-        im = ps.generators.blobs(shape=[101])
+        im = ps.generators.blobs(shape=[101], periodic=False,)
         assert len(list(im.shape)) == 3
 
     def test_blobs_w_seed(self):
-        im1 = ps.generators.blobs(shape=[101, 101], seed=0)
-        im2 = ps.generators.blobs(shape=[101, 101], seed=0)
-        im3 = ps.generators.blobs(shape=[101, 101], seed=1)
+        im1 = ps.generators.blobs(shape=[101, 101], seed=0, periodic=False,)
+        im2 = ps.generators.blobs(shape=[101, 101], seed=0, periodic=False,)
+        im3 = ps.generators.blobs(shape=[101, 101], seed=1, periodic=False,)
         assert np.all(im1 == im2)
         assert not np.all(im1 == im3)
 
     def test_blobs_w_divs(self):
-        im1 = ps.generators.blobs(shape=[101, 101], seed=0, divs=1)
-        im2 = ps.generators.blobs(shape=[101, 101], seed=0, divs=2)
+        im1 = ps.generators.blobs(shape=[101, 101], seed=0, divs=1, periodic=False,)
+        im2 = ps.generators.blobs(shape=[101, 101], seed=0, divs=2, periodic=False,)
         assert np.all(im1 == im2)
 
     def test_random_spheres_2d_contained(self):
@@ -315,7 +315,8 @@ class GeneratorTest():
         assert phi2 > phi1
 
     def test_random_spheres_preexisting_structure(self):
-        im = ps.generators.blobs(shape=[200, 200, 200], seed=0, porosity=0.4964785)
+        im = ps.generators.blobs(
+            shape=[200, 200, 200], seed=0, porosity=0.4964785, periodic=False,)
         phi1 = im.sum()/im.size
         assert phi1 == 0.4964785
         im = ps.generators.random_spheres(im=im, r=8, maxiter=200, edges='contained')
@@ -411,7 +412,7 @@ class GeneratorTest():
         assert not np.all(im1 == im3)
 
     def test_pseudo_electrostatic_packing(self):
-        im1 = ps.generators.blobs(shape=[100, 100], seed=0)
+        im1 = ps.generators.blobs(shape=[100, 100], seed=0, periodic=False,)
         im2 = ps.generators.pseudo_electrostatic_packing(
             im=im1, r=3, clearance=1, protrusion=1)
         assert (im2.sum() > im1.sum())
