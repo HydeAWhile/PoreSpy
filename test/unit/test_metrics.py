@@ -43,8 +43,15 @@ class MetricsTest():
         self.regions = np.array(io.imread(path))
 
     def test_porosity(self):
-        phi = ps.metrics.porosity(im=self.im2D)
-        assert np.allclose(phi, 0.66856)
+        im = ps.generators.blobs([300, 300], porosity=0.6, seed=1)
+        phi = ps.metrics.porosity(im)
+        assert np.allclose(phi, 0.6)
+        phi = ps.metrics.porosity(im, fill_surface=True, fill_hidden=False)
+        assert np.allclose(phi, 0.3963111111111111)
+        phi = ps.metrics.porosity(im, fill_surface=False, fill_hidden=True)
+        assert np.allclose(phi, 0.5996222222222222)
+        phi = ps.metrics.porosity(im, fill_surface=True, fill_hidden=True)
+        assert np.allclose(phi, 0.39593333333333336)
 
     def test_tpcf_fft_2d(self):
         tpcf_fft_1 = ps.metrics.two_point_correlation(self.im2D)
