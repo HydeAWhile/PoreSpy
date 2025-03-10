@@ -175,7 +175,7 @@ class MetricsTest():
     def test_region_volumes(self):
         regions = self.regions[:50, :50, :50]
         vols_march = ps.metrics.region_volumes(regions=regions)
-        vols_vox = ps.metrics.region_volumes(regions=regions, mode='voxel')
+        vols_vox = ps.metrics.region_volumes(regions=regions, method='voxel')
         assert_allclose(vols_march[:5], [1498.85320453, 2597.90798652,
                                          2158.34548652, 1281.17978573, 1172.39853573])
         assert_allclose(vols_vox[:5], [1540., 2648., 2206., 1320., 1210.])
@@ -185,7 +185,7 @@ class MetricsTest():
     def test_region_volumes_for_sphere(self):
         region = ball(10)
         vol_march = ps.metrics.region_volumes(regions=region)
-        vol_vox = ps.metrics.region_volumes(region, mode='voxel')
+        vol_vox = ps.metrics.region_volumes(region, method='voxel')
         assert_allclose(vol_march, 4102.28678846)
         assert_allclose(vol_vox, 4169.)
 
