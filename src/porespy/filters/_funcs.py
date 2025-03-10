@@ -8,12 +8,13 @@ import scipy.ndimage as spim
 from skimage.morphology import reconstruction
 from skimage.segmentation import clear_border
 from skimage.morphology import ball, disk, square, cube, diamond, octahedron
+from porespy.generators import borders
 from porespy.tools import _check_for_singleton_axes
 from porespy.tools import get_border, subdivide, recombine
 from porespy.tools import unpad, extract_subsection
 from porespy.tools import ps_disk, ps_ball, ps_round
-from porespy import settings
 from porespy.tools import get_tqdm, get_edt
+from porespy import settings
 from typing import Literal
 
 
@@ -26,6 +27,9 @@ __all__ = [
     "fill_blind_pores",
     "find_disconnected_voxels",
     "find_dt_artifacts",
+    "find_surface_pores",
+    "find_hidden_pores",
+    "find_invalid_pores",
     "flood",
     "flood_func",
     "hold_peaks",
@@ -41,9 +45,11 @@ __all__ = [
     "trim_small_clusters",
 ]
 
+
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
 def apply_padded(im, pad_width, func, pad_val=1, **kwargs):
@@ -311,6 +317,95 @@ def find_disconnected_voxels(im, conn: int = None, surface: bool = False):
             labels = np.swapaxes(labels, 0, ax)
         holes = np.isin(labels, list(keep), invert=True)
     return holes
+
+
+def find_hidden_pores(im, conn='min'):
+    r"""
+    Finds hidden pores that a not connected to any surface
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean array with `True` indicating the phase of interest
+    conn : str
+        Can be either `min` or `max` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    hidden : ndarray
+        A array containing boolean values indicating voxels which belong to hidden
+        pores.
+    """
+    se = strel[im.ndim][conn]
+    labels, N = spim.label(input=im, structure=se)
+    mask = borders(im.shape, mode='faces')
+    hits = np.unique(labels[mask])
+    hidden = np.isin(labels, hits, invert=True)
+    return hidden
+
+
+def find_surface_pores(im, conn='min'):
+    r"""
+    Finds surface pores that do not span the domain
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean array with `True` indicating the phase of interest
+    conn : str
+        Can be either `min` or `max` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    surface : ndarray
+        A array containing boolean values indicating voxels which belong to surface
+        pores.
+    """
+    se = strel[im.ndim][conn]
+    labels, N = spim.label(input=im, structure=se)
+    keep = set()
+    for ax in range(labels.ndim):
+        labels = np.swapaxes(labels, 0, ax)
+        s1 = set(np.unique(labels[0, ...]))
+        s2 = set(np.unique(labels[-1, ...]))
+        tmp = s1.intersection(s2)
+        keep.update(tmp)
+        labels = np.swapaxes(labels, 0, ax)
+    hidden = find_hidden_pores(im, conn=conn)
+    surface = np.isin(labels, list(keep), invert=True) * ~hidden
+    return surface
+
+
+def find_invalid_pores(im, conn='min'):
+    r"""
+    Finds invalid pores which are either hidden or do not span the domain
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean array with `True` indicating the phase of interest
+    conn : str
+        Can be either `min` or `max` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    invalid : ndarray
+        A array containing `1` indicated hidden pores and `2` indicating surface
+        pores.
+    """
+    hidden = find_hidden_pores(im=im, conn=conn)
+    surface = find_surface_pores(im=im, conn=conn)
+    invalid = hidden.astype(int) + 2*surface.astype(int)
+    return invalid
 
 
 def fill_blind_pores(im, conn: int = None, surface: bool = False):
