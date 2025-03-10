@@ -51,10 +51,35 @@ __all__ = [
     'ps_rect',
     'ps_round',
     'subdivide',
+    'tilde',
     'unpad',
     'jit_extend_slice',
     'pad',
 ]
+
+
+def tilde(im):
+    r"""
+    Inverts an image.
+
+    This is to replace the `~` operator which is being deprecated. It also ensures
+    `im` is actually a `boolean` array since inverting `1` and `0` gives different
+    results than `True` and `False`.
+
+    Parameters
+    ----------
+    im : ndarray
+        The image whose boolean values are to be inverted. If image is not a boolean
+        it will be converted to one.
+
+    Returns
+    -------
+    inv : ndarray
+        The result of calling `np.logical_not` on `im`.
+    """
+    im = im.astype(bool)
+    inv = np.logical_not(im)
+    return inv
 
 
 def im_to_slabs(im, axis=0, span=50, step=None, mode='tile'):
