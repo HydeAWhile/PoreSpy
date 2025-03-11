@@ -33,6 +33,7 @@ def imbibition(
     residual=None,
     steps=25,
     min_size=0,
+    conn='min',
 ):
     r"""
     Performs an imbibition simulation using image-based sphere insertion
@@ -67,6 +68,11 @@ def imbibition(
         trapped. These can appear to be trapped due to the jagged nature of the
         digital image. The default is 0, meaning this adjustment is not applied,
         but a value of 3 or 4 is recommended to activate this adjustment.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default is `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
 
     Returns
     -------
@@ -120,7 +126,6 @@ def imbibition(
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
-    strel = ball(1) if im.ndim == 3 else disk(1)
     step = 1
     for P in tqdm(Ps, **settings.tqdm):
         # This can be made faster if I find a way to get only seeds on edge, so
@@ -142,7 +147,7 @@ def imbibition(
             nwp_mask = ~trim_disconnected_blobs(
                 im=(~nwp_mask)*im,
                 inlets=inlets,
-                strel=strel,
+                conn=conn,
             )*im
         if residual is not None:
             nwp_mask = nwp_mask * ~residual

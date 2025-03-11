@@ -143,7 +143,7 @@ class FilterTest():
         assert spim.label(h)[1] == 1
         h2 = ps.filters.trim_nonpercolating_paths(
             im=im, axis=0)
-        assert np.all(h1 == h2)
+        assert np.all(h == h2)
 
     def test_trim_nonpercolating_paths_2d_axis1(self):
         np.random.seed(0)
@@ -158,6 +158,9 @@ class FilterTest():
         h = ps.filters.trim_nonpercolating_paths(
             im=im, inlets=inlets, outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=1)
+        assert np.all(h == h2)
 
     def test_trim_nonpercolating_paths_no_paths(self):
         np.random.seed(0)
@@ -188,6 +191,9 @@ class FilterTest():
                                                  inlets=inlets,
                                                  outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=2)
+        assert np.all(h == h2)
 
     def test_trim_nonpercolating_paths_3d_axis1(self):
         np.random.seed(0)
@@ -203,6 +209,9 @@ class FilterTest():
                                                  inlets=inlets,
                                                  outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=1)
+        assert np.all(h == h2)
 
     def test_trim_nonpercolating_paths_3d_axis0(self):
         np.random.seed(0)
@@ -218,9 +227,11 @@ class FilterTest():
                                                  inlets=inlets,
                                                  outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=0)
+        assert np.all(h == h2)
 
     def test_trim_disconnected_blobs(self):
-        s = disk(1)
         np.random.seed(0)
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.55875, blobiness=2, periodic=False,)
@@ -228,7 +239,7 @@ class FilterTest():
         inlets = np.zeros_like(im)
         inlets[0, ...] = 1
         n1 = spim.label(im)[1]
-        h = ps.filters.trim_disconnected_blobs(im=im, inlets=inlets, strel=s)
+        h = ps.filters.trim_disconnected_blobs(im=im, inlets=inlets, conn='min')
         n2 = spim.label(h)[1]
         assert n1 > n2
         assert spim.label(h + inlets)[1] == 1
@@ -377,7 +388,7 @@ class FilterTest():
         for i in range(6):
             im[int(10*2*i):int(10*(2*i+1)), :] += 2
             im[:, int(10*2*i):int(10*(2*i+1))] += 4
-        borders = ps.filters.nphase_border(im, include_diagonals=False)
+        borders = ps.filters.nphase_border(im, conn="min")
         nb, counts = np.unique(borders, return_counts=True)
         assert nb.tolist() == [1.0, 2.0, 3.0]
         assert counts.tolist() == [8100, 3600, 400]
@@ -387,7 +398,7 @@ class FilterTest():
         for i in range(6):
             im[int(10*2*i):int(10*(2*i+1)), :] += 2
             im[:, int(10*2*i):int(10*(2*i+1))] += 4
-        borders = ps.filters.nphase_border(im, include_diagonals=True)
+        borders = ps.filters.nphase_border(im, conn='max')
         nb, counts = np.unique(borders, return_counts=True)
         assert nb.tolist() == [1.0, 2.0, 4.0]
         assert counts.tolist() == [8100, 3600, 400]
@@ -398,7 +409,7 @@ class FilterTest():
             im3d[int(10*2*i):int(10*(2*i+1)), :, :] += 2
             im3d[:, int(10*2*i):int(10*(2*i+1)), :] += 4
             im3d[:, :, int(10*2*i):int(10*(2*i+1))] += 8
-        borders = ps.filters.nphase_border(im3d, include_diagonals=False)
+        borders = ps.filters.nphase_border(im3d, conn="min")
         nb, counts = np.unique(borders, return_counts=True)
         assert nb.tolist() == [1.0, 2.0, 3.0, 4.0]
         assert counts.tolist() == [729000, 486000, 108000, 8000]
@@ -409,7 +420,7 @@ class FilterTest():
             im3d[int(10*2*i):int(10*(2*i+1)), :, :] += 2
             im3d[:, int(10*2*i):int(10*(2*i+1)), :] += 4
             im3d[:, :, int(10*2*i):int(10*(2*i+1))] += 8
-        borders = ps.filters.nphase_border(im3d, include_diagonals=True)
+        borders = ps.filters.nphase_border(im3d, conn='max')
         nb, counts = np.unique(borders, return_counts=True)
         assert nb.tolist() == [1.0, 2.0, 4.0, 8.0]
         assert counts.tolist() == [729000, 486000, 108000, 8000]

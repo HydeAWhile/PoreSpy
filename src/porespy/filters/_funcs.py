@@ -41,6 +41,7 @@ __all__ = [
     "prune_branches",
     "region_size",
     "trim_disconnected_blobs",
+    "trim_extrema",
 ]
 
 
@@ -1118,17 +1119,17 @@ def prune_branches(
     im_result = np.zeros_like(skel)
     # If branch points are not supplied, attempt to find them
     if branch_points is None:
-        branch_points = spim.convolve(skel * 1.0, weights=cube(3)) > 3
+        branch_points = spim.convolve(skel * 1.0, weights=cube) > 3
         branch_points = branch_points * skel
     # Store original branch points before dilating
     pts_orig = branch_points
     # Find arcs of skeleton by deleting branch points
     arcs = skel * (~branch_points)
     # Label arcs
-    arc_labels = spim.label(arcs, structure=cube(3))[0]
+    arc_labels = spim.label(arcs, structure=cube)[0]
     # Dilate branch points so they overlap with the arcs
-    branch_points = spim.binary_dilation(branch_points, structure=cube(3))
-    pts_labels = spim.label(branch_points, structure=cube(3))[0]
+    branch_points = spim.binary_dilation(branch_points, structure=cube)
+    pts_labels = spim.label(branch_points, structure=cube)[0]
     # Now scan through each arc to see if it's connected to two branch points
     slices = spim.find_objects(arc_labels)
     label_num = 0

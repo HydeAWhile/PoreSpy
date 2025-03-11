@@ -32,6 +32,7 @@ __all__ = [
 
 
 tqdm = get_tqdm()
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
 def ibop(
@@ -80,12 +81,7 @@ def ibop(
     seeds = np.zeros_like(im, dtype=bool)
 
     # Begin IBOP algorithm
-    if conn == 'min':
-        strel = ball(1) if im.ndim == 3 else disk(1)
-    elif conn == 'max':
-        strel = cube(3) if im.ndim == 3 else square(3)
-    else:
-        raise Exception(f"Unrecognized value for conn ({conn})")
+    se = strel[im.ndim][conn].copy()
     step = 1
     for p in tqdm(Ps, **settings.tqdm):
         # Find all locations in image invadable at current pressure
@@ -95,7 +91,7 @@ def ibop(
             invadable = trim_disconnected_blobs(
                 im=invadable,
                 inlets=inlets,
-                strel=strel,
+                conn=conn,
             )
         # Isolate only newly found locations to speed up inserting
         temp = invadable*(~seeds)
@@ -130,10 +126,10 @@ def ibop(
             if np.any(inv_temp):
                 # Find invadable pixels connected to surviving residual
                 temp = trim_disconnected_blobs(
-                    residual, inv_temp, strel=strel)*~inv_temp
+                    residual, inv_temp, conn=conn)*~inv_temp
                 if np.any(temp):
                     # Trim invadable pixels not connected to residual
-                    new_seeds = trim_disconnected_blobs(invadable, temp, strel=strel)
+                    new_seeds = trim_disconnected_blobs(invadable, temp, conn=conn)
                     # Find (i, j, k) coordinates of new locations
                     coords = np.where(new_seeds)
                     # Add new locations to list of invaded locations

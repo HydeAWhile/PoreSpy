@@ -254,7 +254,7 @@ def find_invalid_pores(
 def fill_blind_pores(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
-    fill_surface: bool = False,
+    surface: bool = False,
 ):
     r"""
     Fills all blind pores that are isolated from the main void space.
@@ -300,7 +300,7 @@ def fill_blind_pores(
 
     """
     im = np.copy(im)
-    holes = find_disconnected_voxels(im, conn=conn, fill_surface=fill_surface)
+    holes = find_disconnected_voxels(im, conn=conn, surface=surface)
     im[holes] = False
     return im
 
@@ -308,7 +308,7 @@ def fill_blind_pores(
 def trim_floating_solid(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
-    fill_surface: bool = False,
+    surface: bool = False,
 ):
     r"""
     Removes all solid that that is not attached to main solid structure.
@@ -348,7 +348,7 @@ def trim_floating_solid(
 
     """
     im = np.copy(im)
-    holes = find_disconnected_voxels(~im, conn=conn, fill_surface=fill_surface)
+    holes = find_disconnected_voxels(~im, conn=conn, surface=surface)
     im[holes] = True
     return im
 

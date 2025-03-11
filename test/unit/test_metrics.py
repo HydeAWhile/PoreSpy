@@ -344,7 +344,7 @@ class MetricsTest():
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        im = ps.filters.fill_blind_pores(im, conn='max', surface=True)
         inlets = ps.tools.get_border(shape=im.shape, mode='faces')
 
         # Do drainage without sequence
@@ -389,7 +389,7 @@ class MetricsTest():
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        im = ps.filters.fill_blind_pores(im, conn="max", surface=True)
         inlets = ps.generators.faces(shape=im.shape, inlet=0)
         pc = ps.filters.capillary_transform(im)
         drn = ps.simulations.drainage(im=im, pc=pc, inlets=inlets)
@@ -410,7 +410,7 @@ class MetricsTest():
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        im = ps.filters.fill_blind_pores(im, conn="max", surface=True)
         inlets = ps.generators.faces(shape=im.shape, inlet=0)
         pc = ps.filters.capillary_transform(im=im)
         imb = ps.simulations.imbibition(im=im, pc=pc, inlets=inlets)
@@ -438,7 +438,7 @@ class MetricsTest():
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        im = ps.filters.fill_blind_pores(im, conn="max", surface=True)
         inlets = ps.tools.get_border(shape=im.shape, mode='faces')
 
         ibip = ps.simulations.ibip(im=im, inlets=inlets, return_sizes=True)
