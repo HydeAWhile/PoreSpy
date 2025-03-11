@@ -113,19 +113,19 @@ class FilterTest():
         assert np.all(np.unique(sz) == [0, 2])
 
     def test_find_disconnected_voxels_2d(self):
-        h = ps.filters.find_disconnected_voxels(self.im[:, :, 0])
+        h = ps.filters.find_disconnected_voxels(self.im[:, :, 0], conn='max')
         assert np.sum(h) == 477
 
     def test_find_disconnected_voxels_2d_conn4(self):
-        h = ps.filters.find_disconnected_voxels(self.im[:, :, 0], conn=4)
+        h = ps.filters.find_disconnected_voxels(self.im[:, :, 0], conn='min')
         assert np.sum(h) == 652
 
     def test_find_disconnected_voxels_3d(self):
-        h = ps.filters.find_disconnected_voxels(self.im)
+        h = ps.filters.find_disconnected_voxels(self.im, conn='max')
         assert np.sum(h) == 55
 
     def test_find_disconnected_voxels_3d_conn6(self):
-        h = ps.filters.find_disconnected_voxels(self.im, conn=6)
+        h = ps.filters.find_disconnected_voxels(self.im, conn='min')
         assert np.sum(h) == 202
 
     def test_trim_nonpercolating_paths_2d_axis0(self):
@@ -138,10 +138,12 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[-1, :] = 1
         assert spim.label(im)[1] > 1
-        h = ps.filters.trim_nonpercolating_paths(im=im,
-                                                 inlets=inlets,
-                                                 outlets=outlets)
+        h = ps.filters.trim_nonpercolating_paths(
+            im=im, inlets=inlets, outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=0)
+        assert np.all(h1 == h2)
 
     def test_trim_nonpercolating_paths_2d_axis1(self):
         np.random.seed(0)
@@ -153,9 +155,8 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[:, -1] = 1
         assert spim.label(im)[1] > 1
-        h = ps.filters.trim_nonpercolating_paths(im=im,
-                                                 inlets=inlets,
-                                                 outlets=outlets)
+        h = ps.filters.trim_nonpercolating_paths(
+            im=im, inlets=inlets, outlets=outlets)
         assert spim.label(h)[1] == 1
 
     def test_trim_nonpercolating_paths_no_paths(self):
