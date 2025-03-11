@@ -27,7 +27,7 @@ tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
 
-def region_volumes(regions, mode='marching_cubes', voxel_size=(1, 1, 1)):
+def region_volumes(regions, method='marching_cubes', voxel_size=(1, 1, 1)):
     r"""
     Compute volume of each labelled region in an image
 
@@ -35,17 +35,18 @@ def region_volumes(regions, mode='marching_cubes', voxel_size=(1, 1, 1)):
     ----------
     regions : ndarray
         An image with labelled regions
-    mode : string
+    method : string
         Controls the method used. Options are:
 
-        'marching_cubes' (default)
-            Finds a mesh for each region using the marching cubes algorithm
-            from ``scikit-image``, then finds the volume of the mesh using the
-            ``trimesh`` package.
-
-        'voxel'
-            Calculates the region volume as the sum of voxels within each
-            region.
+        ================ ===========================================================
+        Option           Description
+        ================ ===========================================================
+        `marching_cubes` (default) Finds a mesh for each region using the marching
+                         cubes algorithm from ``scikit-image``, then finds the
+                         volume of the mesh using the ``trimesh`` package.
+        `voxel`          Calculates the region volume as the sum of voxels within
+                         each region.
+        ================ ===========================================================
 
     Returns
     -------
@@ -65,9 +66,9 @@ def region_volumes(regions, mode='marching_cubes', voxel_size=(1, 1, 1)):
     msg = "Computing region volumes".ljust(60)
     for i, s in enumerate(tqdm(slices, desc=msg, **settings.tqdm)):
         region = regions[s] == (i + 1)
-        if mode == 'marching_cubes':
+        if method == 'marching_cubes':
             vols[i] = mesh_volume(region, voxel_size=voxel_size)
-        elif mode.startswith('voxel'):
+        elif method.startswith('voxel'):
             vols[i] = region.sum(dtype=np.int64)
     return vols
 

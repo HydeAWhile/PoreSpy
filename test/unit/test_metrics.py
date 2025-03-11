@@ -43,8 +43,15 @@ class MetricsTest():
         self.regions = np.array(io.imread(path))
 
     def test_porosity(self):
-        phi = ps.metrics.porosity(im=self.im2D)
-        assert np.allclose(phi, 0.66856)
+        im = ps.generators.blobs([300, 300], porosity=0.6, seed=1)
+        phi = ps.metrics.porosity(im)
+        assert np.allclose(phi, 0.6)
+        phi = ps.metrics.porosity(im, fill_surface=True, fill_hidden=False)
+        assert np.allclose(phi, 0.3963111111111111)
+        phi = ps.metrics.porosity(im, fill_surface=False, fill_hidden=True)
+        assert np.allclose(phi, 0.5996222222222222)
+        phi = ps.metrics.porosity(im, fill_surface=True, fill_hidden=True)
+        assert np.allclose(phi, 0.39593333333333336)
 
     def test_tpcf_fft_2d(self):
         tpcf_fft_1 = ps.metrics.two_point_correlation(self.im2D)
@@ -175,7 +182,7 @@ class MetricsTest():
     def test_region_volumes(self):
         regions = self.regions[:50, :50, :50]
         vols_march = ps.metrics.region_volumes(regions=regions)
-        vols_vox = ps.metrics.region_volumes(regions=regions, mode='voxel')
+        vols_vox = ps.metrics.region_volumes(regions=regions, method='voxel')
         assert_allclose(vols_march[:5], [1498.85320453, 2597.90798652,
                                          2158.34548652, 1281.17978573, 1172.39853573])
         assert_allclose(vols_vox[:5], [1540., 2648., 2206., 1320., 1210.])
@@ -185,7 +192,7 @@ class MetricsTest():
     def test_region_volumes_for_sphere(self):
         region = ball(10)
         vol_march = ps.metrics.region_volumes(regions=region)
-        vol_vox = ps.metrics.region_volumes(region, mode='voxel')
+        vol_vox = ps.metrics.region_volumes(region, method='voxel')
         assert_allclose(vol_march, 4102.28678846)
         assert_allclose(vol_vox, 4169.)
 

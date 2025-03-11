@@ -12,6 +12,7 @@ from porespy import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
+    fill_blind_pores,
 )
 from porespy.tools import (
     Results,
@@ -201,13 +202,10 @@ def representative_elementary_volume(im, npoints=1000):
     return profile
 
 
-def porosity(im, mask=None):
+def porosity(im, mask=None, fill_hidden=False, fill_surface=False):
     r"""
     Calculates the porosity of an image assuming 1's are void space and 0's
     are solid phase.
-
-    All other values are ignored, so this can also return the relative
-    fraction of a phase of interest in multiphase images.
 
     Parameters
     ----------
@@ -221,6 +219,12 @@ def porosity(im, mask=None):
         entire array, like cylindrical cores.  Note that setting values in `im`
         to 2 will also exclude them from consideration so provides the same effect
         as `mask`, but providing a `mask` is usually much easier.
+    fill_hideen : bool (default = `False`)
+        A flag to indicate if hidden pores (not connected to any image boundary)
+        should be filled or not before computing the porosity.
+    fill_surface : bool (default = `False`)
+        A flag to indicate if blind pores connected only to one surface should be
+        filled or not befor computing the porosity.
 
     Returns
     -------
@@ -238,11 +242,6 @@ def porosity(im, mask=None):
     other values are ignored.  This is useful, for example, for images of
     cylindrical cores, where all voxels outside the core are labelled with 2.
 
-    Alternatively, images can be processed with ``find_disconnected_voxels``
-    to get an image of only blind pores.  This can then be added to the orignal
-    image such that blind pores have a value of 2, thus allowing the
-    calculation of accessible porosity, rather than overall porosity.
-
     Examples
     --------
     `Click here
@@ -250,8 +249,16 @@ def porosity(im, mask=None):
     to view online example.
 
     """
+    im = im.copy()
     if mask is not None:
         im = np.array(im, dtype=np.int64)*mask
+    if fill_hidden or fill_surface:
+        hidden_pores = im * ~fill_blind_pores(im, surface=False)
+        surface_pores = im * ~fill_blind_pores(im, surface=True) * ~hidden_pores
+        if fill_hidden:
+            im[hidden_pores] = 0
+        if fill_surface:
+            im[surface_pores] = 0
     Vp = np.sum(im == 1, dtype=np.int64)
     Vs = np.sum(im == 0, dtype=np.int64)
     e = Vp / (Vs + Vp)
@@ -1277,8 +1284,19 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
 
     Returns
     -------
-    h : scalar
-        The height of the two-phase zone
+    A dataclass-like object with the following attributes:
+
+        =========== ================================================================
+        Attribute   Description
+        =========== ================================================================
+        `zmax`      The position where the saturation first exceeds `smax`
+        `zmin`      The position where the saturation first exceeds `smin`
+        `smax`      The value defining the start of the saturation profile
+        `smin`      The value defining the end of the saturation profile
+        `h`         The total distance in voxels between `zmax` and `zmin`
+        `valid`     A flag indicating whether the requested saturation difference
+                    (between `smin` and `smax`) was found.
+        =========== ================================================================
 
     See Also
     --------
@@ -1286,8 +1304,9 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
 
     Notes
     -----
-    The ``satn_profile`` function can be used to obtain the ``saturation``
-    and ``position`` from an image.
+    The `satn_profile` function can be used to obtain the ``saturation``
+    and `position` from an image, such as a displacement map produced by
+    `drainage` or `imbibition`.
 
     Examples
     --------

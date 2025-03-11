@@ -257,7 +257,7 @@ def regions_to_network(
         logger.warning(msg)
         accuracy = 'standard'
     if (accuracy == 'high'):
-        net['pore.volume'] = region_volumes(regions=im, mode='marching_cubes')
+        net['pore.volume'] = region_volumes(regions=im, method='marching_cubes')
         areas = region_surface_areas(regions=im, voxel_size=voxel_size)
         net['pore.surface_area'] = areas
         interface_area = region_interface_areas(regions=im, areas=areas,
