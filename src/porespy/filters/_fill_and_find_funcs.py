@@ -1,8 +1,6 @@
-import inspect as insp
 import logging
 import numpy as np
 import numpy.typing as npt
-import operator as op
 import scipy.ndimage as spim
 from skimage.segmentation import clear_border
 from skimage.morphology import ball, disk, square, cube
@@ -158,6 +156,12 @@ def find_hidden_pores(
     hidden : ndarray
         A array containing boolean values indicating voxels which belong to hidden
         pores.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_hidden_pores.html>`_
+    to view online example.
     """
     from porespy.generators import borders
     se = strel[im.ndim][conn]
@@ -190,6 +194,12 @@ def find_surface_pores(
     surface : ndarray
         A array containing boolean values indicating voxels which belong to surface
         pores.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_surface_pores.html>`_
+    to view online example.
     """
     se = strel[im.ndim][conn]
     labels, N = spim.label(input=im, structure=se)
@@ -228,6 +238,12 @@ def find_invalid_pores(
     invalid : ndarray
         A array containing `1` indicated hidden pores and `2` indicating surface
         pores.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_invalid_pores.html>`_
+    to view online example.
     """
     hidden = find_hidden_pores(im=im, conn=conn)
     surface = find_surface_pores(im=im, conn=conn)

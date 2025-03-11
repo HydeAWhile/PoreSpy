@@ -3,7 +3,7 @@ import logging
 import dask
 import numpy as np
 import numpy.typing as npt
-import operator as op
+import operator
 import scipy.ndimage as spim
 from skimage.morphology import reconstruction
 from skimage.segmentation import clear_border
@@ -141,10 +141,10 @@ def hold_peaks(
     chnidx = np.where(updown)
     chng = updown[chnidx]
     (pkidx,) = np.where((chng[:-1] > 0) & (chng[1:] < 0) | (chnidx[-1][:-1] == 0))
-    pkidx = (*map(op.itemgetter(pkidx), chnidx),)
+    pkidx = (*map(operator.itemgetter(pkidx), chnidx),)
     out = np.zeros_like(A)
     aux = out.swapaxes(axis, -1)
-    aux[(*map(op.itemgetter(slice(1, None)), pkidx),)] = np.diff(B[pkidx])
+    aux[(*map(operator.itemgetter(slice(1, None)), pkidx),)] = np.diff(B[pkidx])
     aux[..., 0] = B[..., 0]
     result = out.cumsum(axis=axis)
     if ascending is False:  # Flip it back
@@ -456,7 +456,7 @@ def find_dt_artifacts(dt):
 
 def region_size(
     im,
-    conn='min',
+    conn: Literal['max', 'min'] = 'min',
 ):
     r"""
     Replace each voxel with the size of the region to which it belongs
@@ -725,7 +725,7 @@ def local_thickness(
 def trim_disconnected_blobs(
     im,
     inlets,
-    conn='min',
+    conn: Literal['max', 'min'] = 'min',
 ):
     r"""
     Removes foreground voxels not connected to specified inlets.
@@ -1075,7 +1075,11 @@ def nphase_border(im, conn='min'):
         return out[1:-1, 1:-1, 1:-1].copy()
 
 
-def prune_branches(skel, branch_points=None, iterations: int = 1):
+def prune_branches(
+    skel,
+    branch_points=None,
+    iterations: int = 1,
+):
     r"""
     Remove all dangling ends or tails of a skeleton
 
