@@ -29,7 +29,6 @@ __all__ = [
     "find_surface_pores",
     "find_hidden_pores",
     "find_invalid_pores",
-    "trim_disconnected_blobs",
     "trim_floating_solid",
     "trim_nonpercolating_paths",
     "trim_small_clusters",
@@ -61,8 +60,8 @@ def trim_small_clusters(
     Returns
     -------
     im : ndarray
-        A copy of ``im`` with clusters of voxels smaller than the given
-        ``size`` removed.
+        A copy of `im` with clusters of voxels smaller than the given
+        `size` removed.
 
     Examples
     --------
@@ -139,7 +138,7 @@ def find_disconnected_voxels(
 
 def find_hidden_pores(
     im,
-    conn='min',
+    conn: Literal['max', 'min'] = 'min',
 ):
     r"""
     Finds hidden pores that a not connected to any surface
@@ -171,7 +170,7 @@ def find_hidden_pores(
 
 def find_surface_pores(
     im,
-    conn='min',
+    conn: Literal['max', 'min'] = 'min',
 ):
     r"""
     Finds surface pores that do not span the domain
@@ -209,7 +208,7 @@ def find_surface_pores(
 
 def find_invalid_pores(
     im,
-    conn='min',
+    conn: Literal['max', 'min'] = 'min',
 ):
     r"""
     Finds invalid pores which are either hidden or do not span the domain
@@ -238,7 +237,7 @@ def find_invalid_pores(
 
 def fill_blind_pores(
     im,
-    conn: str = None,
+    conn: Literal['max', 'min'] = 'min',
     fill_surface: bool = False,
 ):
     r"""
@@ -292,7 +291,7 @@ def fill_blind_pores(
 
 def trim_floating_solid(
     im,
-    conn: str = 'min',
+    conn: Literal['max', 'min'] = 'min',
     fill_surface: bool = False,
 ):
     r"""
@@ -308,7 +307,7 @@ def trim_floating_solid(
         imposes the strictest criteria, so that voxels must share a face to be
         considered connected.
     fill_surface : bool
-        If ``True``, any isolated solid regions that are connected to the
+        If `True`, any isolated solid regions that are connected to the
         surfaces of the image but not the main body of the solid are also
         removed.  When this is enabled, only the voxels belonging to the
         largest region are kept. This can be problematic if the image
@@ -318,7 +317,7 @@ def trim_floating_solid(
     Returns
     -------
     image : ndarray
-        A version of ``im`` but with all the disconnected solid removed.
+        A version of `im` but with all the disconnected solid removed.
 
     See Also
     --------
@@ -342,7 +341,7 @@ def trim_nonpercolating_paths(
     im,
     inlets,
     outlets,
-    conn='min',
+    conn: Literal['max', 'min'] = 'min',
 ):
     r"""
     Remove all nonpercolating paths between specified locations
@@ -367,7 +366,7 @@ def trim_nonpercolating_paths(
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with all the nonpercolating paths removed
+        A copy of `im` with all the nonpercolating paths removed
 
     Notes
     -----
@@ -395,61 +394,3 @@ def trim_nonpercolating_paths(
     hits = np.array(list(set(IN).intersection(set(OUT))))
     new_im = np.isin(labels, hits[hits > 0])
     return new_im
-
-
-def trim_disconnected_blobs(
-    im,
-    inlets,
-    conn='min',
-):
-    r"""
-    Removes foreground voxels not connected to specified inlets.
-
-    Parameters
-    ----------
-    im : ndarray
-        The image containing the blobs to be trimmed
-    inlets : ndarray or tuple of indices
-        The locations of the inlets.  Can either be a boolean mask the
-        same shape as `im`, or a tuple of indices such as that returned
-        by the `where` function.  Any voxels *not* connected directly to
-        the inlets will be trimmed.
-    conn : str
-        Can be either `'min'` or `'max'` and controls the shape of the structuring
-        element used to determine voxel connectivity.  The default if `'min'` which
-        imposes the strictest criteria, so that voxels must share a face to be
-        considered connected.
-
-    Returns
-    -------
-    image : ndarray
-        An array of the same shape as `im`, but with all foreground
-        voxels not connected to the `inlets` removed.
-
-    See Also
-    --------
-    find_disconnected_voxels
-    find_nonpercolating_paths
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`_
-    to view online example.
-
-    """
-    se = strel[im.ndim][conn]
-    if isinstance(inlets, tuple):
-        temp = np.copy(inlets)
-        inlets = np.zeros_like(im, dtype=bool)
-        inlets[temp] = True
-    elif (inlets.shape == im.shape) and (inlets.max() == 1):
-        inlets = inlets.astype(bool)
-    else:
-        raise Exception("inlets not valid, refer to docstring for info")
-    labels = spim.label(inlets + (im > 0), structure=se)[0]
-    keep = np.unique(labels[inlets])
-    keep = keep[keep > 0]
-    im2 = np.isin(labels, keep)
-    im2 = im2 * im
-    return im2

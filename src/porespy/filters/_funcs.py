@@ -40,6 +40,7 @@ __all__ = [
     "porosimetry",
     "prune_branches",
     "region_size",
+    "trim_disconnected_blobs",
 ]
 
 
@@ -57,27 +58,27 @@ def apply_padded(
     **kwargs,
 ):
     r"""
-    Applies padding to an image before sending to ``func``, then extracts
+    Applies padding to an image before sending to `func`, then extracts
     the result corresponding to the original image shape.
 
     Parameters
     ----------
     im : ndarray
-        The image to which ``func`` should be applied
+        The image to which `func` should be applied
     pad_width : int or list of ints
-        The amount of padding to apply to each axis. Refer to ``numpy.pad``
+        The amount of padding to apply to each axis. Refer to `numpy.pad`
         documentation for more details.
     pad_val : scalar
         The value to place into the padded voxels.  The default is 1 (or
-        ``True``) which extends the pore space.
+        `True`) which extends the pore space.
     func : function handle
         The function to apply to the padded image.
     kwargs
-        Additional keyword arguments are collected and passed to ``func``.
+        Additional keyword arguments are collected and passed to `func`.
 
     Notes
     -----
-    A use case for this is when using ``skimage.morphology.skeletonize``
+    A use case for this is when using `skimage.morphology.skeletonize`
     to ensure that the skeleton extends beyond the edges of the image.
 
     Examples
@@ -109,13 +110,13 @@ def hold_peaks(
     axis : int
         The axis along which the operation is to be applied.
     ascending : bool
-        If ``True`` (default) the given ``axis`` is scanned from 0 to end.
-        If ``False``, it is scanned in reverse order from end to 0.
+        If `True` (default) the given `axis` is scanned from 0 to end.
+        If `False`, it is scanned in reverse order from end to 0.
 
     Returns
     -------
     result : ndarray
-        A copy of ``im`` with each voxel is replaced with the highest value along
+        A copy of `im` with each voxel is replaced with the highest value along
         the given axis.
 
     Notes
@@ -154,7 +155,7 @@ def hold_peaks(
 def distance_transform_lin(
     im,
     axis: int = 0,
-    mode: Literal['forward', 'backward', 'both'] = "both"
+    mode: Literal['forward', 'backward', 'both'] = "both",
 ):
     r"""
     Replaces each void voxel with the linear distance to the nearest solid
@@ -163,7 +164,7 @@ def distance_transform_lin(
     Parameters
     ----------
     im : ndarray
-        The image of the porous material with ``True`` values indicating
+        The image of the porous material with `True` values indicating
         the void phase (or phase of interest).
     axis : int
         The direction along which the distance should be measured, the
@@ -186,7 +187,7 @@ def distance_transform_lin(
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with each foreground voxel containing the
+        A copy of `im` with each foreground voxel containing the
         distance to the nearest background along the specified axis.
 
     Examples
@@ -255,7 +256,7 @@ def trim_extrema(
     -----
     (1) This function is referred to as **imhmax** or **imhmin** in Matlab.
 
-    (2) If the provided ``h`` is larger than ALL peaks in the array, then the
+    (2) If the provided `h` is larger than ALL peaks in the array, then the
     baseline values of the array are changed as well.
 
     Examples
@@ -287,7 +288,7 @@ def flood(
     Floods/fills each region in an image with a single value based on the
     specific values in that region.
 
-    This function calls the various functions in ``scipy.ndimage.measurements``
+    This function calls the various functions in `scipy.ndimage.measurements`
     but instead of returning a list of values, it fills each region with its
     value.  This is useful for visualization and statistics.
 
@@ -297,34 +298,34 @@ def flood(
         An image with the numerical values of interest in each voxel,
         and 0's elsewhere.
     labels : array_like
-        An array the same shape as ``im`` with each region labeled.
+        An array the same shape as `im` with each region labeled.
     mode : string
         Specifies how to determine the value to flood each region. Options
-        taken from the ``scipy.ndimage.measurements`` function include:
+        taken from the `scipy.ndimage.measurements` function include:
 
         ===================== ======================================================
         Option                Description
         ===================== ======================================================
         maximum               Floods each region with the local max in that region.
-                              The keyword ``max`` is also accepted.
+                              The keyword `max` is also accepted.
         minimum               Floods each region the local minimum in that region.
-                              The keyword ``min`` is also accepted.
+                              The keyword `min` is also accepted.
         median                Floods each region the local median in that region
         mean                  Floods each region the local mean in that region
         size                  Floods each region with the size of that region.  This
-                              is actually accomplished with ``scipy.ndimage.sum`` by
-                              converting ``im`` to a boolean image (``im = im > 0``).
+                              is actually accomplished with `scipy.ndimage.sum` by
+                              converting `im` to a boolean image (`im = im > 0`).
         standard_deviation    Floods each region with the value of the standard
-                              deviation of the voxels in ``im``.
+                              deviation of the voxels in `im`.
         variance              Floods each region with the value of the variance of
-                              the voxels in ``im``.
+                              the voxels in `im`.
         ===================== ======================================================
 
     Returns
     -------
     flooded : ndarray
-        A copy of ``im`` with new values placed in each forground voxel
-        based on the ``mode``.
+        A copy of `im` with new values placed in each forground voxel
+        based on the `mode`.
 
     See Also
     --------
@@ -665,7 +666,7 @@ def local_thickness(
         ============ ===============================================================
         'hybrid'     (default) Performs a distance transform of the void space,
                      thresholds to find voxels larger than `sizes[i]`, trims
-                     the resulting mask if ``access_limitations`` is ``True``, then
+                     the resulting mask if `access_limitations` is `True`, then
                      dilates it using the efficient fft-method to obtain the
                      non-wetting fluid configuration.
         'dt'         Same as 'hybrid', except uses a second distance transform,
@@ -674,15 +675,15 @@ def local_thickness(
                      which is system and installation specific.
         'mio'        Using a single morphological image opening step to obtain
                      the invading fluid confirguration directly, *then* trims if
-                     ``access_limitations`` is ``True``. This method is not ideal
+                     `access_limitations` is `True`. This method is not ideal
                      and is included for comparison purposes.
         ============ ===============================================================
 
     divs : int or array_like
-        The number of times to divide the image for parallel processing.  If ``1``
-        then parallel processing does not occur.  ``2`` is equivalent to
-        ``[2, 2, 2]`` for a 3D image.  The number of cores used is specified in
-        ``porespy.settings.ncores`` and defaults to all cores.
+        The number of times to divide the image for parallel processing.  If `1`
+        then parallel processing does not occur.  `2` is equivalent to
+        `[2, 2, 2]` for a 3D image.  The number of cores used is specified in
+        `porespy.settings.ncores` and defaults to all cores.
 
     Returns
     -------
@@ -696,18 +697,18 @@ def local_thickness(
     Notes
     -----
     The term *foreground* is used since this function can be applied to
-    both pore space or the solid, whichever is set to ``True``.
+    both pore space or the solid, whichever is set to `True`.
 
-    This function is identical to ``porosimetry`` with ``access_limited``
-    set to ``False``.
+    This function is identical to `porosimetry` with `access_limited`
+    set to `False`.
 
     The way local thickness is found in PoreSpy differs from the
     traditional method (i.e. used in ImageJ
     `<https://imagej.net/Local_Thickness>`_). Our approach is probably
     slower, but it allows for the same code to be used for
-    ``local_thickness`` and ``porosimetry``, since we can 'trim' invaded
-    regions that are not connected to the inlets in the ``porosimetry``
-    function. This is not needed in ``local_thickness`` however.
+    `local_thickness` and `porosimetry`, since we can 'trim' invaded
+    regions that are not connected to the inlets in the `porosimetry`
+    function. This is not needed in `local_thickness` however.
 
     Examples
     --------
@@ -719,6 +720,64 @@ def local_thickness(
     im_new = porosimetry(im=im, sizes=sizes, access_limited=False, mode=mode,
                          divs=divs)
     return im_new
+
+
+def trim_disconnected_blobs(
+    im,
+    inlets,
+    conn='min',
+):
+    r"""
+    Removes foreground voxels not connected to specified inlets.
+
+    Parameters
+    ----------
+    im : ndarray
+        The image containing the blobs to be trimmed
+    inlets : ndarray or tuple of indices
+        The locations of the inlets.  Can either be a boolean mask the
+        same shape as `im`, or a tuple of indices such as that returned
+        by the `where` function.  Any voxels *not* connected directly to
+        the inlets will be trimmed.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    image : ndarray
+        An array of the same shape as `im`, but with all foreground
+        voxels not connected to the `inlets` removed.
+
+    See Also
+    --------
+    find_disconnected_voxels
+    find_nonpercolating_paths
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`_
+    to view online example.
+
+    """
+    se = strel[im.ndim][conn]
+    if isinstance(inlets, tuple):
+        temp = np.copy(inlets)
+        inlets = np.zeros_like(im, dtype=bool)
+        inlets[temp] = True
+    elif (inlets.shape == im.shape) and (inlets.max() == 1):
+        inlets = inlets.astype(bool)
+    else:
+        raise Exception("inlets not valid, refer to docstring for info")
+    labels = spim.label(inlets + (im > 0), structure=se)[0]
+    keep = np.unique(labels[inlets])
+    keep = keep[keep > 0]
+    im2 = np.isin(labels, keep)
+    im2 = im2 * im
+    return im2
 
 
 def porosimetry(
@@ -735,22 +794,22 @@ def porosimetry(
     Parameters
     ----------
     im : ndarray
-        An ND image of the porous material containing ``True`` values in the
+        An ND image of the porous material containing `True` values in the
         pore space.
     sizes : array_like or scalar
         The sizes to invade.  If a list of values of provided they are
         used directly.  If a scalar is provided then that number of points
         spanning the min and max of the distance transform are used.
     inlets : ndarray, boolean
-        A boolean mask with ``True`` values indicating where the invasion
+        A boolean mask with `True` values indicating where the invasion
         enters the image.  By default all faces are considered inlets,
         akin to a mercury porosimetry experiment.  Users can also apply
         solid boundaries to their image externally before passing it in,
         allowing for complex inlets like circular openings, etc.
-        This argument is only used if ``access_limited`` is ``True``.
+        This argument is only used if `access_limited` is `True`.
     access_limited : bool
         This flag indicates if the intrusion should only occur from the
-        surfaces (``access_limited`` is ``True``, which is the default),
+        surfaces (`access_limited` is `True`, which is the default),
         or if the invading phase should be allowed to appear in the core
         of the image.  The former simulates experimental tools like
         mercury intrusion porosimetry, while the latter is useful for
@@ -762,8 +821,8 @@ def porosimetry(
         Mode         Description
         ============ ===============================================================
         'hybrid'     (default) Performs a distance tranform of the void
-                     space, thresholds to find voxels larger than ``sizes[i]``,
-                     trims the resulting mask if ``access_limitations`` is ``True``,
+                     space, thresholds to find voxels larger than `sizes[i]`,
+                     trims the resulting mask if `access_limitations` is `True`,
                      then dilates it using the efficient fft-method to obtain the
                      non-wetting fluid configuration.
         'dt'         Same as 'hybrid', except uses a second distance
@@ -771,34 +830,34 @@ def porosimetry(
                      invading fluid configuration. The choice of 'dt' or 'hybrid'
                      depends on speed, which is system and installation specific.
         'mio'        Uses binary erosion followed by dilation to obtain the invading
-                     fluid configuration directly. If ``access_limitated`` is
-                     ``True`` then disconnected blobs are trimmmed before the
+                     fluid configuration directly. If `access_limitated` is
+                     `True` then disconnected blobs are trimmmed before the
                      dilation. This is the only method that can be parallelized by
-                     chunking (see ``divs`` and ``cores``).
+                     chunking (see `divs` and `cores`).
         ============ ===============================================================
 
     divs : int or array_like
         The number of times to divide the image for parallel processing.
-        If ``1`` then parallel processing does not occur.  ``2`` is
-        equivalent to ``[2, 2, 2]`` for a 3D image.  The number of cores
-        used is specified in ``porespy.settings.ncores`` and defaults to
+        If `1` then parallel processing does not occur.  `2` is
+        equivalent to `[2, 2, 2]` for a 3D image.  The number of cores
+        used is specified in `porespy.settings.ncores` and defaults to
         all cores.
 
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with voxel values indicating the sphere radius at
-        which it becomes accessible from the ``inlets``.  This image can be
+        A copy of `im` with voxel values indicating the sphere radius at
+        which it becomes accessible from the `inlets`.  This image can be
         used to find invading fluid configurations as a function of
         applied capillary pressure by applying a boolean comparison:
-        ``inv_phase = im > r`` where ``r`` is the radius (in voxels) of
-        the invading sphere.  Of course, ``r`` can be converted to
+        `inv_phase = im > r` where `r` is the radius (in voxels) of
+        the invading sphere.  Of course, `r` can be converted to
         capillary pressure using a preferred model.
 
     Notes
     -----
     There are many ways to perform this filter, and PoreSpy offers 3,
-    which users can choose between via the ``mode`` argument. These
+    which users can choose between via the `mode` argument. These
     methods all work in a similar way by finding which foreground voxels
     can accomodate a sphere of a given radius, then repeating for smaller
     radii.
@@ -979,7 +1038,7 @@ def nphase_border(im, conn='min'):
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with voxel values equal to the number of uniquely
+        A copy of `im` with voxel values equal to the number of uniquely
         different bordering values
 
     Examples
@@ -1026,7 +1085,7 @@ def prune_branches(skel, branch_points=None, iterations: int = 1):
         A image of a full or partial skeleton from which the tails should
         be trimmed.
     branch_points : ndarray, optional
-        An image the same size ``skel`` with ``True`` values indicating the
+        An image the same size `skel` with `True` values indicating the
         branch points of the skeleton.  If this is not provided it is
         calculated automatically.
     iterations : int
@@ -1095,11 +1154,11 @@ def chunked_func(
     **kwargs,
 ):
     r"""
-    Performs the specfied operation "chunk-wise" in parallel using ``dask``.
+    Performs the specfied operation "chunk-wise" in parallel using `dask`.
 
     This can be used to save memory by doing one chunk at a time
-    (``cores=1``) or to increase computation speed by spreading the work
-    across multiple cores (e.g. ``cores=8``)
+    (`cores=1`) or to increase computation speed by spreading the work
+    across multiple cores (e.g. `cores=8`)
 
     This function can be used with any operation that applies a
     structuring element of some sort, since this implies that the
@@ -1109,13 +1168,13 @@ def chunked_func(
     ----------
     func : function handle
         The function which should be applied to each chunk, such as
-        ``spipy.ndimage.binary_dilation``.
+        `spipy.ndimage.binary_dilation`.
     overlap : scalar or list of scalars, optional
         The amount of overlap to include when dividing up the image. This
         value will almost always be the size (i.e. raduis) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
-        case the ``strel_arg`` must be specified.
+        case the `strel_arg` must be specified.
     divs : scalar or list of scalars (default = [2, 2, 2])
         The number of chunks to divide the image into in each direction.
         The default is 2 chunks in each direction, resulting in a
@@ -1127,19 +1186,19 @@ def chunked_func(
         will be used, or as many are needed for the given number of
         chunks, which ever is smaller.
     im_arg : str
-        The keyword used by ``func`` for the image to be operated on. By
-        default this function will look for ``image``, ``input``, and
-        ``im`` which are commonly used by *scipy.ndimage* and *skimage*.
+        The keyword used by `func` for the image to be operated on. By
+        default this function will look for `image`, `input`, and
+        `im` which are commonly used by *scipy.ndimage* and *skimage*.
     strel_arg : str
-        The keyword used by ``func`` for the structuring element to apply.
-        This is only needed if ``overlap`` is not specified. By default
-        this function will look for ``strel``, ``structure``, and
-        ``footprint`` which are commonly used by *scipy.ndimage* and
+        The keyword used by `func` for the structuring element to apply.
+        This is only needed if `overlap` is not specified. By default
+        this function will look for `strel`, `structure`, and
+        `footprint` which are commonly used by *scipy.ndimage* and
         *skimage*.
     kwargs
-        All other arguments are passed to ``func`` as keyword arguments.
+        All other arguments are passed to `func` as keyword arguments.
         Note that PoreSpy will fetch the image from this list of keywords
-        using the value provided to ``im_arg``.
+        using the value provided to `im_arg`.
 
     Returns
     -------
@@ -1156,7 +1215,7 @@ def chunked_func(
     artifacts. The amount of padding is usually equal to the radius of the
     structuring element but some functions do not use one, such as the
     distance transform and Gaussian blur.  In these cases the user can
-    specify ``overlap``.
+    specify `overlap`.
 
     See Also
     --------
