@@ -57,6 +57,7 @@ image, but with altered values.
 
 from ._fftmorphology import *
 from ._funcs import *
+from ._fill_and_find_funcs import *
 from ._nlmeans import *
 from ._size_seq_satn import *
 from ._snows import *
