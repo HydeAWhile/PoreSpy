@@ -22,10 +22,10 @@ from typing import Literal
 
 
 __all__ = [
-    "fill_blind_pores",
+    "fill_closed_pores",
     "find_disconnected_voxels",
     "find_surface_pores",
-    "find_hidden_pores",
+    "find_closed_pores",
     "find_invalid_pores",
     "trim_floating_solid",
     "trim_nonpercolating_paths",
@@ -108,7 +108,7 @@ def find_disconnected_voxels(
 
     See Also
     --------
-    fill_blind_pores
+    fill_closed_pores
     trim_floating_solid
 
     Examples
@@ -134,12 +134,12 @@ def find_disconnected_voxels(
     return holes
 
 
-def find_hidden_pores(
+def find_closed_pores(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
-    Finds hidden pores that a not connected to any surface
+    Finds closed pores that a not connected to any surface
 
     Parameters
     ----------
@@ -153,14 +153,14 @@ def find_hidden_pores(
 
     Returns
     -------
-    hidden : ndarray
-        A array containing boolean values indicating voxels which belong to hidden
+    closed : ndarray
+        A array containing boolean values indicating voxels which belong to closed
         pores.
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_hidden_pores.html>`_
+    <https://porespy.org/examples/filters/reference/find_closed_pores.html>`_
     to view online example.
     """
     from porespy.generators import borders
@@ -168,8 +168,8 @@ def find_hidden_pores(
     labels, N = spim.label(input=im, structure=se)
     mask = borders(im.shape, mode='faces')
     hits = np.unique(labels[mask])
-    hidden = np.isin(labels, hits, invert=True)
-    return hidden
+    closed = np.isin(labels, hits, invert=True)
+    return closed
 
 
 def find_surface_pores(
@@ -211,8 +211,8 @@ def find_surface_pores(
         tmp = s1.intersection(s2)
         keep.update(tmp)
         labels = np.swapaxes(labels, 0, ax)
-    hidden = find_hidden_pores(im, conn=conn)
-    surface = np.isin(labels, list(keep), invert=True) * ~hidden
+    closed = find_closed_pores(im, conn=conn)
+    surface = np.isin(labels, list(keep), invert=True) * ~closed
     return surface
 
 
@@ -221,7 +221,7 @@ def find_invalid_pores(
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
-    Finds invalid pores which are either hidden or do not span the domain
+    Finds invalid pores which are either closed or do not span the domain
 
     Parameters
     ----------
@@ -236,7 +236,7 @@ def find_invalid_pores(
     Returns
     -------
     invalid : ndarray
-        A array containing `1` indicated hidden pores and `2` indicating surface
+        A array containing `1` indicated closed pores and `2` indicating surface
         pores.
 
     Examples
@@ -245,19 +245,19 @@ def find_invalid_pores(
     <https://porespy.org/examples/filters/reference/find_invalid_pores.html>`_
     to view online example.
     """
-    hidden = find_hidden_pores(im=im, conn=conn)
+    closed = find_closed_pores(im=im, conn=conn)
     surface = find_surface_pores(im=im, conn=conn)
-    invalid = hidden.astype(int) + 2*surface.astype(int)
+    invalid = closed.astype(int) + 2*surface.astype(int)
     return invalid
 
 
-def fill_blind_pores(
+def fill_closed_pores(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
     surface: bool = False,
 ):
     r"""
-    Fills all blind pores that are isolated from the main void space.
+    Fills all closed pores that are isolated from the main void space.
 
     Parameters
     ----------
@@ -284,7 +284,7 @@ def fill_blind_pores(
     Returns
     -------
     im : ndarray
-        A version of `im` but with all the blind or disconnected pores converted
+        A version of `im` but with all the closed or disconnected pores converted
         to solid (i.e. `False`)
 
     See Also
@@ -295,7 +295,7 @@ def fill_blind_pores(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/fill_blind_pores.html>`_
+    <https://porespy.org/examples/filters/reference/fill_closed_pores.html>`_
     to view online example.
 
     """
@@ -398,7 +398,7 @@ def trim_nonpercolating_paths(
     --------
     find_disconnected_voxels
     trim_floating_solid
-    trim_blind_pores
+    fill_closed_pores
 
     Examples
     --------

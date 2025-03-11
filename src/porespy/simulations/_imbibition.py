@@ -247,7 +247,7 @@ if __name__ == '__main__':
     i = 95063
     print(i)
     im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
-    im = ps.filters.fill_blind_pores(im, surface=True)
+    im = ps.filters.fill_closed_pores(im, surface=True)
 
     inlets = ps.generators.faces(im.shape, inlet=0)
     outlets = ps.generators.faces(im.shape, outlet=0)

@@ -244,35 +244,35 @@ class FilterTest():
         assert n1 > n2
         assert spim.label(h + inlets)[1] == 1
 
-    def test_fill_blind_pores(self):
+    def test_fill_closed_pores(self):
         h = ps.filters.find_disconnected_voxels(self.im)
-        b = ps.filters.fill_blind_pores(h)
+        b = ps.filters.fill_closed_pores(h)
         h = ps.filters.find_disconnected_voxels(b)
         assert np.sum(h) == 0
 
-    def test_fill_blind_pores_w_surface(self):
+    def test_fill_closed_pores_w_surface(self):
         im = ~ps.generators.lattice_spheres(shape=[101, 101], r=5,
                                             offset=0, spacing=20)
-        im2 = ps.filters.fill_blind_pores(im, surface=False)
+        im2 = ps.filters.fill_closed_pores(im, surface=False)
         assert im2.sum() > 0
-        im3 = ps.filters.fill_blind_pores(im, surface=True)
+        im3 = ps.filters.fill_closed_pores(im, surface=True)
         assert im3.sum() == 0
 
-    def test_fill_blind_pores_surface_blobs_2D(self):
+    def test_fill_closed_pores_surface_blobs_2D(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.6021, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6021
-        im2 = ps.filters.fill_blind_pores(im)
+        im2 = ps.filters.fill_closed_pores(im)
         assert im.sum() == 6021
         assert im2.sum() < im.sum()
-        im3 = ps.filters.fill_blind_pores(im, surface=True)
+        im3 = ps.filters.fill_closed_pores(im, surface=True)
         assert im3.sum() < im2.sum()
 
-    def test_fill_blind_pores_surface_blobs_3D(self):
+    def test_fill_closed_pores_surface_blobs_3D(self):
         im = ps.generators.blobs(
             shape=[100, 100, 100], porosity=0.497569, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.497569
-        im2 = ps.filters.fill_blind_pores(im, surface=True)
+        im2 = ps.filters.fill_closed_pores(im, surface=True)
         labels, N = spim.label(im2, ps.tools.ps_rect(3, ndim=3))
         assert N == 1
 

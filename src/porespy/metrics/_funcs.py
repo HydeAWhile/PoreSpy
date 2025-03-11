@@ -12,7 +12,7 @@ from porespy import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
-    fill_blind_pores,
+    fill_closed_pores,
 )
 from porespy.tools import (
     Results,
@@ -202,7 +202,7 @@ def representative_elementary_volume(im, npoints=1000):
     return profile
 
 
-def porosity(im, mask=None, fill_hidden=False, fill_surface=False):
+def porosity(im, mask=None, fill_closed=False, fill_surface=False):
     r"""
     Calculates the porosity of an image assuming 1's are void space and 0's
     are solid phase.
@@ -219,12 +219,12 @@ def porosity(im, mask=None, fill_hidden=False, fill_surface=False):
         entire array, like cylindrical cores.  Note that setting values in `im`
         to 2 will also exclude them from consideration so provides the same effect
         as `mask`, but providing a `mask` is usually much easier.
-    fill_hideen : bool (default = `False`)
-        A flag to indicate if hidden pores (not connected to any image boundary)
+    fill_closed : bool (default = `False`)
+        A flag to indicate if closed pores (not connected to any image boundary)
         should be filled or not before computing the porosity.
     fill_surface : bool (default = `False`)
-        A flag to indicate if blind pores connected only to one surface should be
-        filled or not befor computing the porosity.
+        A flag to indicate if surface pores connected only to one surface should be
+        filled or not before computing the porosity.
 
     Returns
     -------
@@ -252,11 +252,11 @@ def porosity(im, mask=None, fill_hidden=False, fill_surface=False):
     im = im.copy()
     if mask is not None:
         im = np.array(im, dtype=np.int64)*mask
-    if fill_hidden or fill_surface:
-        hidden_pores = im * ~fill_blind_pores(im, surface=False)
-        surface_pores = im * ~fill_blind_pores(im, surface=True) * ~hidden_pores
-        if fill_hidden:
-            im[hidden_pores] = 0
+    if fill_closed or fill_surface:
+        closed_pores = im * ~fill_closed_pores(im, surface=False)
+        surface_pores = im * ~fill_closed_pores(im, surface=True) * ~closed_pores
+        if fill_closed:
+            im[closed_pores] = 0
         if fill_surface:
             im[surface_pores] = 0
     Vp = np.sum(im == 1, dtype=np.int64)

@@ -359,7 +359,7 @@ if __name__ == "__main__":
         blobiness=1.5,
         seed=16,
     )
-    im = ps.filters.fill_blind_pores(im, surface=True)
+    im = ps.filters.fill_closed_pores(im, surface=True)
     inlets = np.zeros_like(im)
     inlets[0, :] = True
     outlets = np.zeros_like(im)

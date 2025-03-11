@@ -20,7 +20,7 @@ image, but with altered values.
     filters.chunked_func
     filters.distance_transform_lin
     filters.fftmorphology
-    filters.fill_blind_pores
+    filters.fill_closed_pores
     filters.find_disconnected_voxels
     filters.find_dt_artifacts
     filters.find_peaks
