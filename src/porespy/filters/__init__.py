@@ -20,7 +20,7 @@ image, but with altered values.
     filters.chunked_func
     filters.distance_transform_lin
     filters.fftmorphology
-    filters.fill_blind_pores
+    filters.fill_closed_pores
     filters.find_disconnected_voxels
     filters.find_dt_artifacts
     filters.find_peaks
@@ -57,6 +57,7 @@ image, but with altered values.
 
 from ._fftmorphology import *
 from ._funcs import *
+from ._fill_and_find_funcs import *
 from ._nlmeans import *
 from ._size_seq_satn import *
 from ._snows import *

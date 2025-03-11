@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
+from skimage.morphology import ball, disk, square, cube
 from typing import Literal
 from numba import njit
 from porespy import settings
@@ -23,6 +24,7 @@ from porespy.filters import (
 
 logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
 __all__ = [
@@ -93,17 +95,13 @@ def fill_trapped_voxels(
     if trapped is None:
         trapped = seq < 0
 
-    strel = ps_round(r=1, ndim=seq.ndim, smooth=False)
-    size = region_size(trapped, strel=strel)
+    se = strel[seq.ndim][conn].copy()
+    size = region_size(trapped, conn=conn)
     mask = (size <= max_size)*(size > 0)
     trapped[mask] = False
 
-    if conn == 'min':
-        strel = ps_round(r=1, ndim=seq.ndim, smooth=False)
-    else:
-        strel = ps_rect(w=3, ndim=seq.ndim)
-    mx = spim.maximum_filter(seq*~trapped, footprint=strel)
-    mx = flood_func(mx, np.amax, labels=spim.label(mask, structure=strel)[0])
+    mx = spim.maximum_filter(seq*~trapped, footprint=se)
+    mx = flood_func(mx, np.amax, labels=spim.label(mask, structure=se)[0])
     seq[mask] = mx[mask]
 
     results = Results()
@@ -235,15 +233,12 @@ def _find_trapped_regions_cluster(
     seq = np.copy(seq)
     if outlets is None:
         outlets = get_border(seq.shape, mode='faces')
-    if conn == 'min':
-        strel = ps_round(r=1, ndim=seq.ndim, smooth=False)
-    elif conn == 'max':
-        strel = ps_rect(w=3, ndim=seq.ndim)
     non_perc = find_disconnected_voxels(im, surface=True)
+    se = strel[im.ndim][conn].copy()
     mask = seq < 0  # This is used again at the end of the function to fix seq
     # All uninvaded regions should be given sequence number of lowest nearby fluid
     if np.any(mask):
-        mask_dil = spim.binary_dilation(mask, structure=strel)*im
+        mask_dil = spim.binary_dilation(mask, structure=se)*im
         tmp = seq*mask_dil
         new_seq = flood(im=tmp, labels=spim.label(mask_dil)[0], mode='maximum')
         seq = seq*~mask + new_seq*mask
@@ -259,7 +254,7 @@ def _find_trapped_regions_cluster(
     for i in tqdm(range(len(bins)), **settings.tqdm):
         s = bins[i]
         temp = seq >= s
-        labels = spim.label(temp, structure=strel)[0]
+        labels = spim.label(temp, structure=se)[0]
         keep = np.unique(labels[outlets])
         keep = keep[keep > 0]
         trapped += temp*np.isin(labels, keep, invert=True)

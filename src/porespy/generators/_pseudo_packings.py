@@ -233,8 +233,7 @@ def pseudo_gravity_packing(
     # Finalize the mask of valid insertion points
     inlets = np.zeros_like(im)
     inlets[-r:, ...] = True
-    s = ball(1) if im.ndim == 3 else disk(1)
-    mask = trim_disconnected_blobs(im=mask, inlets=inlets, strel=s)
+    mask = trim_disconnected_blobs(im=mask, inlets=inlets, conn='min')
 
     # Generate elevation values to initialize queue
     from porespy.generators import ramp

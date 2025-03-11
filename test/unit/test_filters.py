@@ -113,19 +113,19 @@ class FilterTest():
         assert np.all(np.unique(sz) == [0, 2])
 
     def test_find_disconnected_voxels_2d(self):
-        h = ps.filters.find_disconnected_voxels(self.im[:, :, 0])
+        h = ps.filters.find_disconnected_voxels(self.im[:, :, 0], conn='max')
         assert np.sum(h) == 477
 
     def test_find_disconnected_voxels_2d_conn4(self):
-        h = ps.filters.find_disconnected_voxels(self.im[:, :, 0], conn=4)
+        h = ps.filters.find_disconnected_voxels(self.im[:, :, 0], conn='min')
         assert np.sum(h) == 652
 
     def test_find_disconnected_voxels_3d(self):
-        h = ps.filters.find_disconnected_voxels(self.im)
+        h = ps.filters.find_disconnected_voxels(self.im, conn='max')
         assert np.sum(h) == 55
 
     def test_find_disconnected_voxels_3d_conn6(self):
-        h = ps.filters.find_disconnected_voxels(self.im, conn=6)
+        h = ps.filters.find_disconnected_voxels(self.im, conn='min')
         assert np.sum(h) == 202
 
     def test_trim_nonpercolating_paths_2d_axis0(self):
@@ -138,10 +138,12 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[-1, :] = 1
         assert spim.label(im)[1] > 1
-        h = ps.filters.trim_nonpercolating_paths(im=im,
-                                                 inlets=inlets,
-                                                 outlets=outlets)
+        h = ps.filters.trim_nonpercolating_paths(
+            im=im, inlets=inlets, outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=0)
+        assert np.all(h == h2)
 
     def test_trim_nonpercolating_paths_2d_axis1(self):
         np.random.seed(0)
@@ -153,10 +155,12 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[:, -1] = 1
         assert spim.label(im)[1] > 1
-        h = ps.filters.trim_nonpercolating_paths(im=im,
-                                                 inlets=inlets,
-                                                 outlets=outlets)
+        h = ps.filters.trim_nonpercolating_paths(
+            im=im, inlets=inlets, outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=1)
+        assert np.all(h == h2)
 
     def test_trim_nonpercolating_paths_no_paths(self):
         np.random.seed(0)
@@ -187,6 +191,9 @@ class FilterTest():
                                                  inlets=inlets,
                                                  outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=2)
+        assert np.all(h == h2)
 
     def test_trim_nonpercolating_paths_3d_axis1(self):
         np.random.seed(0)
@@ -202,6 +209,9 @@ class FilterTest():
                                                  inlets=inlets,
                                                  outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=1)
+        assert np.all(h == h2)
 
     def test_trim_nonpercolating_paths_3d_axis0(self):
         np.random.seed(0)
@@ -217,9 +227,11 @@ class FilterTest():
                                                  inlets=inlets,
                                                  outlets=outlets)
         assert spim.label(h)[1] == 1
+        h2 = ps.filters.trim_nonpercolating_paths(
+            im=im, axis=0)
+        assert np.all(h == h2)
 
     def test_trim_disconnected_blobs(self):
-        s = disk(1)
         np.random.seed(0)
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.55875, blobiness=2, periodic=False,)
@@ -227,40 +239,40 @@ class FilterTest():
         inlets = np.zeros_like(im)
         inlets[0, ...] = 1
         n1 = spim.label(im)[1]
-        h = ps.filters.trim_disconnected_blobs(im=im, inlets=inlets, strel=s)
+        h = ps.filters.trim_disconnected_blobs(im=im, inlets=inlets, conn='min')
         n2 = spim.label(h)[1]
         assert n1 > n2
         assert spim.label(h + inlets)[1] == 1
 
-    def test_fill_blind_pores(self):
+    def test_fill_closed_pores(self):
         h = ps.filters.find_disconnected_voxels(self.im)
-        b = ps.filters.fill_blind_pores(h)
+        b = ps.filters.fill_closed_pores(h)
         h = ps.filters.find_disconnected_voxels(b)
         assert np.sum(h) == 0
 
-    def test_fill_blind_pores_w_surface(self):
+    def test_fill_closed_pores_w_surface(self):
         im = ~ps.generators.lattice_spheres(shape=[101, 101], r=5,
                                             offset=0, spacing=20)
-        im2 = ps.filters.fill_blind_pores(im, surface=False)
+        im2 = ps.filters.fill_closed_pores(im, surface=False)
         assert im2.sum() > 0
-        im3 = ps.filters.fill_blind_pores(im, surface=True)
+        im3 = ps.filters.fill_closed_pores(im, surface=True)
         assert im3.sum() == 0
 
-    def test_fill_blind_pores_surface_blobs_2D(self):
+    def test_fill_closed_pores_surface_blobs_2D(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.6021, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6021
-        im2 = ps.filters.fill_blind_pores(im)
+        im2 = ps.filters.fill_closed_pores(im)
         assert im.sum() == 6021
         assert im2.sum() < im.sum()
-        im3 = ps.filters.fill_blind_pores(im, surface=True)
+        im3 = ps.filters.fill_closed_pores(im, surface=True)
         assert im3.sum() < im2.sum()
 
-    def test_fill_blind_pores_surface_blobs_3D(self):
+    def test_fill_closed_pores_surface_blobs_3D(self):
         im = ps.generators.blobs(
             shape=[100, 100, 100], porosity=0.497569, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.497569
-        im2 = ps.filters.fill_blind_pores(im, surface=True)
+        im2 = ps.filters.fill_closed_pores(im, surface=True)
         labels, N = spim.label(im2, ps.tools.ps_rect(3, ndim=3))
         assert N == 1
 
@@ -376,7 +388,7 @@ class FilterTest():
         for i in range(6):
             im[int(10*2*i):int(10*(2*i+1)), :] += 2
             im[:, int(10*2*i):int(10*(2*i+1))] += 4
-        borders = ps.filters.nphase_border(im, include_diagonals=False)
+        borders = ps.filters.nphase_border(im, conn="min")
         nb, counts = np.unique(borders, return_counts=True)
         assert nb.tolist() == [1.0, 2.0, 3.0]
         assert counts.tolist() == [8100, 3600, 400]
@@ -386,7 +398,7 @@ class FilterTest():
         for i in range(6):
             im[int(10*2*i):int(10*(2*i+1)), :] += 2
             im[:, int(10*2*i):int(10*(2*i+1))] += 4
-        borders = ps.filters.nphase_border(im, include_diagonals=True)
+        borders = ps.filters.nphase_border(im, conn='max')
         nb, counts = np.unique(borders, return_counts=True)
         assert nb.tolist() == [1.0, 2.0, 4.0]
         assert counts.tolist() == [8100, 3600, 400]
@@ -397,7 +409,7 @@ class FilterTest():
             im3d[int(10*2*i):int(10*(2*i+1)), :, :] += 2
             im3d[:, int(10*2*i):int(10*(2*i+1)), :] += 4
             im3d[:, :, int(10*2*i):int(10*(2*i+1))] += 8
-        borders = ps.filters.nphase_border(im3d, include_diagonals=False)
+        borders = ps.filters.nphase_border(im3d, conn="min")
         nb, counts = np.unique(borders, return_counts=True)
         assert nb.tolist() == [1.0, 2.0, 3.0, 4.0]
         assert counts.tolist() == [729000, 486000, 108000, 8000]
@@ -408,7 +420,7 @@ class FilterTest():
             im3d[int(10*2*i):int(10*(2*i+1)), :, :] += 2
             im3d[:, int(10*2*i):int(10*(2*i+1)), :] += 4
             im3d[:, :, int(10*2*i):int(10*(2*i+1))] += 8
-        borders = ps.filters.nphase_border(im3d, include_diagonals=True)
+        borders = ps.filters.nphase_border(im3d, conn='max')
         nb, counts = np.unique(borders, return_counts=True)
         assert nb.tolist() == [1.0, 2.0, 4.0, 8.0]
         assert counts.tolist() == [729000, 486000, 108000, 8000]

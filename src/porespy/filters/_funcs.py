@@ -3,17 +3,25 @@ import logging
 import dask
 import numpy as np
 import numpy.typing as npt
-import operator as op
+import operator
 import scipy.ndimage as spim
 from skimage.morphology import reconstruction
 from skimage.segmentation import clear_border
 from skimage.morphology import ball, disk, square, cube, diamond, octahedron
-from porespy.tools import _check_for_singleton_axes
-from porespy.tools import get_border, subdivide, recombine
-from porespy.tools import unpad, extract_subsection
-from porespy.tools import ps_disk, ps_ball, ps_round
+from porespy.tools import (
+    _check_for_singleton_axes,
+    get_border,
+    subdivide,
+    recombine,
+    unpad,
+    extract_subsection,
+    ps_disk,
+    ps_ball,
+    ps_round,
+    get_tqdm,
+    get_edt,
+)
 from porespy import settings
-from porespy.tools import get_tqdm, get_edt
 from typing import Literal
 
 
@@ -23,8 +31,6 @@ __all__ = [
     "apply_padded",
     "chunked_func",
     "distance_transform_lin",
-    "fill_blind_pores",
-    "find_disconnected_voxels",
     "find_dt_artifacts",
     "flood",
     "flood_func",
@@ -36,39 +42,44 @@ __all__ = [
     "region_size",
     "trim_disconnected_blobs",
     "trim_extrema",
-    "trim_floating_solid",
-    "trim_nonpercolating_paths",
-    "trim_small_clusters",
 ]
+
 
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
-def apply_padded(im, pad_width, func, pad_val=1, **kwargs):
+def apply_padded(
+    im: npt.NDArray,
+    pad_width,
+    func,
+    pad_val: int = 1,
+    **kwargs,
+):
     r"""
-    Applies padding to an image before sending to ``func``, then extracts
+    Applies padding to an image before sending to `func`, then extracts
     the result corresponding to the original image shape.
 
     Parameters
     ----------
     im : ndarray
-        The image to which ``func`` should be applied
+        The image to which `func` should be applied
     pad_width : int or list of ints
-        The amount of padding to apply to each axis. Refer to
-        ``numpy.pad`` documentation for more details.
+        The amount of padding to apply to each axis. Refer to `numpy.pad`
+        documentation for more details.
     pad_val : scalar
         The value to place into the padded voxels.  The default is 1 (or
-        ``True``) which extends the pore space.
+        `True`) which extends the pore space.
     func : function handle
         The function to apply to the padded image.
     kwargs
-        Additional keyword arguments are collected and passed to ``func``.
+        Additional keyword arguments are collected and passed to `func`.
 
     Notes
     -----
-    A use case for this is when using ``skimage.morphology.skeletonize``
+    A use case for this is when using `skimage.morphology.skeletonize`
     to ensure that the skeleton extends beyond the edges of the image.
 
     Examples
@@ -85,42 +96,11 @@ def apply_padded(im, pad_width, func, pad_val=1, **kwargs):
     return result
 
 
-def trim_small_clusters(im, size=1):
-    r"""
-    Remove isolated voxels or clusters of a given size or smaller
-
-    Parameters
-    ----------
-    im : ndarray
-        The binary image from which voxels are to be removed.
-    size : scalar
-        The threshold size of clusters to trim.  As clusters with this
-        many voxels or fewer will be trimmed.  The default is 1 so only
-        single voxels are removed.
-
-    Returns
-    -------
-    im : ndarray
-        A copy of ``im`` with clusters of voxels smaller than the given
-        ``size`` removed.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/trim_small_clusters.html>`_
-    to view online example.
-
-    """
-    strel = ps_round(r=1, ndim=im.ndim, smooth=False)
-    filtered_array = np.copy(im)
-    labels, N = spim.label(filtered_array, structure=strel)
-    id_sizes = np.array(spim.sum(im, labels, range(N + 1)))
-    area_mask = id_sizes <= size
-    filtered_array[area_mask[labels]] = 0
-    return filtered_array
-
-
-def hold_peaks(im, axis=-1, ascending=True):
+def hold_peaks(
+    im: npt.NDArray,
+    axis: int = -1,
+    ascending: bool = True,
+):
     r"""
     Replaces each voxel with the highest value along the given axis.
 
@@ -131,13 +111,13 @@ def hold_peaks(im, axis=-1, ascending=True):
     axis : int
         The axis along which the operation is to be applied.
     ascending : bool
-        If ``True`` (default) the given ``axis`` is scanned from 0 to end.
-        If ``False``, it is scanned in reverse order from end to 0.
+        If `True` (default) the given `axis` is scanned from 0 to end.
+        If `False`, it is scanned in reverse order from end to 0.
 
     Returns
     -------
     result : ndarray
-        A copy of ``im`` with each voxel is replaced with the highest value along
+        A copy of `im` with each voxel is replaced with the highest value along
         the given axis.
 
     Notes
@@ -162,10 +142,10 @@ def hold_peaks(im, axis=-1, ascending=True):
     chnidx = np.where(updown)
     chng = updown[chnidx]
     (pkidx,) = np.where((chng[:-1] > 0) & (chng[1:] < 0) | (chnidx[-1][:-1] == 0))
-    pkidx = (*map(op.itemgetter(pkidx), chnidx),)
+    pkidx = (*map(operator.itemgetter(pkidx), chnidx),)
     out = np.zeros_like(A)
     aux = out.swapaxes(axis, -1)
-    aux[(*map(op.itemgetter(slice(1, None)), pkidx),)] = np.diff(B[pkidx])
+    aux[(*map(operator.itemgetter(slice(1, None)), pkidx),)] = np.diff(B[pkidx])
     aux[..., 0] = B[..., 0]
     result = out.cumsum(axis=axis)
     if ascending is False:  # Flip it back
@@ -174,9 +154,9 @@ def hold_peaks(im, axis=-1, ascending=True):
 
 
 def distance_transform_lin(
-    im,
+    im: npt.NDArray,
     axis: int = 0,
-    mode: Literal['forward', 'backward', 'both'] = "both"
+    mode: Literal['forward', 'backward', 'both'] = "both",
 ):
     r"""
     Replaces each void voxel with the linear distance to the nearest solid
@@ -185,7 +165,7 @@ def distance_transform_lin(
     Parameters
     ----------
     im : ndarray
-        The image of the porous material with ``True`` values indicating
+        The image of the porous material with `True` values indicating
         the void phase (or phase of interest).
     axis : int
         The direction along which the distance should be measured, the
@@ -193,21 +173,22 @@ def distance_transform_lin(
     mode : str
         Controls how the distance is measured. Options are:
 
-        'forward'
-            Distances are measured in the increasing direction
-            along the specified axis
-        'reverse'
-            Distances are measured in the reverse direction.
-            'backward' is also accepted.
-        'both'
-            Distances are calculated in both directions (by
-            recursively calling itself), then reporting the minimum value
-            of the two results.
+        ========== =================================================================
+        Mode       Description
+        ========== =================================================================
+        'forward'  Distances are measured in the increasing direction along the
+                   specified axis
+        'reverse'  Distances are measured in the reverse direction. 'backward' is
+                   also accepted.
+        'both'     Distances are calculated in both directions (by recursively
+                   calling itself), then reporting the minimum value of the two
+                   results.
+        ========== =================================================================
 
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with each foreground voxel containing the
+        A copy of `im` with each foreground voxel containing the
         distance to the nearest background along the specified axis.
 
     Examples
@@ -247,218 +228,11 @@ def distance_transform_lin(
     return f
 
 
-def find_disconnected_voxels(im, conn: int = None, surface: bool = False):
-    r"""
-    Identifies all voxels that are not connected to the edge of the image.
-
-    Parameters
-    ----------
-    im : ndarray
-        A Boolean image, with ``True`` values indicating the phase for which
-        disconnected voxels are sought.
-    conn : int
-        For 2D the options are 4 and 8 for square and diagonal neighbors,
-        while for the 3D the options are 6 and 26, similarily for square
-        and diagonal neighbors. The default is the maximum option.
-    surface : bool
-        If ``True`` any isolated regions touching the edge of the image are
-        considered disconnected.
-
-    Returns
-    -------
-    image : ndarray
-        An ndarray the same size as ``im``, with ``True`` values indicating
-        voxels of the phase of interest (i.e. ``True`` values in the original
-        image) that are not connected to the outer edges.
-
-    See Also
-    --------
-    fill_blind_pores, trim_floating_solid
-
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/find_disconnected_voxels.html>`_
-    to view online example.
-
-    """
-    _check_for_singleton_axes(im)
-
-    if im.ndim == 2:
-        if conn == 4:
-            strel = disk(1)
-        elif conn in [None, 8]:
-            strel = square(3)
-        else:
-            raise Exception("Received conn is not valid")
-    elif im.ndim == 3:
-        if conn == 6:
-            strel = ball(1)
-        elif conn in [None, 26]:
-            strel = cube(3)
-        else:
-            raise Exception("Received conn is not valid")
-    labels, N = spim.label(input=im, structure=strel)
-    if not surface:
-        holes = clear_border(labels=labels) > 0
-    else:
-        keep = set()
-        for ax in range(labels.ndim):
-            labels = np.swapaxes(labels, 0, ax)
-            s1 = set(np.unique(labels[0, ...]))
-            s2 = set(np.unique(labels[-1, ...]))
-            tmp = s1.intersection(s2)
-            keep.update(tmp)
-            labels = np.swapaxes(labels, 0, ax)
-        holes = np.isin(labels, list(keep), invert=True)
-    return holes
-
-
-def fill_blind_pores(im, conn: int = None, surface: bool = False):
-    r"""
-    Fills all blind pores that are isolated from the main void space.
-
-    Parameters
-    ----------
-    im : ndarray
-        The image of the porous material
-
-    Returns
-    -------
-    im : ndarray
-        A Boolean image, with `True` values indicating the phase of interest.
-    conn : int
-        For 2D the options are 4 and 8 for square and diagonal neighbors,
-        while for the 3D the options are 6 and 26, similarily for square
-        and diagonal neighbors. The default is the maximum option.
-    surface : bool
-        If `True`, any isolated pore regions that are connected to the
-        sufaces of the image are but not connected to the main percolating
-        path are also removed. When this is enabled, only the voxels
-        belonging to the largest region are kept. This can be
-        problematic if image contains non-intersecting tube-like structures,
-        for instance, since only the largest tube will be preserved.
-
-    Returns
-    -------
-    im : ndarray
-        A version of `im` but with all the blind or disconnected pores converted
-        to solid (i.e. `False`)
-
-    See Also
-    --------
-    find_disconnected_voxels
-    trim_nonpercolating_paths
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/fill_blind_pores.html>`_
-    to view online example.
-
-    """
-    im = np.copy(im)
-    holes = find_disconnected_voxels(im, conn=conn, surface=surface)
-    im[holes] = False
-    return im
-
-
-def trim_floating_solid(im, conn: int = None, surface: bool = False):
-    r"""
-    Removes all solid that that is not attached to main solid structure.
-
-    Parameters
-    ----------
-    im : ndarray
-        The image of the porous material
-    conn : int
-        For 2D the options are 4 and 8 for square and diagonal neighbors,
-        while for the 3D the options are 6 and 26, similarily for square
-        and diagonal neighbors. The default is the maximum option.
-    surface : bool
-        If ``True``, any isolated solid regions that are connected to the
-        surfaces of the image but not the main body of the solid are also
-        removed.  When this is enabled, only the voxels belonging to the
-        largest region are kept. This can be problematic if the image
-        contains non-intersecting tube-like structures, for instance,
-        since only the largest tube will be preserved.
-
-    Returns
-    -------
-    image : ndarray
-        A version of ``im`` but with all the disconnected solid removed.
-
-    See Also
-    --------
-    find_disconnected_voxels
-    trim_nonpercolating_paths
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/trim_floating_solid.html>`_
-    to view online example.
-
-    """
-    im = np.copy(im)
-    holes = find_disconnected_voxels(~im, conn=conn, surface=surface)
-    im[holes] = True
-    return im
-
-
-def trim_nonpercolating_paths(im, inlets, outlets, strel=None):
-    r"""
-    Remove all nonpercolating paths between specified locations
-
-    Parameters
-    ----------
-    im : ndarray
-        The image of the porous material with ```True`` values indicating the
-        phase of interest
-    inlets : ndarray
-        A boolean mask indicating locations of inlets, such as produced by
-        ``porespy.generators.faces``.
-    outlets : ndarray
-        A boolean mask indicating locations of outlets, such as produced by
-        ``porespy.generators.faces``.
-    strel : ndarray
-        The structuring element to use when determining if regions are
-        connected.  This is passed to ``scipiy.ndimage.label``.
-
-    Returns
-    -------
-    image : ndarray
-        A copy of ``im`` with all the nonpercolating paths removed
-
-    Notes
-    -----
-    This function is essential when performing transport simulations on an
-    image since regions that do not span between the desired inlet and
-    outlet do not contribute to the transport.
-
-    See Also
-    --------
-    find_disconnected_voxels
-    trim_floating_solid
-    trim_blind_pores
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/trim_nonpercolating_paths.html>`_
-    to view online example.
-
-    """
-    labels = spim.label(im, structure=strel)[0]
-    IN = np.unique(labels * inlets)
-    OUT = np.unique(labels * outlets)
-    hits = np.array(list(set(IN).intersection(set(OUT))))
-    new_im = np.isin(labels, hits[hits > 0])
-    return new_im
-
-
-def trim_extrema(im, h, mode="maxima"):
+def trim_extrema(
+    im: npt.NDArray,
+    h: float,
+    mode="maxima",
+):
     r"""
     Trims local extrema in greyscale values by a specified amount.
 
@@ -483,7 +257,7 @@ def trim_extrema(im, h, mode="maxima"):
     -----
     (1) This function is referred to as **imhmax** or **imhmin** in Matlab.
 
-    (2) If the provided ``h`` is larger than ALL peaks in the array, then the
+    (2) If the provided `h` is larger than ALL peaks in the array, then the
     baseline values of the array are changed as well.
 
     Examples
@@ -506,16 +280,16 @@ def trim_extrema(im, h, mode="maxima"):
 
 
 def flood(
-    im,
-    labels,
+    im: npt.NDArray,
+    labels: npt.NDArray,
     mode: Literal['maximum', 'minimum', 'median', 'mean', 'size',
-                  'standard_deviations', 'variance'] = "max",
+                  'standard_deviations',  'variance'] = "max",
 ):
     r"""
     Floods/fills each region in an image with a single value based on the
     specific values in that region.
 
-    This function calls the various functions in ``scipy.ndimage.measurements``
+    This function calls the various functions in `scipy.ndimage.measurements`
     but instead of returning a list of values, it fills each region with its
     value.  This is useful for visualization and statistics.
 
@@ -525,38 +299,42 @@ def flood(
         An image with the numerical values of interest in each voxel,
         and 0's elsewhere.
     labels : array_like
-        An array the same shape as ``im`` with each region labeled.
+        An array containing labels identifying each individual region to be
+        flooded. If not provided then `scipy.ndimage.label` is applied to
+        `im > 0`.
     mode : string
         Specifies how to determine the value to flood each region. Options
-        taken from the ``scipy.ndimage.measurements`` function include:
+        taken from the `scipy.ndimage.measurements` function include:
 
         ===================== ======================================================
         Option                Description
         ===================== ======================================================
         maximum               Floods each region with the local max in that region.
-                              The keyword ``max`` is also accepted.
+                              The keyword `max` is also accepted.
         minimum               Floods each region the local minimum in that region.
-                              The keyword ``min`` is also accepted.
+                              The keyword `min` is also accepted.
         median                Floods each region the local median in that region
         mean                  Floods each region the local mean in that region
         size                  Floods each region with the size of that region.  This
-                              is actually accomplished with ``scipy.ndimage.sum`` by
-                              converting ``im`` to a boolean image (``im = im > 0``).
+                              is actually accomplished with `scipy.ndimage.sum` by
+                              converting `im` to a boolean image (`im = im > 0`).
         standard_deviation    Floods each region with the value of the standard
-                              deviation of the voxels in ``im``.
+                              deviation of the voxels in `im`.
         variance              Floods each region with the value of the variance of
-                              the voxels in ``im``.
+                              the voxels in `im`.
         ===================== ======================================================
 
     Returns
     -------
     flooded : ndarray
-        A copy of ``im`` with new values placed in each forground voxel
-        based on the ``mode``.
+        A copy of `im` with new values placed in each forground voxel
+        based on the `mode`.
 
     See Also
     --------
-    prop_to_image, flood_func, region_size
+    prop_to_image
+    flood_func
+    region_size
 
     Examples
     --------
@@ -577,7 +355,11 @@ def flood(
     return flooded
 
 
-def flood_func(im, func, labels=None):
+def flood_func(
+    im: npt.NDArray,
+    func,
+    labels: npt.NDArray = None,
+):
     r"""
     Flood each isolated region in an image with a constant value calculated by
     the given function.
@@ -589,19 +371,19 @@ def flood_func(im, func, labels=None):
         and 0's elsewhere.
     func : Numpy function handle
         The function to be applied to each region in the image.  Any Numpy
-        function that returns a scalar value can be passed, such as ``amin``,
-        ``amax``, ``sum``, ``mean``, ``median``, etc.
+        function that returns a scalar value can be passed, such as `amin`,
+        `amax`, `sum`, `mean`, `median`, etc.
     labels : ndarray
         An array containing labels identifying each individual region to be
-        flooded. If not provided then ``scipy.ndimage.label`` is applied to
-        ``im > 0``.
+        flooded. If not provided then `scipy.ndimage.label` is applied to
+        `im > 0`.
 
     Returns
     -------
     flooded : ndarray
-        An image the same size as ``im`` with each isolated region flooded
-        with a constant value based on the given ``func`` and the values
-        in ``im``.
+        An image the same size as `im` with each isolated region flooded
+        with a constant value based on the given `func` and the values
+        in `im`.
 
     See Also
     --------
@@ -609,8 +391,8 @@ def flood_func(im, func, labels=None):
 
     Notes
     -----
-    Many of the functions in ``scipy.ndimage`` can be applied to
-    individual regions using the ``index`` argument.  This function extends
+    Many of the functions in `scipy.ndimage` can be applied to
+    individual regions using the `index` argument.  This function extends
     that behavior to all numpy function, in the event you wanted to compute
     the cosine of the values in each region for some reason. This function
     also floods the original image instead of returning a list of values for
@@ -634,7 +416,7 @@ def flood_func(im, func, labels=None):
     return flooded
 
 
-def find_dt_artifacts(dt):
+def find_dt_artifacts(dt: npt.NDArray):
     r"""
     Label points in a distance transform that are closer to image boundary
     than solid
@@ -647,7 +429,7 @@ def find_dt_artifacts(dt):
     Returns
     -------
     image : ndarray
-        An ndarray the same shape as ``dt`` with numerical values
+        An ndarray the same shape as `dt` with numerical values
         indicating the maximum amount of error in each volxel, which is
         found by subtracting the distance to nearest edge of image from
         the distance transform value. In other words, this is the error
@@ -677,27 +459,32 @@ def find_dt_artifacts(dt):
     return result
 
 
-def region_size(im, strel=None):
+def region_size(
+    im: npt.NDArray,
+    conn: Literal['max', 'min'] = 'min',
+):
     r"""
     Replace each voxel with the size of the region to which it belongs
 
     Parameters
     ----------
     im : ndarray
-        Either a boolean image wtih ``True`` indicating the features of
-        interest, in which case ``scipy.ndimage.label`` will be applied to
+        Either a boolean image wtih `True` indicating the features of
+        interest, in which case `scipy.ndimage.label` will be applied to
         find regions, or a greyscale image with integer values indicating
         regions.
-    strel : ndarray
-        The structuring element to use for defining which connected voxels form
-        a region
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
 
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with each voxel value indicating the size of the
+        A copy of `im` with each voxel value indicating the size of the
         region to which it belongs.  This is particularly useful for
-        finding chord sizes on the image produced by ``apply_chords``.
+        finding chord sizes on the image produced by `apply_chords`.
 
     See Also
     --------
@@ -705,7 +492,7 @@ def region_size(im, strel=None):
 
     Notes
     -----
-    This function provides the same result as ``flood`` with ``mode='size'``,
+    This function provides the same result as `flood` with `mode='size'`,
     although does the computation in a different way.
 
     Examples
@@ -715,15 +502,16 @@ def region_size(im, strel=None):
     to view online example.
 
     """
+    se = strel[im.ndim][conn].copy()
     if im.dtype == bool:
-        im = spim.label(im, structure=strel)[0]
+        im = spim.label(im, structure=se)[0]
     counts = np.bincount(im.flatten())
     counts[0] = 0
     return counts[im]
 
 
 def apply_chords(
-    im,
+    im: npt.NDArray,
     spacing: int = 1,
     axis: int = 0,
     trim_edges: bool = True,
@@ -735,27 +523,27 @@ def apply_chords(
     Parameters
     ----------
     im : ndarray
-        An image of the porous material with void marked as ``True``.
+        An image of the porous material with void marked as `True`.
     spacing : int
         Separation between chords.  The default is 1 voxel.  This can be
         decreased to 0, meaning that the chords all touch each other,
-        which automatically sets to the ``label`` argument to ``True``.
+        which automatically sets to the `label` argument to `True`.
     axis : int (default = 0)
         The axis along which the chords are drawn.
-    trim_edges : bool (default = ``True``)
+    trim_edges : bool (default = `True`)
         Whether or not to remove chords that touch the edges of the image.
         These chords are artifically shortened, so skew the chord length
         distribution.
-    label : bool (default is ``False``)
-        If ``True`` the chords in the returned image are each given a
+    label : bool (default is `False`)
+        If `True` the chords in the returned image are each given a
         unique label, such that all voxels lying on the same chord have
-        the same value.  This is automatically set to ``True`` if spacing
-        is 0, but is ``False`` otherwise.
+        the same value.  This is automatically set to `True` if spacing
+        is 0, but is `False` otherwise.
 
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with non-zero values indicating the chords.
+        A copy of `im` with non-zero values indicating the chords.
 
     See Also
     --------
@@ -791,7 +579,11 @@ def apply_chords(
     return result
 
 
-def apply_chords_3D(im, spacing: int = 0, trim_edges: bool = True):
+def apply_chords_3D(
+    im: npt.NDArray,
+    spacing: int = 0,
+    trim_edges: bool = True,
+):
     r"""
     Adds chords to the void space in all three principle directions.
 
@@ -800,11 +592,11 @@ def apply_chords_3D(im, spacing: int = 0, trim_edges: bool = True):
     Parameters
     ----------
     im : ndarray
-        A 3D image of the porous material with void space marked as True.
+        A 3D image of the porous material with void space marked as `True`.
     spacing : int (default = 0)
         Chords are automatically separed by 1 voxel on all sides, and this
         argument increases the separation.
-    trim_edges : bool (default is ``True``)
+    trim_edges : bool (default is `True`)
         Whether or not to remove chords that touch the edges of the image.
         These chords are artifically shortened, so skew the chord length
         distribution
@@ -812,7 +604,7 @@ def apply_chords_3D(im, spacing: int = 0, trim_edges: bool = True):
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with values of 1 indicating x-direction chords,
+        A copy of `im` with values of 1 indicating x-direction chords,
         2 indicating y-direction chords, and 3 indicating z-direction
         chords.
 
@@ -820,7 +612,7 @@ def apply_chords_3D(im, spacing: int = 0, trim_edges: bool = True):
     -----
     The chords are separated by a spacing of at least 1 voxel so that
     tools that search for connected components, such as
-    ``scipy.ndimage.label`` can detect individual chords.
+    `scipy.ndimage.label` can detect individual chords.
 
     See Also
     --------
@@ -850,7 +642,7 @@ def apply_chords_3D(im, spacing: int = 0, trim_edges: bool = True):
 
 
 def local_thickness(
-    im,
+    im: npt.NDArray,
     sizes: int = 25,
     mode: Literal['hybrid', 'dt', 'mio'] = "hybrid",
     divs: int = 1,
@@ -874,33 +666,34 @@ def local_thickness(
     mode : str
         Controls with method is used to compute the result. Options are:
 
-        'hybrid'
-            (default) Performs a distance transform of the void
-            space, thresholds to find voxels larger than ``sizes[i]``, trims
-            the resulting mask if ``access_limitations`` is ``True``, then
-            dilates it using the efficient fft-method to obtain the
-            non-wetting fluid configuration.
-        'dt'
-            Same as 'hybrid', except uses a second distance transform,
-            relative to the thresholded mask, to find the invading fluid
-            configuration. The choice of 'dt' or 'hybrid' depends on speed,
-            which is system and installation specific.
-        'mio'
-            Using a single morphological image opening step to obtain
-            the invading fluid confirguration directly, *then* trims if
-            ``access_limitations`` is ``True``. This method is not ideal and
-            is included for comparison purposes.
+        ============ ===============================================================
+        Mode         Description
+        ============ ===============================================================
+        'hybrid'     (default) Performs a distance transform of the void space,
+                     thresholds to find voxels larger than `sizes[i]`, trims
+                     the resulting mask if `access_limitations` is `True`, then
+                     dilates it using the efficient fft-method to obtain the
+                     non-wetting fluid configuration.
+        'dt'         Same as 'hybrid', except uses a second distance transform,
+                     relative to the thresholded mask, to find the invading fluid
+                     configuration. The choice of 'dt' or 'hybrid' depends on speed,
+                     which is system and installation specific.
+        'mio'        Using a single morphological image opening step to obtain
+                     the invading fluid confirguration directly, *then* trims if
+                     `access_limitations` is `True`. This method is not ideal
+                     and is included for comparison purposes.
+        ============ ===============================================================
 
     divs : int or array_like
-        The number of times to divide the image for parallel processing.  If ``1``
-        then parallel processing does not occur.  ``2`` is equivalent to
-        ``[2, 2, 2]`` for a 3D image.  The number of cores used is specified in
-        ``porespy.settings.ncores`` and defaults to all cores.
+        The number of times to divide the image for parallel processing.  If `1`
+        then parallel processing does not occur.  `2` is equivalent to
+        `[2, 2, 2]` for a 3D image.  The number of cores used is specified in
+        `porespy.settings.ncores` and defaults to all cores.
 
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with the pore size values in each voxel.
+        A copy of `im` with the pore size values in each voxel.
 
     See Also
     --------
@@ -909,18 +702,18 @@ def local_thickness(
     Notes
     -----
     The term *foreground* is used since this function can be applied to
-    both pore space or the solid, whichever is set to ``True``.
+    both pore space or the solid, whichever is set to `True`.
 
-    This function is identical to ``porosimetry`` with ``access_limited``
-    set to ``False``.
+    This function is identical to `porosimetry` with `access_limited`
+    set to `False`.
 
     The way local thickness is found in PoreSpy differs from the
     traditional method (i.e. used in ImageJ
     `<https://imagej.net/Local_Thickness>`_). Our approach is probably
     slower, but it allows for the same code to be used for
-    ``local_thickness`` and ``porosimetry``, since we can 'trim' invaded
-    regions that are not connected to the inlets in the ``porosimetry``
-    function. This is not needed in ``local_thickness`` however.
+    `local_thickness` and `porosimetry`, since we can 'trim' invaded
+    regions that are not connected to the inlets in the `porosimetry`
+    function. This is not needed in `local_thickness` however.
 
     Examples
     --------
@@ -934,13 +727,71 @@ def local_thickness(
     return im_new
 
 
+def trim_disconnected_blobs(
+    im: npt.NDArray,
+    inlets: npt.NDArray,
+    conn: Literal['max', 'min'] = 'min',
+):
+    r"""
+    Removes foreground voxels not connected to specified inlets.
+
+    Parameters
+    ----------
+    im : ndarray
+        The image containing the blobs to be trimmed
+    inlets : ndarray or tuple of indices
+        The locations of the inlets.  Can either be a boolean mask the
+        same shape as `im`, or a tuple of indices such as that returned
+        by the `where` function.  Any voxels *not* connected directly to
+        the inlets will be trimmed.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    image : ndarray
+        An array of the same shape as `im`, but with all foreground
+        voxels not connected to the `inlets` removed.
+
+    See Also
+    --------
+    find_disconnected_voxels
+    find_nonpercolating_paths
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`_
+    to view online example.
+
+    """
+    se = strel[im.ndim][conn].copy()
+    if isinstance(inlets, tuple):
+        temp = np.copy(inlets)
+        inlets = np.zeros_like(im, dtype=bool)
+        inlets[temp] = True
+    elif (inlets.shape == im.shape) and (inlets.max() == 1):
+        inlets = inlets.astype(bool)
+    else:
+        raise Exception("inlets not valid, refer to docstring for info")
+    labels = spim.label(inlets + (im > 0), structure=se)[0]
+    keep = np.unique(labels[inlets])
+    keep = keep[keep > 0]
+    im2 = np.isin(labels, keep)
+    im2 = im2 * im
+    return im2
+
+
 def porosimetry(
-    im,
+    im: npt.NDArray,
     sizes: int = 25,
     inlets=None,
     access_limited: bool = True,
     mode: Literal['hybrid', 'dt', 'mio'] = 'hybrid',
-    divs=1,
+    divs: int = 1,
 ):
     r"""
     Performs a porosimetry simulution on an image.
@@ -948,22 +799,22 @@ def porosimetry(
     Parameters
     ----------
     im : ndarray
-        An ND image of the porous material containing ``True`` values in the
+        An ND image of the porous material containing `True` values in the
         pore space.
     sizes : array_like or scalar
         The sizes to invade.  If a list of values of provided they are
         used directly.  If a scalar is provided then that number of points
         spanning the min and max of the distance transform are used.
     inlets : ndarray, boolean
-        A boolean mask with ``True`` values indicating where the invasion
+        A boolean mask with `True` values indicating where the invasion
         enters the image.  By default all faces are considered inlets,
         akin to a mercury porosimetry experiment.  Users can also apply
         solid boundaries to their image externally before passing it in,
         allowing for complex inlets like circular openings, etc.
-        This argument is only used if ``access_limited`` is ``True``.
+        This argument is only used if `access_limited` is `True`.
     access_limited : bool
         This flag indicates if the intrusion should only occur from the
-        surfaces (``access_limited`` is ``True``, which is the default),
+        surfaces (`access_limited` is `True`, which is the default),
         or if the invading phase should be allowed to appear in the core
         of the image.  The former simulates experimental tools like
         mercury intrusion porosimetry, while the latter is useful for
@@ -971,46 +822,47 @@ def porosimetry(
     mode : str
         Controls with method is used to compute the result. Options are:
 
-        'hybrid'
-            (default) Performs a distance tranform of the void
-            space, thresholds to find voxels larger than ``sizes[i]``,
-            trims the resulting mask if ``access_limitations`` is ``True``,
-            then dilates it using the efficient fft-method to obtain the
-            non-wetting fluid configuration.
-        'dt'
-            Same as 'hybrid', except uses a second distance
-            transform, relative to the thresholded mask, to find the
-            invading fluid configuration. The choice of 'dt' or 'hybrid'
-            depends on speed, which is system and installation specific.
-        'mio'
-            Uses binary erosion followed by dilation to obtain the invading
-            fluid configuration directly. If ``access_limitated`` is
-            ``True`` then disconnected blobs are trimmmed before the dilation.
-            This is the only method that can be parallelized by chunking (see
-            ``divs`` and ``cores``).
+        ============ ===============================================================
+        Mode         Description
+        ============ ===============================================================
+        'hybrid'     (default) Performs a distance tranform of the void
+                     space, thresholds to find voxels larger than `sizes[i]`,
+                     trims the resulting mask if `access_limitations` is `True`,
+                     then dilates it using the efficient fft-method to obtain the
+                     non-wetting fluid configuration.
+        'dt'         Same as 'hybrid', except uses a second distance
+                     transform relative to the thresholded mask, to find the
+                     invading fluid configuration. The choice of 'dt' or 'hybrid'
+                     depends on speed, which is system and installation specific.
+        'mio'        Uses binary erosion followed by dilation to obtain the invading
+                     fluid configuration directly. If `access_limitated` is
+                     `True` then disconnected blobs are trimmmed before the
+                     dilation. This is the only method that can be parallelized by
+                     chunking (see `divs` and `cores`).
+        ============ ===============================================================
 
     divs : int or array_like
         The number of times to divide the image for parallel processing.
-        If ``1`` then parallel processing does not occur.  ``2`` is
-        equivalent to ``[2, 2, 2]`` for a 3D image.  The number of cores
-        used is specified in ``porespy.settings.ncores`` and defaults to
+        If `1` then parallel processing does not occur.  `2` is
+        equivalent to `[2, 2, 2]` for a 3D image.  The number of cores
+        used is specified in `porespy.settings.ncores` and defaults to
         all cores.
 
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with voxel values indicating the sphere radius at
-        which it becomes accessible from the ``inlets``.  This image can be
+        A copy of `im` with voxel values indicating the sphere radius at
+        which it becomes accessible from the `inlets`.  This image can be
         used to find invading fluid configurations as a function of
         applied capillary pressure by applying a boolean comparison:
-        ``inv_phase = im > r`` where ``r`` is the radius (in voxels) of
-        the invading sphere.  Of course, ``r`` can be converted to
+        `inv_phase = im > r` where `r` is the radius (in voxels) of
+        the invading sphere.  Of course, `r` can be converted to
         capillary pressure using a preferred model.
 
     Notes
     -----
     There are many ways to perform this filter, and PoreSpy offers 3,
-    which users can choose between via the ``mode`` argument. These
+    which users can choose between via the `mode` argument. These
     methods all work in a similar way by finding which foreground voxels
     can accomodate a sphere of a given radius, then repeating for smaller
     radii.
@@ -1067,8 +919,7 @@ def porosimetry(
             else:
                 imtemp = fftmorphology(im=impad, strel=strel(r), mode='erosion')
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets,
-                                                 strel=strel_2(1))
+                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if parallel:
                 imtemp = chunked_func(func=fftmorphology,
                                       im=imtemp, strel=strel(r),
@@ -1084,8 +935,7 @@ def porosimetry(
         for r in tqdm(sizes, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets,
-                                                 strel=strel_2(1))
+                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if np.any(imtemp):
                 if parallel:
                     imtemp = chunked_func(func=lambda x: edt(x),
@@ -1100,8 +950,7 @@ def porosimetry(
         for r in tqdm(sizes, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets,
-                                                 strel=strel_2(1))
+                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if np.any(imtemp):
                 if parallel:
                     imtemp = chunked_func(func=fftmorphology, mode='dilation',
@@ -1117,84 +966,19 @@ def porosimetry(
     return imresults
 
 
-def trim_disconnected_blobs(im, inlets, strel=None):
-    r"""
-    Removes foreground voxels not connected to specified inlets.
-
-    Parameters
-    ----------
-    im : ndarray
-        The image containing the blobs to be trimmed
-    inlets : ndarray or tuple of indices
-        The locations of the inlets.  Can either be a boolean mask the
-        same shape as ``im``, or a tuple of indices such as that returned
-        by the ``where`` function.  Any voxels *not* connected directly to
-        the inlets will be trimmed.
-    strel : array-like
-        The neighborhood over which connectivity should be checked. It
-        must be symmetric and the same dimensionality as the image. It is
-        passed directly to the ``scipy.ndimage.label`` function as the
-        ``structure`` argument so refer to that docstring for additional
-        info.
-
-    Returns
-    -------
-    image : ndarray
-        An array of the same shape as ``im``, but with all foreground
-        voxels not connected to the ``inlets`` removed.
-
-    See Also
-    --------
-    find_disconnected_voxels, find_nonpercolating_paths
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`_
-    to view online example.
-
-    """
-    if isinstance(inlets, tuple):
-        temp = np.copy(inlets)
-        inlets = np.zeros_like(im, dtype=bool)
-        inlets[temp] = True
-    elif (inlets.shape == im.shape) and (inlets.max() == 1):
-        inlets = inlets.astype(bool)
-    else:
-        raise Exception("inlets not valid, refer to docstring for info")
-    if strel is None:
-        if im.ndim == 3:
-            strel = cube(3)
-        else:
-            strel = square(3)
-    labels = spim.label(inlets + (im > 0), structure=strel)[0]
-    keep = np.unique(labels[inlets])
-    keep = keep[keep > 0]
-    im2 = np.isin(labels, keep)
-    im2 = im2 * im
-    return im2
-
-
-def _get_axial_shifts(ndim=2, include_diagonals=False):
+def _get_axial_shifts(ndim=2, conn='min'):
     r"""
     Helper function to generate the axial shifts that will be performed on
     the image to identify bordering pixels/voxels
     """
+    neighbors = strel[ndim][conn]
     if ndim == 2:
-        if include_diagonals:
-            neighbors = square(3)
-        else:
-            neighbors = diamond(1)
         neighbors[1, 1] = 0
         x, y = np.where(neighbors)
         x -= 1
         y -= 1
         return np.vstack((x, y)).T
     else:
-        if include_diagonals:
-            neighbors = cube(3)
-        else:
-            neighbors = octahedron(1)
         neighbors[1, 1, 1] = 0
         x, y, z = np.where(neighbors)
         x -= 1
@@ -1203,7 +987,7 @@ def _get_axial_shifts(ndim=2, include_diagonals=False):
         return np.vstack((x, y, z)).T
 
 
-def _make_stack(im, include_diagonals=False):
+def _make_stack(im, conn='min'):
     r"""
     Creates a stack of images with one extra dimension to the input image
     with length equal to the number of borders to search + 1.
@@ -1214,7 +998,7 @@ def _make_stack(im, include_diagonals=False):
 
     """
     ndim = len(np.shape(im))
-    axial_shift = _get_axial_shifts(ndim, include_diagonals)
+    axial_shift = _get_axial_shifts(ndim, conn)
     if ndim == 2:
         stack = np.zeros([np.shape(im)[0], np.shape(im)[1], len(axial_shift) + 1])
         stack[:, :, 0] = im
@@ -1235,7 +1019,10 @@ def _make_stack(im, include_diagonals=False):
         return stack
 
 
-def nphase_border(im, include_diagonals=False):
+def nphase_border(
+    im: npt.NDArray,
+    conn: Literal['min', 'max'] = 'min',
+):
     r"""
     Identifies the voxels in regions that border *N* other regions.
 
@@ -1247,14 +1034,16 @@ def nphase_border(im, include_diagonals=False):
         An ND image of the porous material containing discrete values in
         the pore space identifying different regions. e.g. the result of a
         snow-partition
-    include_diagonals : bool
-        When identifying bordering pixels (2D) and voxels (3D) include
-        those shifted along more than one axis
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
 
     Returns
     -------
     image : ndarray
-        A copy of ``im`` with voxel values equal to the number of uniquely
+        A copy of `im` with voxel values equal to the number of uniquely
         different bordering values
 
     Examples
@@ -1272,7 +1061,7 @@ def nphase_border(im, include_diagonals=False):
     # Pad image to handle edges
     im = np.pad(im, pad_width=1, mode="edge")
     # Stack rolled images for each neighbor to be inspected
-    stack = _make_stack(im, include_diagonals)
+    stack = _make_stack(im, conn)
     # Sort the stack along the last axis
     stack.sort()
     out = np.ones_like(im)
@@ -1291,7 +1080,11 @@ def nphase_border(im, include_diagonals=False):
         return out[1:-1, 1:-1, 1:-1].copy()
 
 
-def prune_branches(skel, branch_points=None, iterations: int = 1):
+def prune_branches(
+    skel: npt.NDArray,
+    branch_points=None,
+    iterations: int = 1,
+):
     r"""
     Remove all dangling ends or tails of a skeleton
 
@@ -1301,7 +1094,7 @@ def prune_branches(skel, branch_points=None, iterations: int = 1):
         A image of a full or partial skeleton from which the tails should
         be trimmed.
     branch_points : ndarray, optional
-        An image the same size ``skel`` with ``True`` values indicating the
+        An image the same size `skel` with `True` values indicating the
         branch points of the skeleton.  If this is not provided it is
         calculated automatically.
     iterations : int
@@ -1321,25 +1114,22 @@ def prune_branches(skel, branch_points=None, iterations: int = 1):
 
     """
     skel = skel > 0
-    if skel.ndim == 2:
-        from skimage.morphology import square as cube
-    else:
-        from skimage.morphology import cube
+    cube = strel[skel.ndim]['max']
     # Create empty image to house results
     im_result = np.zeros_like(skel)
     # If branch points are not supplied, attempt to find them
     if branch_points is None:
-        branch_points = spim.convolve(skel * 1.0, weights=cube(3)) > 3
+        branch_points = spim.convolve(skel * 1.0, weights=cube) > 3
         branch_points = branch_points * skel
     # Store original branch points before dilating
     pts_orig = branch_points
     # Find arcs of skeleton by deleting branch points
     arcs = skel * (~branch_points)
     # Label arcs
-    arc_labels = spim.label(arcs, structure=cube(3))[0]
+    arc_labels = spim.label(arcs, structure=cube)[0]
     # Dilate branch points so they overlap with the arcs
-    branch_points = spim.binary_dilation(branch_points, structure=cube(3))
-    pts_labels = spim.label(branch_points, structure=cube(3))[0]
+    branch_points = spim.binary_dilation(branch_points, structure=cube)
+    pts_labels = spim.label(branch_points, structure=cube)[0]
     # Now scan through each arc to see if it's connected to two branch points
     slices = spim.find_objects(arc_labels)
     label_num = 0
@@ -1365,19 +1155,19 @@ def prune_branches(skel, branch_points=None, iterations: int = 1):
 
 def chunked_func(
     func,
-    overlap=None,
-    divs=2,
-    cores=None,
+    overlap: int = None,
+    divs: int = 2,
+    cores: int = None,
     im_arg=["input", "image", "im"],
     strel_arg=["strel", "structure", "footprint"],
     **kwargs,
 ):
     r"""
-    Performs the specfied operation "chunk-wise" in parallel using ``dask``.
+    Performs the specfied operation "chunk-wise" in parallel using `dask`.
 
     This can be used to save memory by doing one chunk at a time
-    (``cores=1``) or to increase computation speed by spreading the work
-    across multiple cores (e.g. ``cores=8``)
+    (`cores=1`) or to increase computation speed by spreading the work
+    across multiple cores (e.g. `cores=8`)
 
     This function can be used with any operation that applies a
     structuring element of some sort, since this implies that the
@@ -1387,13 +1177,13 @@ def chunked_func(
     ----------
     func : function handle
         The function which should be applied to each chunk, such as
-        ``spipy.ndimage.binary_dilation``.
+        `spipy.ndimage.binary_dilation`.
     overlap : scalar or list of scalars, optional
         The amount of overlap to include when dividing up the image. This
         value will almost always be the size (i.e. raduis) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
-        case the ``strel_arg`` must be specified.
+        case the `strel_arg` must be specified.
     divs : scalar or list of scalars (default = [2, 2, 2])
         The number of chunks to divide the image into in each direction.
         The default is 2 chunks in each direction, resulting in a
@@ -1405,19 +1195,19 @@ def chunked_func(
         will be used, or as many are needed for the given number of
         chunks, which ever is smaller.
     im_arg : str
-        The keyword used by ``func`` for the image to be operated on. By
-        default this function will look for ``image``, ``input``, and
-        ``im`` which are commonly used by *scipy.ndimage* and *skimage*.
+        The keyword used by `func` for the image to be operated on. By
+        default this function will look for `image`, `input`, and
+        `im` which are commonly used by *scipy.ndimage* and *skimage*.
     strel_arg : str
-        The keyword used by ``func`` for the structuring element to apply.
-        This is only needed if ``overlap`` is not specified. By default
-        this function will look for ``strel``, ``structure``, and
-        ``footprint`` which are commonly used by *scipy.ndimage* and
+        The keyword used by `func` for the structuring element to apply.
+        This is only needed if `overlap` is not specified. By default
+        this function will look for `strel`, `structure`, and
+        `footprint` which are commonly used by *scipy.ndimage* and
         *skimage*.
     kwargs
-        All other arguments are passed to ``func`` as keyword arguments.
+        All other arguments are passed to `func` as keyword arguments.
         Note that PoreSpy will fetch the image from this list of keywords
-        using the value provided to ``im_arg``.
+        using the value provided to `im_arg`.
 
     Returns
     -------
@@ -1434,7 +1224,7 @@ def chunked_func(
     artifacts. The amount of padding is usually equal to the radius of the
     structuring element but some functions do not use one, such as the
     distance transform and Gaussian blur.  In these cases the user can
-    specify ``overlap``.
+    specify `overlap`.
 
     See Also
     --------
