@@ -494,7 +494,7 @@ if __name__ == "__main__":
     tmp = np.copy(inv.im_seq)
     tmp[tmp == 1] = -1  # Set some to uninvaded/trapped
     tmp[tmp > 0] = tmp.max() - tmp[tmp > 0] + 1  # Invert sequence numbers
-    satn = ps.filters.seq_to_satn(seq=tmp, im=im, mode='imb')
+    satn = ps.filters.seq_to_satn(seq=tmp, im=im, mode='imbibition')
     assert (1 - (satn > 0).sum()/im.sum()) == satn[satn > 0].min()
     # Now convert it back!
     seq = satn_to_seq(satn, im=im, mode='imbibition')
