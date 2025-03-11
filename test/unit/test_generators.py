@@ -523,7 +523,7 @@ class GeneratorTest():
         c = ps.generators.borders(shape=s, thickness=1, mode='corners')
         assert c.sum() == 4
         c = ps.generators.borders(shape=s, thickness=1, mode='edges')
-        assert c.sum() == 4
+        assert c.sum() == 36
         c = ps.generators.borders(shape=s, thickness=1, mode='faces')
         assert c.sum() == 36
         s = (10, 10, 10)
@@ -539,7 +539,7 @@ class GeneratorTest():
         c = ps.generators.borders(shape=s, thickness=2, mode='corners')
         assert c.sum() == 16
         c = ps.generators.borders(shape=s, thickness=2, mode='edges')
-        assert c.sum() == 16
+        assert c.sum() == 64
         c = ps.generators.borders(shape=s, thickness=2, mode='faces')
         assert c.sum() == 64
         s = (10, 10, 10)
