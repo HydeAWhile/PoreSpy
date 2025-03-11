@@ -40,8 +40,8 @@ strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(
 
 
 def trim_small_clusters(
-    im,
-    size=1,
+    im: npt.NDArray,
+    size: int = 1,
 ):
     r"""
     Remove isolated voxels or clusters of a given size or smaller
@@ -78,7 +78,7 @@ def trim_small_clusters(
 
 
 def find_disconnected_voxels(
-    im,
+    im: npt.NDArray,
     conn: str = "min",
     surface: bool = False,
 ):
@@ -119,7 +119,7 @@ def find_disconnected_voxels(
     """
     _check_for_singleton_axes(im)
 
-    se = strel[im.ndim][conn]
+    se = strel[im.ndim][conn].copy()
     labels, N = spim.label(input=im, structure=se)
     if not surface:
         holes = clear_border(labels=labels) > 0
@@ -135,7 +135,7 @@ def find_disconnected_voxels(
 
 
 def find_hidden_pores(
-    im,
+    im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
@@ -164,7 +164,7 @@ def find_hidden_pores(
     to view online example.
     """
     from porespy.generators import borders
-    se = strel[im.ndim][conn]
+    se = strel[im.ndim][conn].copy()
     labels, N = spim.label(input=im, structure=se)
     mask = borders(im.shape, mode='faces')
     hits = np.unique(labels[mask])
@@ -173,7 +173,7 @@ def find_hidden_pores(
 
 
 def find_surface_pores(
-    im,
+    im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
@@ -201,7 +201,7 @@ def find_surface_pores(
     <https://porespy.org/examples/filters/reference/find_surface_pores.html>`_
     to view online example.
     """
-    se = strel[im.ndim][conn]
+    se = strel[im.ndim][conn].copy()
     labels, N = spim.label(input=im, structure=se)
     keep = set()
     for ax in range(labels.ndim):
@@ -217,7 +217,7 @@ def find_surface_pores(
 
 
 def find_invalid_pores(
-    im,
+    im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
@@ -252,7 +252,7 @@ def find_invalid_pores(
 
 
 def fill_blind_pores(
-    im,
+    im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
     fill_surface: bool = False,
 ):
@@ -306,7 +306,7 @@ def fill_blind_pores(
 
 
 def trim_floating_solid(
-    im,
+    im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
     fill_surface: bool = False,
 ):
@@ -354,9 +354,9 @@ def trim_floating_solid(
 
 
 def trim_nonpercolating_paths(
-    im,
-    inlets,
-    outlets,
+    im: npt.NDArray,
+    inlets: npt.NDArray,
+    outlets: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
@@ -403,7 +403,7 @@ def trim_nonpercolating_paths(
     to view online example.
 
     """
-    se = strel[im.ndim][conn]
+    se = strel[im.ndim][conn].copy()
     labels = spim.label(im, structure=se)[0]
     IN = np.unique(labels * inlets)
     OUT = np.unique(labels * outlets)

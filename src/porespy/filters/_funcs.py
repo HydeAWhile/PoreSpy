@@ -51,10 +51,10 @@ strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(
 
 
 def apply_padded(
-    im,
+    im: npt.NDArray,
     pad_width,
     func,
-    pad_val=1,
+    pad_val: int = 1,
     **kwargs,
 ):
     r"""
@@ -96,9 +96,9 @@ def apply_padded(
 
 
 def hold_peaks(
-    im,
-    axis=-1,
-    ascending=True,
+    im: npt.NDArray,
+    axis: int = -1,
+    ascending: bool = True,
 ):
     r"""
     Replaces each voxel with the highest value along the given axis.
@@ -153,7 +153,7 @@ def hold_peaks(
 
 
 def distance_transform_lin(
-    im,
+    im: npt.NDArray,
     axis: int = 0,
     mode: Literal['forward', 'backward', 'both'] = "both",
 ):
@@ -228,8 +228,8 @@ def distance_transform_lin(
 
 
 def trim_extrema(
-    im,
-    h,
+    im: npt.NDArray,
+    h: float,
     mode="maxima",
 ):
     r"""
@@ -279,8 +279,8 @@ def trim_extrema(
 
 
 def flood(
-    im,
-    labels,
+    im: npt.NDArray,
+    labels: npt.NDArray,
     mode: Literal['maximum', 'minimum', 'median', 'mean', 'size',
                   'standard_deviations',  'variance'] = "max",
 ):
@@ -298,7 +298,9 @@ def flood(
         An image with the numerical values of interest in each voxel,
         and 0's elsewhere.
     labels : array_like
-        An array the same shape as `im` with each region labeled.
+        An array containing labels identifying each individual region to be
+        flooded. If not provided then `scipy.ndimage.label` is applied to
+        `im > 0`.
     mode : string
         Specifies how to determine the value to flood each region. Options
         taken from the `scipy.ndimage.measurements` function include:
@@ -329,7 +331,9 @@ def flood(
 
     See Also
     --------
-    prop_to_image, flood_func, region_size
+    prop_to_image
+    flood_func
+    region_size
 
     Examples
     --------
@@ -351,9 +355,9 @@ def flood(
 
 
 def flood_func(
-    im,
+    im: npt.NDArray,
     func,
-    labels=None,
+    labels: npt.NDArray = None,
 ):
     r"""
     Flood each isolated region in an image with a constant value calculated by
@@ -411,7 +415,7 @@ def flood_func(
     return flooded
 
 
-def find_dt_artifacts(dt):
+def find_dt_artifacts(dt: npt.NDArray):
     r"""
     Label points in a distance transform that are closer to image boundary
     than solid
@@ -455,7 +459,7 @@ def find_dt_artifacts(dt):
 
 
 def region_size(
-    im,
+    im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
@@ -497,7 +501,7 @@ def region_size(
     to view online example.
 
     """
-    se = strel[im.ndim][conn]
+    se = strel[im.ndim][conn].copy()
     if im.dtype == bool:
         im = spim.label(im, structure=se)[0]
     counts = np.bincount(im.flatten())
@@ -506,7 +510,7 @@ def region_size(
 
 
 def apply_chords(
-    im,
+    im: npt.NDArray,
     spacing: int = 1,
     axis: int = 0,
     trim_edges: bool = True,
@@ -575,7 +579,7 @@ def apply_chords(
 
 
 def apply_chords_3D(
-    im,
+    im: npt.NDArray,
     spacing: int = 0,
     trim_edges: bool = True,
 ):
@@ -637,7 +641,7 @@ def apply_chords_3D(
 
 
 def local_thickness(
-    im,
+    im: npt.NDArray,
     sizes: int = 25,
     mode: Literal['hybrid', 'dt', 'mio'] = "hybrid",
     divs: int = 1,
@@ -723,8 +727,8 @@ def local_thickness(
 
 
 def trim_disconnected_blobs(
-    im,
-    inlets,
+    im: npt.NDArray,
+    inlets: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
@@ -763,7 +767,7 @@ def trim_disconnected_blobs(
     to view online example.
 
     """
-    se = strel[im.ndim][conn]
+    se = strel[im.ndim][conn].copy()
     if isinstance(inlets, tuple):
         temp = np.copy(inlets)
         inlets = np.zeros_like(im, dtype=bool)
@@ -781,12 +785,12 @@ def trim_disconnected_blobs(
 
 
 def porosimetry(
-    im,
+    im: npt.NDArray,
     sizes: int = 25,
     inlets=None,
     access_limited: bool = True,
     mode: Literal['hybrid', 'dt', 'mio'] = 'hybrid',
-    divs=1,
+    divs: int = 1,
 ):
     r"""
     Performs a porosimetry simulution on an image.
@@ -1017,7 +1021,10 @@ def _make_stack(im, conn='min'):
         return stack
 
 
-def nphase_border(im, conn='min'):
+def nphase_border(
+    im: npt.NDArray,
+    conn: Literal['min', 'max'] = 'min',
+):
     r"""
     Identifies the voxels in regions that border *N* other regions.
 
@@ -1076,7 +1083,7 @@ def nphase_border(im, conn='min'):
 
 
 def prune_branches(
-    skel,
+    skel: npt.NDArray,
     branch_points=None,
     iterations: int = 1,
 ):
@@ -1150,9 +1157,9 @@ def prune_branches(
 
 def chunked_func(
     func,
-    overlap=None,
-    divs=2,
-    cores=None,
+    overlap: int = None,
+    divs: int = 2,
+    cores: int = None,
     im_arg=["input", "image", "im"],
     strel_arg=["strel", "structure", "footprint"],
     **kwargs,
