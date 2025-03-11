@@ -107,7 +107,8 @@ def add_boundary_regions(regions, pad_width=3):
     # Pad by t in all directions, this will be trimmed down later
     face_regions = np.pad(regions*(~bd), pad_width=t, mode='edge')
     # Set corners to 0 so regions don't connect across faces
-    edges = borders(shape=face_regions.shape, mode='edges', thickness=t)
+    m = 'corners' if len(regions.shape) == 2 else 'edges'
+    edges = borders(shape=face_regions.shape, mode=m, thickness=t)
     face_regions[edges] = 0
     # Extract a mask of just the faces
     mask = borders(shape=face_regions.shape, mode='faces', thickness=t)
