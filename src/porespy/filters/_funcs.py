@@ -830,7 +830,7 @@ def porosimetry(
                      then dilates it using the efficient fft-method to obtain the
                      non-wetting fluid configuration.
         'dt'         Same as 'hybrid', except uses a second distance
-                     transform, relative to the thresholded mask, to find the
+                     transform relative to the thresholded mask, to find the
                      invading fluid configuration. The choice of 'dt' or 'hybrid'
                      depends on speed, which is system and installation specific.
         'mio'        Uses binary erosion followed by dilation to obtain the invading
@@ -918,8 +918,7 @@ def porosimetry(
             else:
                 imtemp = fftmorphology(im=impad, strel=strel(r), mode='erosion')
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets,
-                                                 strel=strel_2(1))
+                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if parallel:
                 imtemp = chunked_func(func=fftmorphology,
                                       im=imtemp, strel=strel(r),
@@ -935,8 +934,7 @@ def porosimetry(
         for r in tqdm(sizes, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets,
-                                                 strel=strel_2(1))
+                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if np.any(imtemp):
                 if parallel:
                     imtemp = chunked_func(func=lambda x: edt(x),
@@ -951,8 +949,7 @@ def porosimetry(
         for r in tqdm(sizes, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets,
-                                                 strel=strel_2(1))
+                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if np.any(imtemp):
                 if parallel:
                     imtemp = chunked_func(func=fftmorphology, mode='dilation',

@@ -79,7 +79,7 @@ def trim_small_clusters(
 
 def find_disconnected_voxels(
     im: npt.NDArray,
-    conn: str = "min",
+    conn: Literal['min', 'max'] = "max",
     surface: bool = False,
 ):
     r"""
@@ -325,10 +325,10 @@ def trim_floating_solid(
     fill_surface : bool
         If `True`, any isolated solid regions that are connected to the
         surfaces of the image but not the main body of the solid are also
-        removed.  When this is enabled, only the voxels belonging to the
-        largest region are kept. This can be problematic if the image
-        contains non-intersecting tube-like structures, for instance,
-        since only the largest tube will be preserved.
+        removed.  Voxels are deemed to be surface voxels if they are part of a
+        cluster that does not span the domain. In other words, a cluster of voxels
+        touching the `x=0` face but not the `x=-1` face will be trimmed if this
+        is enabled.
 
     Returns
     -------
@@ -355,24 +355,28 @@ def trim_floating_solid(
 
 def trim_nonpercolating_paths(
     im: npt.NDArray,
-    inlets: npt.NDArray,
-    outlets: npt.NDArray,
+    axis: int = None,
+    inlets: npt.NDArray = None,
+    outlets: npt.NDArray = None,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
-    Remove all nonpercolating paths between specified locations
+    Remove all nonpercolating pores between specified locations
 
     Parameters
     ----------
     im : ndarray
         The image of the porous material with `True` values indicating the
         phase of interest
-    inlets : ndarray
-        A boolean mask indicating locations of inlets, such as produced by
-        `porespy.generators.faces`.
-    outlets : ndarray
-        A boolean mask indicating locations of outlets, such as produced by
-        `porespy.generators.faces`.
+    axis : int, optional
+        An integer indicating that axis along which the inlet and outlet faces
+        should be applied.  For instance if `axis=0` then the inlets will be
+        at `im[0, ...]` and the outlets will be at `im[-1, ...]`. If this argument
+        is given then `inlets` and `outlets` are ignored.
+    inlets outlets : ndarray, optional
+        A boolean mask indicating locations of inlets and outlets, such as produced
+        by `porespy.generators.faces`. This can be used instead of `axis` to provide
+        more control. This is ignored if `axis` is provided.
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
         element used to determine voxel connectivity.  The default if `'min'` which
@@ -403,6 +407,10 @@ def trim_nonpercolating_paths(
     to view online example.
 
     """
+    if axis is not None:
+        from porespy.generators import faces
+        inlets = faces(im.shape, inlet=axis)
+        outlets = faces(im.shape, outlet=axis)
     se = strel[im.ndim][conn].copy()
     labels = spim.label(im, structure=se)[0]
     IN = np.unique(labels * inlets)
