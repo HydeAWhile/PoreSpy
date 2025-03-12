@@ -77,7 +77,7 @@ def borders(
         The number of pixels/voxels layers to place along perimeter.
     mode : string
         The type of border to create.  Options are 'faces', 'edges'
-        (default) and 'corners'.  In 2D 'corners' and 'edges' give the
+        (default) and 'corners'.  In 2D 'faces' and 'edges' give the
         same result.
 
     Returns
@@ -103,8 +103,7 @@ def borders(
             border[t:-t, t:-t, t:-t] = False
     elif mode == 'edges':
         if ndims == 2:
-            border[t:-t, 0::] = False
-            border[0::, t:-t] = False
+            border[t:-t, t:-t] = False 
         if ndims == 3:
             border[0::, t:-t, t:-t] = False
             border[t:-t, 0::, t:-t] = False
