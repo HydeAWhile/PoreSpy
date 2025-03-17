@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.typing as npt
+from scipy.signal import fftconvolve
 from typing import Literal
 from skimage.morphology import ball, disk, cube, square
 from porespy import settings
@@ -7,14 +8,19 @@ from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     _insert_disks_at_points,
     _insert_disks_at_points_parallel,
+    _insert_disk_at_points,
+    _insert_disk_at_points_parallel,
     get_tqdm,
     Results,
+    ps_rect,
+    ps_round,
 )
 from porespy.filters import (
     trim_disconnected_blobs,
     find_trapped_regions,
     pc_to_satn,
     pc_to_seq,
+    fftmorphology,
 )
 from porespy.generators import (
     borders,
@@ -27,7 +33,10 @@ except ModuleNotFoundError:
 
 __all__ = [
     'drainage',
-    'ibop',
+    'drainage_dt',
+    'drainage_fft',
+    'drainage_dt_fft',
+    'drainage_dsi',
 ]
 
 
@@ -35,7 +44,206 @@ tqdm = get_tqdm()
 strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
-def ibop(
+def drainage_dsi(
+    im,
+    inlets=None,
+    outlets=None,
+):
+    r"""
+    """
+    im = np.array(im, dtype=bool)
+    dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+    if steps is None:
+        bins = np.unique(dt[im])[::-1]
+    else:
+        bins = np.unique(steps)[::-1]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    nwp = np.zeros_like(im, dtype=bool)
+    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
+        seeds = dt >= r
+        edges = dt == r
+        if inlets is not None:
+            seeds = trim_disconnected_blobs(seeds, inlets=inlets)
+            edges *= seeds
+        if not np.any(seeds):
+            continue
+        coords = np.vstack(np.where(edges))
+        nwp = _insert_disk_at_points_parallel(
+            im=nwp,
+            coords=coords,
+            r=r,
+            v=True,
+        )
+        nwp[seeds] = True
+        mask = nwp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i + 1
+    results = Results()
+    results.im_seq = im_seq
+    results.im_size = im_size
+    return results
+
+
+def drainage_dt_fft(
+    im,
+    inlets=None,
+    outlets=None,
+    steps=None
+):
+    r"""
+    """
+    im = np.array(im, dtype=bool)
+    dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+    if steps is None:
+        bins = np.unique(dt[im])[::-1]
+    else:
+        bins = np.unique(steps)[::-1]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
+        seeds = dt >= r
+        if inlets is not None:
+            seeds = trim_disconnected_blobs(seeds, inlets=inlets)
+        if not np.any(seeds):
+            continue
+        se = ps_round(r, ndim=im.ndim)
+        nwp = fftmorphology(seeds, se, 'dilation')
+        mask = nwp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i + 1
+    results = Results()
+    results.im_seq = im_seq
+    results.im_size = im_size
+    return results
+
+
+def drainage_fft(
+    im,
+    inlets=None,
+    outlets=None,
+    steps=None,
+):
+    r"""
+    """
+    im = np.array(im, dtype=bool)
+    if steps is None:
+        dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+        bins = np.unique(dt[im])[::-1]
+    else:
+        bins = np.unique(steps)[::-1]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
+        se = ps_round(r, ndim=im.ndim)
+        seeds = ~fftmorphology(~im, se, 'dilation')
+        if inlets is not None:
+            seeds = trim_disconnected_blobs(seeds, inlets=inlets)
+        if not np.any(seeds):
+            continue
+        nwp = fftmorphology(seeds, se, 'dilation')
+        mask = nwp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i + 1
+    results = Results()
+    results.im_seq = im_seq
+    results.im_size = im_size
+    return results
+
+
+def drainage_dt(
+    im,
+    inlets,
+    outlets=None
+    # residual=None,
+):
+    r"""
+    This is an implementation of drainage using distance transforms
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean image of the material with `True` values indicating the phase
+        of interest.
+    inlets : ndarray
+        A boolean image the same shape as `im` with `True` values indicating the
+        locations of the invading fluid inlets.
+    outlets : ndarray, optional
+        A boolean image the same shape as `im` with `True` values indicating the
+        locations where defending (wetting) fluid exits the domain. If this is
+        provided then trapping of the defending phase occurs, which trapped voxels
+        indicated by -1. If this is not provided then no trapping occurs.
+
+    Returns
+    -------
+    results : Results object
+        A dataclass-like object with the following attributes:
+
+        ========== =================================================================
+        Attribute  Description
+        ========== =================================================================
+        im_seq     A numpy array with each voxel value indicating the sequence
+                   at which it was invaded.  Values of -1 indicate that it was
+                   not invaded.
+        im_size    A numpy array with each voxel value indicating the radius of
+                   spheres being inserted when it was invaded.
+        ========== =================================================================
+
+    Notes
+    -----
+    This function is purely geometric using only distance transforms to find
+    insertion sites. The point is to provide a straightforward function for
+    validating other implementations. It can also be used for speed comparisons
+    since it uses the `edt` package with parallelization enabled. It cannot operate
+    on the capillary pressure transform so cannot do gravity or other physics. The
+    capillary pressure must be calculated afterwards using the `results.im_size`
+    array, like `pc = -2*sigma*cos(theta)/(results.im_size*voxel_size)`.
+
+    """
+    im = np.array(im, dtype=bool)
+    dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+    bins = np.unique(dt[im])[::-1]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
+        seeds = dt >= r
+        if inlets is not None:
+            seeds = trim_disconnected_blobs(seeds, inlets=inlets)
+        if not np.any(seeds):
+            continue
+        nwp = edt(~seeds, parallel=settings.ncores) < r
+        # if residual is not None:
+        #     blobs = trim_disconnected_blobs(residual, inlets=nwp)
+        #     seeds = dt >= r
+        #     seeds = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     nwp = edt(~seeds, parallel=settings.ncores) < r
+        mask = nwp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i + 1
+    # if residual is not None:
+    #     im_seq[im_seq > 0] += 1
+    #     im_seq[residual] = 1
+    #     im_size[residual] = -np.inf
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            oulets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = ps.tools.make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
+    results = Results()
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
+    return results
+
+
+def drainage(
     im: npt.NDArray,
     pc: npt.NDArray = None,
     dt: npt.NDArray = None,
@@ -47,6 +255,115 @@ def ibop(
     conn: Literal['min', 'max'] = 'min',
     min_size: int = 0,
 ):
+    r"""
+    Simulate drainage using image-based sphere insertion, optionally including
+    gravity
+
+    Parameters
+    ----------
+    im : ndarray
+        The image of the porous media with ``True`` values indicating the
+        void space.
+    pc : ndarray, optional
+        Precomputed capillary pressure transform which is used to determine
+        the invadability of each voxel. If not provided then it is calculated
+        as `2/dt`.
+    dt : ndarray (optional)
+        The distance transform of ``im``.  If not provided it will be
+        calculated, so supplying it saves time.
+    inlets : ndarray, optional
+        A boolean image the same shape as ``im``, with ``True`` values
+        indicating the inlet locations. If not specified then access limitations
+        are not applied so the result is essentially a local thickness filter.
+    outlets : ndarray, optional
+        A boolean image with ``True`` values indicating the outlet locations.
+        If this is provided then trapped voxels of wetting phase are found and
+        all the output images are adjusted accordingly. Note that trapping can
+        be assessed during postprocessing as well.
+    residual : ndarray, optional
+        A boolean array indicating the locations of any residual invading
+        phase. This is added to the intermediate image prior to trimming
+        disconnected clusters, so will create connections to some clusters
+        that would otherwise be removed. The residual phase is indicated
+        in the final image by ``-np.inf`` values, since these are invaded at
+        all applied capillary pressures.
+    steps : int or array_like (default = 25)
+        The range of pressures to apply. If an integer is given then the given
+        number of steps will be created between the lowest and highest values in
+        ``pc``. If a list is given, each value in the list is used in ascending
+        order. If `None` is given then all the possible values in `pc`
+        are used.
+    return_sizes : bool, default = `False`
+        If `True` then an array containing the size of the sphere which first
+        overlapped each pixel is returned. This array is not computed by default
+        as computing it increases computation time.
+    conn : str
+        Controls the shape of the structuring element used to find neighboring
+        voxels when looking at connectivity of invading blobs.  Options are:
+
+        ========= ==================================================================
+        Option    Description
+        ========= ==================================================================
+        'min'     This corresponds to a cross with 4 neighbors in 2D and 6 neighbors
+                  in 3D.
+        'max'     This corresponds to a square or cube with 8 neighbors in 2D and
+                  26 neighbors in 3D.
+        ========= ==================================================================
+
+    min_size : int
+        Any clusters of trapped voxels smaller than this size will be set to not
+        trapped. This argument is only used if `outlets` is given. This is useful
+        to prevent small voxels along edges of the void space from being set to
+        trapped. These can appear to be trapped due to the jagged nature of the
+        digital image. The default is 0, meaning this adjustment is not applied,
+        but a value of 3 or 4 is recommended to activate this adjustment.
+
+    Returns
+    -------
+    results : Results object
+        A dataclass-like object with the following attributes:
+
+        ========== ============================================================
+        Attribute  Description
+        ========== ============================================================
+        im_seq     An ndarray with each voxel indicating the step number at
+                   which it was first invaded by non-wetting phase
+        im_snwp    A numpy array with each voxel value indicating the global
+                   value of the non-wetting phase saturation at the point it
+                   was invaded
+        im_size    If `return_sizes` was set to `True`, then a numpy array with
+                   each voxel containing the radius of the sphere, in voxels, that
+                   first overlapped it.
+        im_pc      A numpy array with each voxel value indicating the
+                   capillary pressure at which it was invaded.
+        im_trapped  A numpy array with ``True`` values indicating trapped voxels if
+                    `outlets` was provided, otherwise will be `None`.
+        pc         1D array of capillary pressure values that were applied
+        swnp       1D array of non-wetting phase saturations for each applied
+                   value of capillary pressure (``pc``).
+        ========== ============================================================
+
+    Notes
+    -----
+    This algorithm only provides sensible results for gravity stabilized
+    configurations, meaning the more dense fluid is on the bottom. Be sure that
+    ``inlets`` are specified accordingly.
+
+    References
+    ----------
+    .. [1]  Chadwick EA, Hammen LH, Schulz VP, Bazylak A, Ioannidis MA, Gostick JT.
+       Incorporating the effect of gravity into image-based drainage simulations on
+       volumetric images of porous media.
+       `Water Resources Research. <https://doi.org/10.1029/2021WR031509>`_.
+       58(3), e2021WR031509 (2022)
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/simulations/reference/drainage.html>`_
+    to view online example.
+
+    """
 
     im = np.array(im, dtype=bool)
 
@@ -201,144 +518,6 @@ def ibop(
     return results
 
 
-def drainage(
-    im: npt.NDArray,
-    pc: npt.NDArray = None,
-    dt: npt.NDArray = None,
-    inlets: npt.NDArray = None,
-    outlets: npt.NDArray = None,
-    residual: npt.NDArray = None,
-    steps: int = 25,
-    return_sizes: bool = False,
-    min_size: int = 0,
-):
-    r"""
-    Simulate drainage using image-based sphere insertion, optionally including
-    gravity
-
-    Parameters
-    ----------
-    im : ndarray
-        The image of the porous media with ``True`` values indicating the
-        void space.
-    pc : ndarray, optional
-        Precomputed capillary pressure transform which is used to determine
-        the invadability of each voxel. If not provided then it is calculated
-        as `2/dt`.
-    dt : ndarray (optional)
-        The distance transform of ``im``.  If not provided it will be
-        calculated, so supplying it saves time.
-    inlets : ndarray, optional
-        A boolean image the same shape as ``im``, with ``True`` values
-        indicating the inlet locations. If not specified then access limitations
-        are not applied so the result is essentially a local thickness filter.
-    outlets : ndarray, optional
-        A boolean image with ``True`` values indicating the outlet locations.
-        If this is provided then trapped voxels of wetting phase are found and
-        all the output images are adjusted accordingly. Note that trapping can
-        be assessed during postprocessing as well.
-    residual : ndarray, optional
-        A boolean array indicating the locations of any residual invading
-        phase. This is added to the intermediate image prior to trimming
-        disconnected clusters, so will create connections to some clusters
-        that would otherwise be removed. The residual phase is indicated
-        in the final image by ``-np.inf`` values, since these are invaded at
-        all applied capillary pressures.
-    steps : int or array_like (default = 25)
-        The range of pressures to apply. If an integer is given then the given
-        number of steps will be created between the lowest and highest values in
-        ``pc``. If a list is given, each value in the list is used in ascending
-        order. If `None` is given then all the possible values in `pc`
-        are used.
-    return_sizes : bool, default = `False`
-        If `True` then an array containing the size of the sphere which first
-        overlapped each pixel is returned. This array is not computed by default
-        as computing it increases computation time.
-    conn : str
-        Controls the shape of the structuring element used to find neighboring
-        voxels when looking connectivity of invading blobs.  Options are:
-
-        ========= ==================================================================
-        Option    Description
-        ========= ==================================================================
-        'min'     This corresponds to a cross with 4 neighbors in 2D and 6 neighbors
-                  in 3D.
-        'max'     This corresponds to a square or cube with 8 neighbors in 2D and
-                  26 neighbors in 3D.
-        ========= ==================================================================
-
-    min_size : int
-        Any clusters of trapped voxels smaller than this size will be set to not
-        trapped. This argument is only used if `outlets` is given. This is useful
-        to prevent small voxels along edges of the void space from being set to
-        trapped. These can appear to be trapped due to the jagged nature of the
-        digital image. The default is 0, meaning this adjustment is not applied,
-        but a value of 3 or 4 is recommended to activate this adjustment.
-
-    Returns
-    -------
-    results : Results object
-        A dataclass-like object with the following attributes:
-
-        ========== ============================================================
-        Attribute  Description
-        ========== ============================================================
-        im_seq     An ndarray with each voxel indicating the step number at
-                   which it was first invaded by non-wetting phase
-        im_snwp    A numpy array with each voxel value indicating the global
-                   value of the non-wetting phase saturation at the point it
-                   was invaded
-        im_size    If `return_sizes` was set to `True`, then a numpy array with
-                   each voxel containing the radius of the sphere, in voxels, that
-                   first overlapped it.
-        im_pc      A numpy array with each voxel value indicating the
-                   capillary pressure at which it was invaded.
-        im_trapped  A numpy array with ``True`` values indicating trapped voxels if
-                    `outlets` was provided, otherwise will be `None`.
-        pc         1D array of capillary pressure values that were applied
-        swnp       1D array of non-wetting phase saturations for each applied
-                   value of capillary pressure (``pc``).
-        ========== ============================================================
-
-    See Also
-    --------
-    drainage
-
-    Notes
-    -----
-    This algorithm only provides sensible results for gravity stabilized
-    configurations, meaning the more dense fluid is on the bottom. Be sure that
-    ``inlets`` are specified accordingly.
-
-    References
-    ----------
-    .. [1]  Chadwick EA, Hammen LH, Schulz VP, Bazylak A, Ioannidis MA, Gostick JT.
-       Incorporating the effect of gravity into image-based drainage simulations on
-       volumetric images of porous media.
-       `Water Resources Research. <https://doi.org/10.1029/2021WR031509>`_.
-       58(3), e2021WR031509 (2022)
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/simulations/reference/drainage.html>`_
-    to view online example.
-
-    """
-    results = ibop(
-        im=im,
-        pc=pc,
-        dt=dt,
-        inlets=inlets,
-        outlets=outlets,
-        residual=residual,
-        steps=steps,
-        return_sizes=return_sizes,
-        min_size=min_size,
-    )
-    return results
-
-
 if __name__ == "__main__":
     import numpy as np
     import porespy as ps
@@ -420,29 +599,35 @@ if __name__ == "__main__":
         fig, ax = plt.subplot_mosaic(
             [['(a)', '(b)', '(e)', '(e)'],
              ['(c)', '(d)', '(e)', '(e)']],
-             figsize=[12, 8],
+            figsize=[12, 8],
          )
         # drn1.im_pc[~im] = -1
         ax['(a)'].imshow(drn1.im_seq/im, origin='lower', cmap=cm, vmin=0)
 
         vmax = drn2.im_seq.max()
-        ax['(b)'].imshow(drn2.im_seq/im, origin='lower', cmap=cm, vmin=0, vmax=vmax)
+        ax['(b)'].imshow(
+            drn2.im_seq/im, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-        ax['(c)'].imshow(drn3.im_seq/im, origin='lower', cmap=cm, vmin=0)
+        ax['(c)'].imshow(
+            drn3.im_seq/im, origin='lower', cmap=cm, vmin=0)
 
-        ax['(d)'].imshow(drn4.im_seq/im, origin='lower', cmap=cm, vmin=0)
+        ax['(d)'].imshow(
+            drn4.im_seq/im, origin='lower', cmap=cm, vmin=0)
 
-        pc, s = ps.metrics.pc_map_to_pc_curve(pc=drn1.im_pc, seq=drn1.im_seq, im=im, mode='drainage')
+        pc, s = ps.metrics.pc_map_to_pc_curve(
+            pc=drn1.im_pc, seq=drn1.im_seq, im=im, mode='drainage')
         ax['(e)'].plot(pc, s, 'b->', label='drainage')
 
-        pc, s = ps.metrics.pc_map_to_pc_curve(pc=drn2.im_pc, seq=drn2.im_seq, im=im, mode='drainage')
+        pc, s = ps.metrics.pc_map_to_pc_curve(
+            pc=drn2.im_pc, seq=drn2.im_seq, im=im, mode='drainage')
         ax['(e)'].plot(pc, s, 'r-<', label='drainage w trapping')
 
-        pc, s = ps.metrics.pc_map_to_pc_curve(pc=drn3.im_pc, seq=drn3.im_seq, im=im, mode='drainage')
+        pc, s = ps.metrics.pc_map_to_pc_curve(
+            pc=drn3.im_pc, seq=drn3.im_seq, im=im, mode='drainage')
         ax['(e)'].plot(pc, s, 'g-^', label='drainage w residual')
 
-        pc, s = ps.metrics.pc_map_to_pc_curve(pc=drn4.im_pc, seq=drn4.im_seq, im=im, mode='drainage')
+        pc, s = ps.metrics.pc_map_to_pc_curve(
+            pc=drn4.im_pc, seq=drn4.im_seq, im=im, mode='drainage')
         ax['(e)'].plot(pc, s, 'm-*', label='drainage w residual & trapping')
 
         ax['(e)'].legend()
-
