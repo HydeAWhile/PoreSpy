@@ -4,12 +4,14 @@ from porespy.filters import (
     find_trapped_regions,
     seq_to_satn,
     trim_disconnected_blobs,
+    fftmorphology,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     Results,
     get_tqdm,
     _insert_disks_at_points_parallel,
+    ps_round,
 )
 from porespy import settings
 from edt import edt
@@ -21,11 +23,46 @@ tqdm = get_tqdm()
 
 __all__ = [
     'imbibition',
+    # The following are reference implementations using different techniques
     'imbibition_dt',
+    'imbibition_fft',
 ]
 
 
-def imbibition_dt(im, inlets=None, residual=None):
+def imbibition_fft(im, inlets=None, residual=None):
+    r"""
+    This is a reference implementation of imbibition using fft-based convolution
+    """
+    im = np.array(im, dtype=bool)
+    dt = np.around(edt(im), decimals=0).astype(int)
+    bins = np.linspace(1, dt.max() + 1, dt.max() + 1, dtype=int)
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
+        se = ps_round(r, ndim=im.ndim)
+        seeds = ~fftmorphology(~im, se, mode='dilation')
+        wp = im*~fftmorphology(seeds, se, mode='dilation')
+        if inlets is not None:
+            wp = trim_disconnected_blobs(wp, inlets=inlets)
+        # TODO: Not sure this residual code works
+        if residual is not None:
+            blobs = trim_disconnected_blobs(residual, inlets=wp)
+            seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+            wp = im*~fftmorphology(seeds2, se, mode='dilation')
+        mask = wp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i+1
+    if residual is not None:
+        im_seq[im_seq > 0] += 1
+        im_seq[residual] = 1
+        im_size[residual] = np.inf
+    results = Results()
+    results.im_seq = im_seq
+    results.im_size = im_size
+    return results
+
+
+def imbibition_dt(im, inlets=None, residual=None, parallel=True):
     r"""
     This is a reference implementation of imbibition using distance transforms
     """
@@ -36,14 +73,20 @@ def imbibition_dt(im, inlets=None, residual=None):
     im_size = np.zeros_like(im, dtype=float)
     for i, r in enumerate(tqdm(bins, **settings.tqdm)):
         seeds = dt >= r
-        wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
+        if parallel:
+            wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
+        else:
+            wp = im*~(edt(~seeds) < r)
         if inlets is not None:
             wp = trim_disconnected_blobs(wp, inlets=inlets)
         if residual is not None:
             blobs = trim_disconnected_blobs(residual, inlets=wp)
             seeds = dt >= r
             seeds = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
-            wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
+            if parallel:
+                wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
+            else:
+                wp = im*~(edt(~seeds) < r)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
@@ -152,15 +195,16 @@ def imbibition(
 
     if isinstance(steps, int):
         mask = np.isfinite(pc)*im
-        Ps = np.logspace(np.log10(pc[mask].max()), np.log10(pc[mask].min()*.99), steps)
+        Ps = np.logspace(np.log10(pc[mask].max()),
+                         np.log10(pc[mask].min()*.99), steps)
     else:
         Ps = np.unique(steps)[::-1]  # To ensure they are in descending order
 
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
-    step = 1
-    for P in tqdm(Ps, **settings.tqdm):
+    im_size = np.zeros_like(im, dtype=int)
+    for step, P in enumerate(tqdm(Ps, **settings.tqdm)):
         # This can be made faster if I find a way to get only seeds on edge, so
         # less spheres need to be drawn
         invadable = (pc <= P)*im
@@ -189,7 +233,7 @@ def imbibition(
         if np.any(mask):
             im_seq[mask] = step
             im_pc[mask] = P
-            step += 1
+            im_size[mask] = np.amin(radii)
 
     trapped = None
     if outlets is not None:

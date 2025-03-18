@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.typing as npt
-from scipy.signal import fftconvolve
 from typing import Literal
 from skimage.morphology import ball, disk, cube, square
 from porespy import settings
@@ -33,6 +32,7 @@ except ModuleNotFoundError:
 
 __all__ = [
     'drainage',
+    # The following are reference implementations using different techniques
     'drainage_dt',
     'drainage_fft',
     'drainage_dt_fft',
@@ -48,6 +48,8 @@ def drainage_dsi(
     im,
     inlets=None,
     outlets=None,
+    parallel=True,
+    steps=None,
 ):
     r"""
     """
@@ -66,15 +68,23 @@ def drainage_dsi(
         if inlets is not None:
             seeds = trim_disconnected_blobs(seeds, inlets=inlets)
             edges *= seeds
-        if not np.any(seeds):
-            continue
         coords = np.vstack(np.where(edges))
-        nwp = _insert_disk_at_points_parallel(
-            im=nwp,
-            coords=coords,
-            r=r,
-            v=True,
-        )
+        if coords.size == 0:
+            continue
+        if parallel:
+            nwp = _insert_disk_at_points_parallel(
+                im=nwp,
+                coords=coords,
+                r=r,
+                v=True,
+            )
+        else:
+            nwp = _insert_disk_at_points(
+                im=nwp,
+                coords=coords,
+                r=r,
+                v=True,
+            )
         nwp[seeds] = True
         mask = nwp*(im_seq == -1)
         im_size[mask] = r
@@ -89,12 +99,16 @@ def drainage_dt_fft(
     im,
     inlets=None,
     outlets=None,
-    steps=None
+    steps=None,
+    parallel=True,
 ):
     r"""
     """
     im = np.array(im, dtype=bool)
-    dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+    if parallel:
+        dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+    else:
+        dt = np.around(edt(im), decimals=0).astype(int)
     if steps is None:
         bins = np.unique(dt[im])[::-1]
     else:
@@ -154,8 +168,9 @@ def drainage_fft(
 def drainage_dt(
     im,
     inlets,
-    outlets=None
+    outlets=None,
     # residual=None,
+    parallel=True,
 ):
     r"""
     This is an implementation of drainage using distance transforms
@@ -192,16 +207,19 @@ def drainage_dt(
     Notes
     -----
     This function is purely geometric using only distance transforms to find
-    insertion sites. The point is to provide a straightforward function for
+    insertion sites. The point is to provide a straight-forward function for
     validating other implementations. It can also be used for speed comparisons
     since it uses the `edt` package with parallelization enabled. It cannot operate
     on the capillary pressure transform so cannot do gravity or other physics. The
-    capillary pressure must be calculated afterwards using the `results.im_size`
+    capillary pressure map must be calculated afterwards using the `results.im_size`
     array, like `pc = -2*sigma*cos(theta)/(results.im_size*voxel_size)`.
 
     """
     im = np.array(im, dtype=bool)
-    dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+    if parallel:
+        dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+    else:
+        dt = np.around(edt(im), decimals=0).astype(int)
     bins = np.unique(dt[im])[::-1]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
@@ -211,7 +229,10 @@ def drainage_dt(
             seeds = trim_disconnected_blobs(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        nwp = edt(~seeds, parallel=settings.ncores) < r
+        if parallel:
+            nwp = edt(~seeds, parallel=settings.ncores) < r
+        else:
+            nwp = edt(~seeds) < r
         # if residual is not None:
         #     blobs = trim_disconnected_blobs(residual, inlets=nwp)
         #     seeds = dt >= r
@@ -251,7 +272,6 @@ def drainage(
     outlets: npt.NDArray = None,
     residual: npt.NDArray = None,
     steps: int = None,
-    return_sizes: bool = False,
     conn: Literal['min', 'max'] = 'min',
     min_size: int = 0,
 ):
@@ -293,10 +313,6 @@ def drainage(
         ``pc``. If a list is given, each value in the list is used in ascending
         order. If `None` is given then all the possible values in `pc`
         are used.
-    return_sizes : bool, default = `False`
-        If `True` then an array containing the size of the sphere which first
-        overlapped each pixel is returned. This array is not computed by default
-        as computing it increases computation time.
     conn : str
         Controls the shape of the structuring element used to find neighboring
         voxels when looking at connectivity of invading blobs.  Options are:
@@ -331,9 +347,8 @@ def drainage(
         im_snwp    A numpy array with each voxel value indicating the global
                    value of the non-wetting phase saturation at the point it
                    was invaded
-        im_size    If `return_sizes` was set to `True`, then a numpy array with
-                   each voxel containing the radius of the sphere, in voxels, that
-                   first overlapped it.
+        im_size    A numpy array with each voxel containing the radius of the
+                   sphere, in voxels, that first overlapped it.
         im_pc      A numpy array with each voxel value indicating the
                    capillary pressure at which it was invaded.
         im_trapped  A numpy array with ``True`` values indicating trapped voxels if
@@ -398,9 +413,7 @@ def drainage(
     seeds = np.zeros_like(im, dtype=bool)
 
     # Begin IBOP algorithm
-    se = strel[im.ndim][conn].copy()
-    step = 1
-    for p in tqdm(Ps, **settings.tqdm):
+    for step, p in enumerate(tqdm(Ps, **settings.tqdm)):
         # Find all locations in image invadable at current pressure
         invadable = (pc <= p)*im
         # Trim locations not connected to the inlets
@@ -430,11 +443,9 @@ def drainage(
         # Values to images using mask
         mask = nwp_mask * (im_seq == 0) * im
         if np.any(mask):
-            im_seq[mask] = step
+            im_seq[mask] = step + 1
             im_pc[mask] = p
-            step += 1
-            if return_sizes and (np.size(radii) > 0):
-                im_size[mask] = np.amin(radii)
+            im_size[mask] = np.amin(radii)
 
         # Deal with impact of residual, if present
         if residual is not None:
@@ -465,10 +476,9 @@ def drainage(
 
                     mask = nwp_mask * (im_seq == 0) * im
                     if np.any(mask):
-                        im_seq[mask] = step
+                        im_seq[mask] = step + 1
                         im_pc[mask] = p
-                        step += 1
-                        if return_sizes and (np.size(radii) > 0):
+                        if np.size(radii) > 0:
                             im_size[mask] = np.amin(radii)
 
     # Set uninvaded voxels to inf
@@ -505,10 +515,9 @@ def drainage(
         results.im_seq[trapped] = -1
         results.im_snwp[trapped] = -1
         results.im_pc[trapped] = np.inf
-    if return_sizes:
-        im_size[im_pc == np.inf] = np.inf
-        im_size[im_pc == -np.inf] = -np.inf
-        results.im_size = im_size
+    im_size[im_pc == np.inf] = np.inf
+    im_size[im_pc == -np.inf] = -np.inf
+    results.im_size = im_size
     results.pc, results.snwp = pc_map_to_pc_curve(
         im=im,
         pc=results.im_pc,
@@ -564,21 +573,21 @@ if __name__ == "__main__":
         im=im,
         pc=pc,
         inlets=inlets,
-        steps=100,
+        steps=30,
     )
     drn2 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         outlets=outlets,
-        steps=100,
+        steps=30,
     )
     drn3 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         residual=residual,
-        steps=100,
+        steps=30,
     )
     drn4 = ps.simulations.drainage(
         im=im,
@@ -586,12 +595,12 @@ if __name__ == "__main__":
         inlets=inlets,
         outlets=outlets,
         residual=residual,
-        steps=100,
+        steps=30,
     )
     drn5 = ps.simulations.drainage(
         im=im,
         pc=pc,
-        steps=100,
+        steps=30,
     )
 
     # %% Visualize the invasion configurations for each scenario
@@ -616,18 +625,18 @@ if __name__ == "__main__":
 
         pc, s = ps.metrics.pc_map_to_pc_curve(
             pc=drn1.im_pc, seq=drn1.im_seq, im=im, mode='drainage')
-        ax['(e)'].plot(pc, s, 'b->', label='drainage')
+        ax['(e)'].plot(np.log10(pc), s, 'b->', label='drainage')
 
         pc, s = ps.metrics.pc_map_to_pc_curve(
             pc=drn2.im_pc, seq=drn2.im_seq, im=im, mode='drainage')
-        ax['(e)'].plot(pc, s, 'r-<', label='drainage w trapping')
+        ax['(e)'].plot(np.log10(pc), s, 'r-<', label='drainage w trapping')
 
         pc, s = ps.metrics.pc_map_to_pc_curve(
             pc=drn3.im_pc, seq=drn3.im_seq, im=im, mode='drainage')
-        ax['(e)'].plot(pc, s, 'g-^', label='drainage w residual')
+        ax['(e)'].plot(np.log10(pc), s, 'g-^', label='drainage w residual')
 
         pc, s = ps.metrics.pc_map_to_pc_curve(
             pc=drn4.im_pc, seq=drn4.im_seq, im=im, mode='drainage')
-        ax['(e)'].plot(pc, s, 'm-*', label='drainage w residual & trapping')
+        ax['(e)'].plot(np.log10(pc), s, 'm-*', label='drainage w residual & trapping')
 
         ax['(e)'].legend()
