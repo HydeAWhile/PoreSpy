@@ -52,6 +52,43 @@ def drainage_dsi(
     steps=None,
 ):
     r"""
+    Performs a distance transform based drainage simulation using direct sphere
+    insertion to accomplish dilation and distance transform thresholding for erosion
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading on-wetting fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fliud and appear anywhere within
+        the domain, which would result in a result analogous to a local thickness
+        filter.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending phase would exit the domain. If not provided that trapping
+        of the wetting phase is ignored.
+    parallel : boolean (default is `True)
+        Indicates if the spheres should be drawn using a parallelized function. This
+        option is really only intended for performing speed comparisons.
+    steps : array_like
+        A list of which sphere sizes to invade. If not provided they each unique
+        integer value in the distance transform is used.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        ----------- ----------------------------------------------------------------
+        Attribute   Description
+        ----------- ----------------------------------------------------------------
+        `im_seq`    The sequence map indicating the sequence or step number at which
+                    each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        ----------- ----------------------------------------------------------------
     """
     im = np.array(im, dtype=bool)
     dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
@@ -103,6 +140,44 @@ def drainage_dt_fft(
     parallel=True,
 ):
     r"""
+    Performs a distance transform based drainage simulation using distance transform
+    thresholding for the erosion step and fft-based convolution for the dilation
+    step.
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading on-wetting fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fliud and appear anywhere within
+        the domain, which would result in a result analogous to a local thickness
+        filter.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending phase would exit the domain. If not provided that trapping
+        of the wetting phase is ignored.
+    parallel : boolean (default is `True)
+        Indicates if distance transform function should run in parllelized mode or
+        not. Disabling this is only meant for performing speed comparisons.
+    steps : array_like
+        A list of which sphere sizes to invade. If not provided they each unique
+        integer value in the distance transform is used.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        ----------- ----------------------------------------------------------------
+        Attribute   Description
+        ----------- ----------------------------------------------------------------
+        `im_seq`    The sequence map indicating the sequence or step number at which
+                    each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        ----------- ----------------------------------------------------------------
     """
     im = np.array(im, dtype=bool)
     if parallel:
@@ -139,6 +214,40 @@ def drainage_fft(
     steps=None,
 ):
     r"""
+    Performs a distance transform based drainage simulation using fft-based
+    convolution for both the erosion and dilation steps
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading on-wetting fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fliud and appear anywhere within
+        the domain, which would result in a result analogous to a local thickness
+        filter.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending phase would exit the domain. If not provided that trapping
+        of the wetting phase is ignored.
+    steps : array_like
+        A list of which sphere sizes to invade. If not provided they each unique
+        integer value in the distance transform is used.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        ----------- ----------------------------------------------------------------
+        Attribute   Description
+        ----------- ----------------------------------------------------------------
+        `im_seq`    The sequence map indicating the sequence or step number at which
+                    each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        ----------- ----------------------------------------------------------------
     """
     im = np.array(im, dtype=bool)
     if steps is None:
@@ -171,9 +280,12 @@ def drainage_dt(
     outlets=None,
     # residual=None,
     parallel=True,
+    steps=None,
 ):
     r"""
-    This is an implementation of drainage using distance transforms
+    Performs a distance transform based drainage simulation using distance transform
+    thresholding for the erosion step and a second distance transform for the
+    dilation step.
 
     Parameters
     ----------
@@ -188,6 +300,12 @@ def drainage_dt(
         locations where defending (wetting) fluid exits the domain. If this is
         provided then trapping of the defending phase occurs, which trapped voxels
         indicated by -1. If this is not provided then no trapping occurs.
+    parallel : boolean (default is `True)
+        Indicates if distance transform function should run in parllelized mode or
+        not. Disabling this is only meant for performing speed comparisons.
+    steps : array_like
+        A list of which sphere sizes to invade. If not provided they each unique
+        integer value in the distance transform is used.
 
     Returns
     -------
@@ -220,7 +338,10 @@ def drainage_dt(
         dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
     else:
         dt = np.around(edt(im), decimals=0).astype(int)
-    bins = np.unique(dt[im])[::-1]
+    if steps is None:
+        bins = np.unique(dt[im])[::-1]
+    else:
+        bins = np.unique(steps)[::-1]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     for i, r in enumerate(tqdm(bins, **settings.tqdm)):
