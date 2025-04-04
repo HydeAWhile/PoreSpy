@@ -45,32 +45,7 @@ __all__ = [
 tqdm = get_tqdm()
 strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
-# # %%
-# fig, ax = plt.subplots(1, 2)
-# im = ~ps.generators.random_spheres([300, 300], r=10, clearance=10, seed=0)
-# dt = edt(im, parallel=settings.ncores)
 
-# # %%
-# r = 10
-
-# smooth = True
-# se = ps_round(r, ndim=im.ndim, smooth=smooth)
-# seeds1 = ~fftmorphology(~im, se, 'dilation')
-# seeds2 = dt >= r if smooth else dt > r
-# print(np.all(seeds1 == seeds2))
-
-# se = ps_round(r, ndim=im.ndim, smooth=smooth)
-# nwp1 = fftmorphology(seeds1, se, 'dilation')
-# nwp2 = edt(~seeds2) < r if smooth else edt(~seeds2) <= r
-# print(np.all(nwp1 == nwp2))
-
-# ax[0].imshow(nwp1+im*0.5)
-# ax[0].set_title('fft')
-# ax[1].imshow(nwp2+im*0.5)
-# ax[1].set_title('dt')
-
-
-# %%
 def drainage_dsi(
     im,
     inlets=None,
@@ -100,9 +75,13 @@ def drainage_dsi(
     parallel : boolean (default is `True)
         Indicates if the spheres should be drawn using a parallelized function. This
         option is really only intended for performing speed comparisons.
-    steps : array_like
-        A list of which sphere sizes to invade. If not provided they each unique
-        integer value in the distance transform is used.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
 
     Returns
     -------
@@ -211,9 +190,13 @@ def drainage_dt_fft(
         A boolean array with `True` values indicating the outlet locations through
         which defending phase would exit the domain. If not provided that trapping
         of the wetting phase is ignored.
-    steps : array_like
-        A list of which sphere sizes to invade. If not provided they each unique
-        integer value in the distance transform is used.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
 
     Returns
     -------
@@ -296,9 +279,13 @@ def drainage_fft(
         A boolean array with `True` values indicating the outlet locations through
         which defending phase would exit the domain. If not provided that trapping
         of the wetting phase is ignored.
-    steps : array_like
-        A list of which sphere sizes to invade. If not provided they each unique
-        integer value in the distance transform is used.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
 
     Returns
     -------
@@ -383,9 +370,13 @@ def drainage_dt(
         locations where defending (wetting) fluid exits the domain. If this is
         provided then trapping of the defending phase occurs, which trapped voxels
         indicated by -1. If this is not provided then no trapping occurs.
-    steps : array_like
-        A list of which sphere sizes to invade. If not provided they each unique
-        integer value in the distance transform is used.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
 
     Returns
     -------
@@ -401,16 +392,6 @@ def drainage_dt(
         im_size    A numpy array with each voxel value indicating the radius of
                    spheres being inserted when it was invaded.
         ========== =================================================================
-
-    Notes
-    -----
-    This function is purely geometric using only distance transforms to find
-    insertion sites. The point is to provide a straight-forward function for
-    validating other implementations. It can also be used for speed comparisons
-    since it uses the `edt` package with parallelization enabled. It cannot operate
-    on the capillary pressure transform so cannot do gravity or other physics. The
-    capillary pressure map must be calculated afterwards using the `results.im_size`
-    array, like `pc = -2*sigma*cos(theta)/(results.im_size*voxel_size)`.
 
     """
     im = np.array(im, dtype=bool)
