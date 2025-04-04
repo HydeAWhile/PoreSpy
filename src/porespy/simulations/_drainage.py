@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.typing as npt
+import inspect
 from typing import Literal
 from skimage.morphology import ball, disk, cube, square
 from porespy import settings
@@ -13,6 +14,7 @@ from porespy.tools import (
     Results,
     ps_rect,
     ps_round,
+    make_contiguous,
 )
 from porespy.filters import (
     trim_disconnected_blobs,
@@ -43,13 +45,39 @@ __all__ = [
 tqdm = get_tqdm()
 strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
+# # %%
+# fig, ax = plt.subplots(1, 2)
+# im = ~ps.generators.random_spheres([300, 300], r=10, clearance=10, seed=0)
+# dt = edt(im, parallel=settings.ncores)
 
+# # %%
+# r = 10
+
+# smooth = True
+# se = ps_round(r, ndim=im.ndim, smooth=smooth)
+# seeds1 = ~fftmorphology(~im, se, 'dilation')
+# seeds2 = dt >= r if smooth else dt > r
+# print(np.all(seeds1 == seeds2))
+
+# se = ps_round(r, ndim=im.ndim, smooth=smooth)
+# nwp1 = fftmorphology(seeds1, se, 'dilation')
+# nwp2 = edt(~seeds2) < r if smooth else edt(~seeds2) <= r
+# print(np.all(nwp1 == nwp2))
+
+# ax[0].imshow(nwp1+im*0.5)
+# ax[0].set_title('fft')
+# ax[1].imshow(nwp2+im*0.5)
+# ax[1].set_title('dt')
+
+
+# %%
 def drainage_dsi(
     im,
     inlets=None,
     outlets=None,
     parallel=True,
     steps=None,
+    smooth=True,
 ):
     r"""
     Performs a distance transform based drainage simulation using direct sphere
@@ -90,18 +118,28 @@ def drainage_dsi(
                     when each voxel was first invaded.
         ----------- ----------------------------------------------------------------
     """
+    # The other reference algorithms have smooth an optional argument but this only
+    # works if the spheres are smooth due to the way that edges are found
     im = np.array(im, dtype=bool)
-    dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
+    dt = edt(im, parallel=settings.ncores)
+    dt_int = dt.astype(int)
     if steps is None:
-        bins = np.unique(dt[im])[::-1]
+        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
+    elif type(steps) is int:
+        bins = np.arange(steps, 0, -1)
     else:
         bins = np.unique(steps)[::-1]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
-    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
-        seeds = dt >= r
-        edges = dt == r
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        if smooth:
+            seeds = dt >= r
+            edges = dt_int == r
+        else:
+            seeds = dt > r
+            edges = (dt > r)*(dt_int <= (r + 1))
         if inlets is not None:
             seeds = trim_disconnected_blobs(seeds, inlets=inlets)
             edges *= seeds
@@ -112,23 +150,38 @@ def drainage_dsi(
             nwp = _insert_disk_at_points_parallel(
                 im=nwp,
                 coords=coords,
-                r=r,
+                r=int(r),
                 v=True,
+                smooth=smooth,
             )
         else:
             nwp = _insert_disk_at_points(
                 im=nwp,
                 coords=coords,
-                r=r,
+                r=int(r),
                 v=True,
+                smooth=smooth,
             )
         nwp[seeds] = True
         mask = nwp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
     results = Results()
-    results.im_seq = im_seq
-    results.im_size = im_size
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
     return results
 
 
@@ -137,7 +190,7 @@ def drainage_dt_fft(
     inlets=None,
     outlets=None,
     steps=None,
-    parallel=True,
+    smooth=True
 ):
     r"""
     Performs a distance transform based drainage simulation using distance transform
@@ -158,9 +211,6 @@ def drainage_dt_fft(
         A boolean array with `True` values indicating the outlet locations through
         which defending phase would exit the domain. If not provided that trapping
         of the wetting phase is ignored.
-    parallel : boolean (default is `True)
-        Indicates if distance transform function should run in parllelized mode or
-        not. Disabling this is only meant for performing speed comparisons.
     steps : array_like
         A list of which sphere sizes to invade. If not provided they each unique
         integer value in the distance transform is used.
@@ -180,30 +230,44 @@ def drainage_dt_fft(
         ----------- ----------------------------------------------------------------
     """
     im = np.array(im, dtype=bool)
-    if parallel:
-        dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
-    else:
-        dt = np.around(edt(im), decimals=0).astype(int)
+    dt = edt(im, parallel=settings.ncores)
     if steps is None:
-        bins = np.unique(dt[im])[::-1]
+        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
+    elif type(steps) is int:
+        bins = np.arange(steps, 0, -1)
     else:
         bins = np.unique(steps)[::-1]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
-    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
-        seeds = dt >= r
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        seeds = dt >= r if smooth else dt > r
         if inlets is not None:
             seeds = trim_disconnected_blobs(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        se = ps_round(r, ndim=im.ndim)
+        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
         nwp = fftmorphology(seeds, se, 'dilation')
         mask = nwp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
     results = Results()
-    results.im_seq = im_seq
-    results.im_size = im_size
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
     return results
 
 
@@ -212,6 +276,7 @@ def drainage_fft(
     inlets=None,
     outlets=None,
     steps=None,
+    smooth=True,
 ):
     r"""
     Performs a distance transform based drainage simulation using fft-based
@@ -250,27 +315,45 @@ def drainage_fft(
         ----------- ----------------------------------------------------------------
     """
     im = np.array(im, dtype=bool)
+    dt = edt(im, parallel=settings.ncores)
     if steps is None:
-        dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
-        bins = np.unique(dt[im])[::-1]
+        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
+    elif type(steps) is int:
+        bins = np.arange(steps, 0, -1)
     else:
         bins = np.unique(steps)[::-1]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
-    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
-        se = ps_round(r, ndim=im.ndim)
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
         seeds = ~fftmorphology(~im, se, 'dilation')
         if inlets is not None:
             seeds = trim_disconnected_blobs(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
+        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
         nwp = fftmorphology(seeds, se, 'dilation')
         mask = nwp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
     results = Results()
-    results.im_seq = im_seq
-    results.im_size = im_size
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
     return results
 
 
@@ -279,8 +362,8 @@ def drainage_dt(
     inlets,
     outlets=None,
     # residual=None,
-    parallel=True,
     steps=None,
+    smooth=True,
 ):
     r"""
     Performs a distance transform based drainage simulation using distance transform
@@ -300,9 +383,6 @@ def drainage_dt(
         locations where defending (wetting) fluid exits the domain. If this is
         provided then trapping of the defending phase occurs, which trapped voxels
         indicated by -1. If this is not provided then no trapping occurs.
-    parallel : boolean (default is `True)
-        Indicates if distance transform function should run in parllelized mode or
-        not. Disabling this is only meant for performing speed comparisons.
     steps : array_like
         A list of which sphere sizes to invade. If not provided they each unique
         integer value in the distance transform is used.
@@ -334,26 +414,24 @@ def drainage_dt(
 
     """
     im = np.array(im, dtype=bool)
-    if parallel:
-        dt = np.around(edt(im, parallel=settings.ncores), decimals=0).astype(int)
-    else:
-        dt = np.around(edt(im), decimals=0).astype(int)
+    dt = edt(im, parallel=settings.ncores)
     if steps is None:
-        bins = np.unique(dt[im])[::-1]
+        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
+    elif type(steps) is int:
+        bins = np.arange(steps, 0, -1)
     else:
         bins = np.unique(steps)[::-1]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
-    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
-        seeds = dt >= r
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        seeds = dt >= r if smooth else dt > r
         if inlets is not None:
             seeds = trim_disconnected_blobs(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        if parallel:
-            nwp = edt(~seeds, parallel=settings.ncores) < r
-        else:
-            nwp = edt(~seeds) < r
+        tmp = edt(~seeds, parallel=settings.ncores)
+        nwp = tmp < r if smooth else tmp <= r
         # if residual is not None:
         #     blobs = trim_disconnected_blobs(residual, inlets=nwp)
         #     seeds = dt >= r
@@ -366,18 +444,19 @@ def drainage_dt(
     #     im_seq[im_seq > 0] += 1
     #     im_seq[residual] = 1
     #     im_size[residual] = -np.inf
+    # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_regions(
             im=im,
             seq=im_seq,
-            oulets=outlets,
+            outlets=outlets,
             return_mask=True,
             conn='min',
             method='cluster',
             min_size=0,
         )
         im_seq[trapped] = -1
-        im_seq = ps.tools.make_contiguous(im_seq, mode='symmetric')
+        im_seq = make_contiguous(im_seq, mode='symmetric')
         im_size[trapped] = -1
     results = Results()
     results.im_seq = im_seq*im
@@ -534,7 +613,8 @@ def drainage(
     seeds = np.zeros_like(im, dtype=bool)
 
     # Begin IBOP algorithm
-    for step, p in enumerate(tqdm(Ps, **settings.tqdm)):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for step, p in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         # Find all locations in image invadable at current pressure
         invadable = (pc <= p)*im
         # Trim locations not connected to the inlets

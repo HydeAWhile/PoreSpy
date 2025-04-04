@@ -29,7 +29,11 @@ __all__ = [
 ]
 
 
-def imbibition_fft(im, inlets=None, residual=None):
+def imbibition_fft(
+    im,
+    inlets=None,
+    residual=None,
+):
     r"""
     This is a reference implementation of imbibition using fft-based convolution
     """
@@ -62,7 +66,12 @@ def imbibition_fft(im, inlets=None, residual=None):
     return results
 
 
-def imbibition_dt(im, inlets=None, residual=None, parallel=True):
+def imbibition_dt(
+    im,
+    inlets=None,
+    residual=None,
+    parallel=True,
+):
     r"""
     This is a reference implementation of imbibition using distance transforms
     """
