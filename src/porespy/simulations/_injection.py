@@ -368,13 +368,6 @@ def ibip(
     -----
     This function is slower and is less capable than `qbip`, which returns identical
     results, so it is recommended to use that instead.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/ibip.html>`_
-    to view an online example.
-
     """
     # Process the boundary image
     if inlets is None:
@@ -586,6 +579,12 @@ def injection(
        invasion of a non-wetting fluid in volumetric images using basic image
        processing tools*. `Computers and the Geosciences
        <https://doi.org/10.1016/j.cageo.2021.104978>`_. 158(1), 104978 (2022)
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/injection.html>`_
+    to view an online example.
 
 
     """

@@ -561,9 +561,7 @@ def drainage(
     `Click here
     <https://porespy.org/examples/simulations/reference/drainage.html>`_
     to view online example.
-
     """
-
     im = np.array(im, dtype=bool)
 
     if dt is None:
@@ -596,7 +594,6 @@ def drainage(
     im_size = np.zeros_like(im, dtype=float)
     seeds = np.zeros_like(im, dtype=bool)
 
-    # Begin IBOP algorithm
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, p in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         # Find all locations in image invadable at current pressure
