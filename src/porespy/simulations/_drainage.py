@@ -50,7 +50,6 @@ def drainage_dsi(
     im,
     inlets=None,
     outlets=None,
-    parallel=True,
     steps=None,
     smooth=True,
 ):
@@ -72,9 +71,6 @@ def drainage_dsi(
         A boolean array with `True` values indicating the outlet locations through
         which defending phase would exit the domain. If not provided that trapping
         of the wetting phase is ignored.
-    parallel : boolean (default is `True)
-        Indicates if the spheres should be drawn using a parallelized function. This
-        option is really only intended for performing speed comparisons.
     steps : scalar or array_like
         A list of which sphere sizes to invade. If `None` (default) then each unique
         integer value in the distance transform is used. If a scalar then a list of
@@ -99,6 +95,7 @@ def drainage_dsi(
     """
     # The other reference algorithms have smooth an optional argument but this only
     # works if the spheres are smooth due to the way that edges are found
+    parallel = True if settings.ncores > 0 else False
     im = np.array(im, dtype=bool)
     dt = edt(im, parallel=settings.ncores)
     dt_int = dt.astype(int)

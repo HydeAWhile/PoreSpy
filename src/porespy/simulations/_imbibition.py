@@ -11,6 +11,8 @@ from porespy.tools import (
     Results,
     get_tqdm,
     _insert_disks_at_points_parallel,
+    _insert_disk_at_points_parallel,
+    _insert_disk_at_points,
     ps_round,
     make_contiguous,
 )
@@ -92,8 +94,8 @@ def imbibition_dt_fft(
         im_seq = make_contiguous(im_seq, mode='symmetric')
         im_size[trapped] = -1
     results = Results()
-    results.im_seq = im_seq
-    results.im_size = im_size
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
     return results
 
 
@@ -157,8 +159,8 @@ def imbibition_dt(
         im_seq = make_contiguous(im_seq, mode='symmetric')
         im_size[trapped] = -1
     results = Results()
-    results.im_seq = im_seq
-    results.im_size = im_size
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
     return results
 
 
@@ -223,8 +225,8 @@ def imbibition_fft(
         im_seq = make_contiguous(im_seq, mode='symmetric')
         im_size[trapped] = -1
     results = Results()
-    results.im_seq = im_seq
-    results.im_size = im_size
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
     return results
 
 
