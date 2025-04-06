@@ -85,8 +85,6 @@ def imbibition_dsi(
     The sphere insert stesps will be executed in parallel if
     `porespy.settings.ncores > 1`
     """
-    # The other reference algorithms have smooth an optional argument but this only
-    # works if the spheres are smooth due to the way that edges are found
     if settings.ncores > 1:
         func = _insert_disk_at_points_parallel
     else:
