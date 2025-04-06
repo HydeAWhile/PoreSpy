@@ -373,6 +373,11 @@ class TestDisplacementRefs():
     def test_imbibition_2D_no_trapping_smooth(self):
         imb = {}
         smooth = True
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im,
+            inlets=self.inlets,
+            smooth=smooth,
+        )
         imb['dt'] = ps.simulations.imbibition_dt(
             im=self.im,
             inlets=self.inlets,
@@ -388,6 +393,12 @@ class TestDisplacementRefs():
             inlets=self.inlets,
             smooth=smooth,
         )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -404,6 +415,11 @@ class TestDisplacementRefs():
     def test_imbibition_2D_no_trapping_not_smooth(self):
         imb = {}
         smooth = False
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im,
+            inlets=self.inlets,
+            smooth=smooth,
+        )
         imb['dt'] = ps.simulations.imbibition_dt(
             im=self.im,
             inlets=self.inlets,
@@ -419,6 +435,12 @@ class TestDisplacementRefs():
             inlets=self.inlets,
             smooth=smooth,
         )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -435,6 +457,11 @@ class TestDisplacementRefs():
     def test_imbibition_3D_no_trapping_smooth(self):
         imb = {}
         smooth = True
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im3D,
+            inlets=self.inlets3D,
+            smooth=smooth,
+        )
         imb['dt'] = ps.simulations.imbibition_dt(
             im=self.im3D,
             inlets=self.inlets3D,
@@ -450,6 +477,12 @@ class TestDisplacementRefs():
             inlets=self.inlets3D,
             smooth=smooth,
         )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -466,6 +499,11 @@ class TestDisplacementRefs():
     def test_imbibition_3D_no_trapping_not_smooth(self):
         imb = {}
         smooth = False
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im3D,
+            inlets=self.inlets3D,
+            smooth=smooth,
+        )
         imb['dt'] = ps.simulations.imbibition_dt(
             im=self.im3D,
             inlets=self.inlets3D,
@@ -481,6 +519,12 @@ class TestDisplacementRefs():
             inlets=self.inlets3D,
             smooth=smooth,
         )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -497,6 +541,12 @@ class TestDisplacementRefs():
     def test_imbibition_2D_w_trapping_smooth(self):
         imb = {}
         smooth = True
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im,
+            inlets=self.inlets,
+            outlets=self.outlets,
+            smooth=smooth,
+        )
         imb['dt'] = ps.simulations.imbibition_dt(
             im=self.im,
             inlets=self.inlets,
@@ -515,6 +565,12 @@ class TestDisplacementRefs():
             outlets=self.outlets,
             smooth=smooth,
         )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -531,6 +587,12 @@ class TestDisplacementRefs():
     def test_imbibition_2D_w_trapping_not_smooth(self):
         imb = {}
         smooth = False
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im,
+            inlets=self.inlets,
+            outlets=self.outlets,
+            smooth=smooth,
+        )
         imb['dt'] = ps.simulations.imbibition_dt(
             im=self.im,
             inlets=self.inlets,
@@ -549,6 +611,12 @@ class TestDisplacementRefs():
             outlets=self.outlets,
             smooth=smooth,
         )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -565,6 +633,12 @@ class TestDisplacementRefs():
     def test_imbibition_3D_w_trapping_smooth(self):
         imb = {}
         smooth = True
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im3D,
+            inlets=self.inlets3D,
+            outlets=self.outlets3D,
+            smooth=smooth,
+        )
         imb['dt'] = ps.simulations.imbibition_dt(
             im=self.im3D,
             inlets=self.inlets3D,
@@ -583,6 +657,12 @@ class TestDisplacementRefs():
             outlets=self.outlets3D,
             smooth=smooth,
         )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -599,6 +679,12 @@ class TestDisplacementRefs():
     def test_imbibition_3D_w_trapping_not_smooth(self):
         imb = {}
         smooth = False
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im3D,
+            inlets=self.inlets3D,
+            outlets=self.outlets3D,
+            smooth=smooth,
+        )
         imb['dt'] = ps.simulations.imbibition_dt(
             im=self.im3D,
             inlets=self.inlets3D,
@@ -617,6 +703,12 @@ class TestDisplacementRefs():
             outlets=self.outlets3D,
             smooth=smooth,
         )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq

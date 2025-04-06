@@ -99,7 +99,10 @@ def drainage_dsi(
     """
     # The other reference algorithms have smooth an optional argument but this only
     # works if the spheres are smooth due to the way that edges are found
-    parallel = True if settings.ncores > 0 else False
+    if settings.ncores > 1:
+        func = _insert_disk_at_points_parallel
+    else:
+        func = _insert_disk_at_points
     im = np.array(im, dtype=bool)
     dt = edt(im, parallel=settings.ncores)
     dt_int = dt.astype(int)
@@ -125,18 +128,8 @@ def drainage_dsi(
             seeds = trim_disconnected_blobs(seeds, inlets=inlets)
             edges *= seeds
         coords = np.vstack(np.where(edges))
-        if coords.size == 0:
-            continue
-        if parallel:
-            nwp = _insert_disk_at_points_parallel(
-                im=nwp,
-                coords=coords,
-                r=int(r),
-                v=True,
-                smooth=smooth,
-            )
-        else:
-            nwp = _insert_disk_at_points(
+        if coords.size > 0:
+            nwp = func(
                 im=nwp,
                 coords=coords,
                 r=int(r),
@@ -544,8 +537,8 @@ def drainage(
                    sphere, in voxels, that first overlapped it.
         im_pc      A numpy array with each voxel value indicating the
                    capillary pressure at which it was invaded.
-        im_trapped  A numpy array with ``True`` values indicating trapped voxels if
-                    `outlets` was provided, otherwise will be `None`.
+        im_trapped A numpy array with ``True`` values indicating trapped voxels
+                   if `outlets` was provided, otherwise will be `None`.
         pc         1D array of capillary pressure values that were applied
         swnp       1D array of non-wetting phase saturations for each applied
                    value of capillary pressure (``pc``).
