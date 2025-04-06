@@ -63,14 +63,13 @@ def drainage_dsi(
         The boolean image of the void space on which to perform the simulation
     inlets : ndarray (optional)
         A boolean array with `True` values indicating the inlet locations for the
-        invading on-wetting fluid. If not provided then access limitations will
-        not be applied, meaning that the invading fliud and appear anywhere within
-        the domain, which would result in a result analogous to a local thickness
-        filter.
+        invading (non-wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid cand appear anywhere within
+        the domain.
     outlets : ndarray (optional)
         A boolean array with `True` values indicating the outlet locations through
-        which defending phase would exit the domain. If not provided that trapping
-        of the wetting phase is ignored.
+        which defending (wetting) phase would exit the domain. If not provided then
+        trapping of the wetting phase is ignored.
     steps : scalar or array_like
         A list of which sphere sizes to invade. If `None` (default) then each unique
         integer value in the distance transform is used. If a scalar then a list of
@@ -92,6 +91,11 @@ def drainage_dsi(
         `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
         ----------- ----------------------------------------------------------------
+
+    Notes
+    -----
+    The sphere insert stesps will be executed in parallel if
+    `porespy.settings.ncores > 1`
     """
     # The other reference algorithms have smooth an optional argument but this only
     # works if the spheres are smooth due to the way that edges are found
@@ -180,14 +184,13 @@ def drainage_dt_fft(
         The boolean image of the void space on which to perform the simulation
     inlets : ndarray (optional)
         A boolean array with `True` values indicating the inlet locations for the
-        invading on-wetting fluid. If not provided then access limitations will
-        not be applied, meaning that the invading fliud and appear anywhere within
-        the domain, which would result in a result analogous to a local thickness
-        filter.
+        invading (non-wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid cand appear anywhere within
+        the domain.
     outlets : ndarray (optional)
         A boolean array with `True` values indicating the outlet locations through
-        which defending phase would exit the domain. If not provided that trapping
-        of the wetting phase is ignored.
+        which defending (wetting) phase would exit the domain. If not provided then
+        trapping of the wetting phase is ignored.
     steps : scalar or array_like
         A list of which sphere sizes to invade. If `None` (default) then each unique
         integer value in the distance transform is used. If a scalar then a list of
@@ -209,6 +212,11 @@ def drainage_dt_fft(
         `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
         ----------- ----------------------------------------------------------------
+
+    Notes
+    -----
+    The distance transform will be executed in parallel if
+    `porespy.settings.ncores > 1`
     """
     im = np.array(im, dtype=bool)
     dt = edt(im, parallel=settings.ncores)
@@ -270,14 +278,13 @@ def drainage_fft(
         The boolean image of the void space on which to perform the simulation
     inlets : ndarray (optional)
         A boolean array with `True` values indicating the inlet locations for the
-        invading on-wetting fluid. If not provided then access limitations will
-        not be applied, meaning that the invading fliud and appear anywhere within
-        the domain, which would result in a result analogous to a local thickness
-        filter.
+        invading (non-wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid cand appear anywhere within
+        the domain.
     outlets : ndarray (optional)
         A boolean array with `True` values indicating the outlet locations through
-        which defending phase would exit the domain. If not provided that trapping
-        of the wetting phase is ignored.
+        which defending (wetting) phase would exit the domain. If not provided then
+        trapping of the wetting phase is ignored.
     steps : scalar or array_like
         A list of which sphere sizes to invade. If `None` (default) then each unique
         integer value in the distance transform is used. If a scalar then a list of
@@ -360,16 +367,16 @@ def drainage_dt(
     Parameters
     ----------
     im : ndarray
-        A boolean image of the material with `True` values indicating the phase
-        of interest.
-    inlets : ndarray
-        A boolean image the same shape as `im` with `True` values indicating the
-        locations of the invading fluid inlets.
-    outlets : ndarray, optional
-        A boolean image the same shape as `im` with `True` values indicating the
-        locations where defending (wetting) fluid exits the domain. If this is
-        provided then trapping of the defending phase occurs, which trapped voxels
-        indicated by -1. If this is not provided then no trapping occurs.
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (non-wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid cand appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (wetting) phase would exit the domain. If not provided then
+        trapping of the wetting phase is ignored.
     steps : scalar or array_like
         A list of which sphere sizes to invade. If `None` (default) then each unique
         integer value in the distance transform is used. If a scalar then a list of
@@ -393,6 +400,10 @@ def drainage_dt(
                    spheres being inserted when it was invaded.
         ========== =================================================================
 
+    Notes
+    -----
+    The distance transforms will be executed in parallel if
+    `porespy.settings.ncores > 1`
     """
     im = np.array(im, dtype=bool)
     dt = edt(im, parallel=settings.ncores)

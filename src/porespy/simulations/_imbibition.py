@@ -45,6 +45,46 @@ def imbibition_dt_fft(
     Performs a distance transform based imbibition simulation using distance
     transform thresholding for the erosion step and fft-based convolution for
     the dilation step.
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid can appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (non-wetting) phase would exit the domain. If not provided
+        then trapping of the non-wetting phase is ignored.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        ----------- ----------------------------------------------------------------
+        Attribute   Description
+        ----------- ----------------------------------------------------------------
+        `im_seq`    The sequence map indicating the sequence or step number at which
+                    each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        ----------- ----------------------------------------------------------------
+
+    Notes
+    -----
+    The distance transform will be executed in parallel if
+    `porespy.settings.ncores > 1`
     """
     im = np.array(im, dtype=bool)
     dt = edt(im, parallel=settings.ncores)
@@ -109,7 +149,49 @@ def imbibition_dt(
 ):
     r"""
     Performs a distance transform based imbibition simulation using distance
-    transform thresholding for both the erosion and dilation steps.
+    transform thresholding for the erosion step and a second distance transform
+    for the dilation step.
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid can appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (non-wetting) phase would exit the domain. If not provided
+        then trapping of the non-wetting phase is ignored.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
+
+    Returns
+    -------
+    results : Results object
+        A dataclass-like object with the following attributes:
+
+        ========== =================================================================
+        Attribute  Description
+        ========== =================================================================
+        im_seq     A numpy array with each voxel value indicating the sequence
+                   at which it was invaded.  Values of -1 indicate that it was
+                   not invaded.
+        im_size    A numpy array with each voxel value indicating the radius of
+                   spheres being inserted when it was invaded.
+        ========== =================================================================
+
+    Notes
+    -----
+    The distance transforms will be executed in parallel if
+    `porespy.settings.ncores > 1`
     """
     im = np.array(im, dtype=bool)
     dt = edt(im, parallel=settings.ncores)
@@ -173,9 +255,43 @@ def imbibition_fft(
     smooth=True,
 ):
     r"""
-    Performs a distance transform based imbibition simulation using distance
-    transform thresholding for the erosion step and fft-based convolution for
-    the dilation step.
+    Performs a distance transform based imbibition simulation using fft-based
+    convolution for both the erosion and dilation steps
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid can appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (non-wetting) phase would exit the domain. If not provided
+        then trapping of the non-wetting phase is ignored.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        ----------- ----------------------------------------------------------------
+        Attribute   Description
+        ----------- ----------------------------------------------------------------
+        `im_seq`    The sequence map indicating the sequence or step number at which
+                    each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        ----------- ----------------------------------------------------------------
     """
     im = np.array(im, dtype=bool)
     dt = edt(im, parallel=settings.ncores)
@@ -228,86 +344,6 @@ def imbibition_fft(
     results.im_seq = im_seq*im
     results.im_size = im_size*im
     return results
-
-
-# def imbibition_fft(
-#     im,
-#     inlets=None,
-#     residual=None,
-# ):
-#     r"""
-#     This is a reference implementation of imbibition using fft-based convolution
-#     """
-#     im = np.array(im, dtype=bool)
-#     dt = np.around(edt(im), decimals=0).astype(int)
-#     bins = np.linspace(1, dt.max() + 1, dt.max() + 1, dtype=int)
-#     im_seq = -np.ones_like(im, dtype=int)
-#     im_size = np.zeros_like(im, dtype=float)
-#     for i, r in enumerate(tqdm(bins, **settings.tqdm)):
-#         se = ps_round(r, ndim=im.ndim)
-#         seeds = ~fftmorphology(~im, se, mode='dilation')
-#         wp = im*~fftmorphology(seeds, se, mode='dilation')
-#         if inlets is not None:
-#             wp = trim_disconnected_blobs(wp, inlets=inlets)
-#         # TODO: Not sure this residual code works
-#         if residual is not None:
-#             blobs = trim_disconnected_blobs(residual, inlets=wp)
-#             seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
-#             wp = im*~fftmorphology(seeds2, se, mode='dilation')
-#         mask = wp*(im_seq == -1)
-#         im_size[mask] = r
-#         im_seq[mask] = i+1
-#     if residual is not None:
-#         im_seq[im_seq > 0] += 1
-#         im_seq[residual] = 1
-#         im_size[residual] = np.inf
-#     results = Results()
-#     results.im_seq = im_seq
-#     results.im_size = im_size
-#     return results
-
-
-# def imbibition_dt(
-#     im,
-#     inlets=None,
-#     residual=None,
-#     parallel=True,
-# ):
-#     r"""
-#     This is a reference implementation of imbibition using distance transforms
-#     """
-#     im = np.array(im, dtype=bool)
-#     dt = np.around(edt(im), decimals=0).astype(int)
-#     bins = np.linspace(1, dt.max() + 1, dt.max() + 1, dtype=int)
-#     im_seq = -np.ones_like(im, dtype=int)
-#     im_size = np.zeros_like(im, dtype=float)
-#     for i, r in enumerate(tqdm(bins, **settings.tqdm)):
-#         seeds = dt >= r
-#         if parallel:
-#             wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
-#         else:
-#             wp = im*~(edt(~seeds) < r)
-#         if inlets is not None:
-#             wp = trim_disconnected_blobs(wp, inlets=inlets)
-#         if residual is not None:
-#             blobs = trim_disconnected_blobs(residual, inlets=wp)
-#             seeds = dt >= r
-#             seeds = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
-#             if parallel:
-#                 wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
-#             else:
-#                 wp = im*~(edt(~seeds) < r)
-#         mask = wp*(im_seq == -1)
-#         im_size[mask] = r
-#         im_seq[mask] = i+1
-#     if residual is not None:
-#         im_seq[im_seq > 0] += 1
-#         im_seq[residual] = 1
-#         im_size[residual] = np.inf
-#     results = Results()
-#     results.im_seq = im_seq
-#     results.im_size = im_size
-#     return results
 
 
 def imbibition(
