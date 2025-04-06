@@ -108,6 +108,7 @@ def drainage_dsi(
         bins = np.arange(steps, 0, -1)
     else:
         bins = np.unique(steps)[::-1]
+        bins = bins[bins > 0]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
@@ -220,6 +221,7 @@ def drainage_dt_fft(
         bins = np.arange(steps, 0, -1)
     else:
         bins = np.unique(steps)[::-1]
+        bins = bins[bins > 0]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -309,6 +311,7 @@ def drainage_fft(
         bins = np.arange(steps, 0, -1)
     else:
         bins = np.unique(steps)[::-1]
+        bins = bins[bins > 0]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -402,6 +405,7 @@ def drainage_dt(
         bins = np.arange(steps, 0, -1)
     else:
         bins = np.unique(steps)[::-1]
+        bins = bins[bins > 0]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name

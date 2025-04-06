@@ -370,12 +370,54 @@ class TestDisplacementRefs():
         tmp = drn[a].im_size == drn[b].im_size
         assert np.all(tmp)
 
+    def test_imbibition_2D_no_trapping_smooth(self):
+        imb = {}
+        smooth = True
+        imb['dt'] = ps.simulations.imbibition_dt(
+            im=self.im,
+            inlets=self.inlets,
+            smooth=smooth,
+        )
+        imb['fft'] = ps.simulations.imbibition_fft(
+            im=self.im,
+            inlets=self.inlets,
+            smooth=smooth,
+        )
+        imb['dsi'] = ps.simulations.imbibition_dsi(
+            im=self.im,
+            inlets=self.inlets,
+            smooth=smooth,
+        )
+        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+            im=self.im,
+            inlets=self.inlets,
+            smooth=smooth,
+        )
+
+        a, b = 'dt', 'dsi'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
+
+        a, b = 'dt', 'dt_fft'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
+
+        a, b = 'dt', 'fft'
+        tmp = imb[a].im_seq == imb[b].im_seq
+        assert np.all(tmp)
+        tmp = imb[a].im_size == imb[b].im_size
+        assert np.all(tmp)
+
 
 if __name__ == '__main__':
     t = TestDisplacementRefs()
     self = t
     t.setup_class()
     for item in t.__dir__():
-        if item.startswith('test'):
+        if item.startswith('test_imbibition'):
             print(f'Running test: {item}')
             t.__getattribute__(item)()

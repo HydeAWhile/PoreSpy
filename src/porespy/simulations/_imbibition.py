@@ -1,5 +1,5 @@
+import inspect
 import numpy as np
-from skimage.morphology import ball, disk
 from porespy.filters import (
     find_trapped_regions,
     seq_to_satn,
@@ -12,6 +12,7 @@ from porespy.tools import (
     get_tqdm,
     _insert_disks_at_points_parallel,
     ps_round,
+    make_contiguous,
 )
 from porespy import settings
 from edt import edt
@@ -25,41 +26,71 @@ __all__ = [
     'imbibition',
     # The following are reference implementations using different techniques
     'imbibition_dt',
+    'imbibition_dt_fft',
     'imbibition_fft',
 ]
 
 
-def imbibition_fft(
+def imbibition_dt_fft(
     im,
     inlets=None,
+    outlets=None,
     residual=None,
+    steps=None,
+    smooth=True,
 ):
     r"""
-    This is a reference implementation of imbibition using fft-based convolution
+    Performs a distance transform based imbibition simulation using distance
+    transform thresholding for the erosion step and fft-based convolution for
+    the dilation step.
     """
     im = np.array(im, dtype=bool)
-    dt = np.around(edt(im), decimals=0).astype(int)
-    bins = np.linspace(1, dt.max() + 1, dt.max() + 1, dtype=int)
+    dt = edt(im, parallel=settings.ncores)
+    if steps is None:
+        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
+    elif type(steps) is int:
+        bins = np.arange(steps, 0, -1)
+    else:
+        bins = np.unique(steps)[::-1]
+        bins = bins[bins > 0]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
-    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
-        se = ps_round(r, ndim=im.ndim)
-        seeds = ~fftmorphology(~im, se, mode='dilation')
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        # Perform erosion using dt
+        seeds = dt >= r if smooth else dt > r
+        # Perform dilation using convolution
+        se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
+        # Trimming disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_blobs(wp, inlets=inlets)
         # TODO: Not sure this residual code works
-        if residual is not None:
-            blobs = trim_disconnected_blobs(residual, inlets=wp)
-            seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
-            wp = im*~fftmorphology(seeds2, se, mode='dilation')
+        # if residual is not None:
+        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    if residual is not None:
-        im_seq[im_seq > 0] += 1
-        im_seq[residual] = 1
-        im_size[residual] = np.inf
+    # if residual is not None:
+    #     im_seq[im_seq > 0] += 1
+    #     im_seq[residual] = 1
+    #     im_size[residual] = np.inf
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
     results = Results()
     results.im_seq = im_seq
     results.im_size = im_size
@@ -69,44 +100,212 @@ def imbibition_fft(
 def imbibition_dt(
     im,
     inlets=None,
+    outlets=None,
     residual=None,
-    parallel=True,
+    steps=None,
+    smooth=True,
 ):
     r"""
-    This is a reference implementation of imbibition using distance transforms
+    Performs a distance transform based imbibition simulation using distance
+    transform thresholding for both the erosion and dilation steps.
     """
     im = np.array(im, dtype=bool)
-    dt = np.around(edt(im), decimals=0).astype(int)
-    bins = np.linspace(1, dt.max() + 1, dt.max() + 1, dtype=int)
+    dt = edt(im, parallel=settings.ncores)
+    if steps is None:
+        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
+    elif type(steps) is int:
+        bins = np.arange(steps, 0, -1)
+    else:
+        bins = np.unique(steps)[::-1]
+        bins = bins[bins > 0]
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
-    for i, r in enumerate(tqdm(bins, **settings.tqdm)):
-        seeds = dt >= r
-        if parallel:
-            wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
-        else:
-            wp = im*~(edt(~seeds) < r)
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        # Perform erosion using dt
+        seeds = dt >= r if smooth else dt > r
+        # Perform dilation using dt
+        tmp = edt(~seeds, parallel=settings.ncores)
+        wp = ~(tmp < r) if smooth else ~(tmp <= r)
+        # Trimming disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_blobs(wp, inlets=inlets)
-        if residual is not None:
-            blobs = trim_disconnected_blobs(residual, inlets=wp)
-            seeds = dt >= r
-            seeds = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
-            if parallel:
-                wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
-            else:
-                wp = im*~(edt(~seeds) < r)
+        # TODO: Not sure this residual code works
+        # if residual is not None:
+        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    if residual is not None:
-        im_seq[im_seq > 0] += 1
-        im_seq[residual] = 1
-        im_size[residual] = np.inf
+    # if residual is not None:
+    #     im_seq[im_seq > 0] += 1
+    #     im_seq[residual] = 1
+    #     im_size[residual] = np.inf
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
     results = Results()
     results.im_seq = im_seq
     results.im_size = im_size
     return results
+
+
+def imbibition_fft(
+    im,
+    inlets=None,
+    outlets=None,
+    residual=None,
+    steps=None,
+    smooth=True,
+):
+    r"""
+    Performs a distance transform based imbibition simulation using distance
+    transform thresholding for the erosion step and fft-based convolution for
+    the dilation step.
+    """
+    im = np.array(im, dtype=bool)
+    dt = edt(im, parallel=settings.ncores)
+    if steps is None:
+        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
+    elif type(steps) is int:
+        bins = np.arange(steps, 0, -1)
+    else:
+        bins = np.unique(steps)[::-1]
+        bins = bins[bins > 0]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        # Perform erosion using convolution
+        se = ps_round(r, ndim=im.ndim, smooth=smooth)
+        seeds = ~fftmorphology(~im, se, mode='dilation')
+        # Perform dilation using convolution
+        wp = im*~fftmorphology(seeds, se, mode='dilation')
+        # Trimming disconnected wetting phase
+        if inlets is not None:
+            wp = trim_disconnected_blobs(wp, inlets=inlets)
+        # TODO: Not sure this residual code works
+        # if residual is not None:
+        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
+        mask = wp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i+1
+    # if residual is not None:
+    #     im_seq[im_seq > 0] += 1
+    #     im_seq[residual] = 1
+    #     im_size[residual] = np.inf
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
+    results = Results()
+    results.im_seq = im_seq
+    results.im_size = im_size
+    return results
+
+
+# def imbibition_fft(
+#     im,
+#     inlets=None,
+#     residual=None,
+# ):
+#     r"""
+#     This is a reference implementation of imbibition using fft-based convolution
+#     """
+#     im = np.array(im, dtype=bool)
+#     dt = np.around(edt(im), decimals=0).astype(int)
+#     bins = np.linspace(1, dt.max() + 1, dt.max() + 1, dtype=int)
+#     im_seq = -np.ones_like(im, dtype=int)
+#     im_size = np.zeros_like(im, dtype=float)
+#     for i, r in enumerate(tqdm(bins, **settings.tqdm)):
+#         se = ps_round(r, ndim=im.ndim)
+#         seeds = ~fftmorphology(~im, se, mode='dilation')
+#         wp = im*~fftmorphology(seeds, se, mode='dilation')
+#         if inlets is not None:
+#             wp = trim_disconnected_blobs(wp, inlets=inlets)
+#         # TODO: Not sure this residual code works
+#         if residual is not None:
+#             blobs = trim_disconnected_blobs(residual, inlets=wp)
+#             seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+#             wp = im*~fftmorphology(seeds2, se, mode='dilation')
+#         mask = wp*(im_seq == -1)
+#         im_size[mask] = r
+#         im_seq[mask] = i+1
+#     if residual is not None:
+#         im_seq[im_seq > 0] += 1
+#         im_seq[residual] = 1
+#         im_size[residual] = np.inf
+#     results = Results()
+#     results.im_seq = im_seq
+#     results.im_size = im_size
+#     return results
+
+
+# def imbibition_dt(
+#     im,
+#     inlets=None,
+#     residual=None,
+#     parallel=True,
+# ):
+#     r"""
+#     This is a reference implementation of imbibition using distance transforms
+#     """
+#     im = np.array(im, dtype=bool)
+#     dt = np.around(edt(im), decimals=0).astype(int)
+#     bins = np.linspace(1, dt.max() + 1, dt.max() + 1, dtype=int)
+#     im_seq = -np.ones_like(im, dtype=int)
+#     im_size = np.zeros_like(im, dtype=float)
+#     for i, r in enumerate(tqdm(bins, **settings.tqdm)):
+#         seeds = dt >= r
+#         if parallel:
+#             wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
+#         else:
+#             wp = im*~(edt(~seeds) < r)
+#         if inlets is not None:
+#             wp = trim_disconnected_blobs(wp, inlets=inlets)
+#         if residual is not None:
+#             blobs = trim_disconnected_blobs(residual, inlets=wp)
+#             seeds = dt >= r
+#             seeds = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+#             if parallel:
+#                 wp = im*~(edt(~seeds, parallel=settings.ncores) < r)
+#             else:
+#                 wp = im*~(edt(~seeds) < r)
+#         mask = wp*(im_seq == -1)
+#         im_size[mask] = r
+#         im_seq[mask] = i+1
+#     if residual is not None:
+#         im_seq[im_seq > 0] += 1
+#         im_seq[residual] = 1
+#         im_size[residual] = np.inf
+#     results = Results()
+#     results.im_seq = im_seq
+#     results.im_size = im_size
+#     return results
 
 
 def imbibition(
