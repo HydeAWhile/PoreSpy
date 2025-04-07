@@ -670,7 +670,7 @@ class FilterTest():
         inlets[0, :] = True
         outlets = np.zeros_like(im)
         outlets[-1, :] = True
-        inv = ps.simulations.ibop(im, inlets=inlets)
+        inv = ps.simulations.drainage(im, inlets=inlets)
         trp1 = ps.filters.find_trapped_regions(
             im=im,
             seq=inv.im_seq,
@@ -678,7 +678,7 @@ class FilterTest():
             method='cluster',
             return_mask=True,
             )
-        inv = ps.simulations.ibop(im, inlets=inlets)
+        inv = ps.simulations.drainage(im, inlets=inlets)
         trp2 = ps.filters.find_trapped_regions(
             im=im,
             seq=inv.im_seq,
@@ -695,7 +695,7 @@ class FilterTest():
         inlets[0, :] = True
         outlets = np.zeros_like(im)
         outlets[-1, :] = True
-        inv = ps.simulations.ibop(im, inlets=inlets)
+        inv = ps.simulations.drainage(im, inlets=inlets)
         trp1 = ps.filters.find_trapped_regions(
             im=im,
             seq=inv.im_seq,
@@ -703,7 +703,7 @@ class FilterTest():
             method='cluster',
             return_mask=False,
         )
-        inv = ps.simulations.ibop(im, inlets=inlets)
+        inv = ps.simulations.drainage(im, inlets=inlets)
         trp2 = ps.filters.find_trapped_regions(
             im=im,
             seq=inv.im_seq,

@@ -29,7 +29,7 @@ tqdm = get_tqdm()
 __all__ = [
     'qbip',
     'ibip',
-    'invasion',
+    'injection',
 ]
 
 
@@ -46,7 +46,7 @@ def qbip(
     min_size: int = 0,
 ):
     r"""
-    Performs invasion percolation using a priority queue, optionally including
+    Simulates non-wetting injection using a priority queue, optionally including
     the effect of gravity
     """
     im = np.atleast_3d(im == 1)
@@ -311,7 +311,7 @@ def ibip(
     min_size: int = 0,
 ):
     r"""
-    Performs invasion percolation on given image using the IBIP algorithm [1]_
+    Simulates non-wetting fluid injection on an image using the IBIP algorithm [1]_
 
     Parameters
     ----------
@@ -368,13 +368,6 @@ def ibip(
     -----
     This function is slower and is less capable than `qbip`, which returns identical
     results, so it is recommended to use that instead.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/ibip.html>`_
-    to view an online example.
-
     """
     # Process the boundary image
     if inlets is None:
@@ -474,7 +467,7 @@ def _update_dt_and_bd(dt, bd, pt):
     return dt, bd
 
 
-def invasion(
+def injection(
     im,
     pc=None,
     dt=None,
@@ -488,7 +481,8 @@ def invasion(
     method='qbip',
 ):
     r"""
-    Performs volume-controlled invasion of non-wetting fluid
+    Performs injection of non-wetting fluid including the effect of gravity and
+    trapping of wetting phase.
 
     Parameters
     ----------
@@ -576,7 +570,7 @@ def invasion(
 
     References
     ----------
-    .. [1] Gostick JT, Misaghian N*, A Irannezhad, B Zhao. *A computationally
+    .. [1] Gostick JT, Misaghian N, A Irannezhad, B Zhao. *A computationally
        efficient queue-based algorithm for simulating volume-controlled drainage
        under the influence of gravity on volumetric images*. `Advances in Water
        Resources <https://doi.org/10.1016/j.advwatres.2024.104799>`_. 193(11),
@@ -585,6 +579,12 @@ def invasion(
        invasion of a non-wetting fluid in volumetric images using basic image
        processing tools*. `Computers and the Geosciences
        <https://doi.org/10.1016/j.cageo.2021.104978>`_. 158(1), 104978 (2022)
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/injection.html>`_
+    to view an online example.
 
 
     """
@@ -627,7 +627,7 @@ if __name__ == "__main__":
     inlets[0, :] = True
     inlets = inlets*im
     pc = ps.filters.capillary_transform(im)
-    ip = invasion(im, pc=pc, inlets=inlets, return_sizes=True)
+    ip = injection(im, pc=pc, inlets=inlets, return_sizes=True)
 
     outlets = np.zeros_like(im)
     outlets[-1, :] = True
@@ -679,7 +679,7 @@ if __name__ == "__main__":
         cmap=cm,
     )
 
-    ip2 = ps.simulations.invasion(
+    ip2 = ps.simulations.injection(
         im=im,
         inlets=inlets,
         outlets=outlets,

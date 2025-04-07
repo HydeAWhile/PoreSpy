@@ -9,9 +9,8 @@ except ModuleNotFoundError:
     from edt import edt
 
 
-def test_inverse_Bo_study():
+def test_inverse_Bo_study(plot=False):
     np.random.seed(0)
-    plot = True
 
     # Generate image
     vx = 0.0001

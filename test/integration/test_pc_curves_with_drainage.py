@@ -212,4 +212,4 @@ def test_drainage(plot=False):
 
 # %%
 if __name__ == "__main__":
-    test_drainage(plot=True)
+    test_drainage(plot=False)

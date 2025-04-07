@@ -6,6 +6,9 @@ try:
 except ModuleNotFoundError:
     from edt import edt
 
+ps.settings.tqdm['disable'] = False
+ps.settings.tqdm['leave'] = True
+
 
 def test_drainage(plot=False):
     im = ps.generators.blobs(
@@ -47,22 +50,34 @@ def test_drainage(plot=False):
         voxel_size=voxel_size,
     )
 
-    drn1 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,)
-    drn2 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   outlets=outlets,)
-    drn3 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   residual=residual,)
-    drn4 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   outlets=outlets,
-                                   residual=residual,)
+    drn1 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        steps=25,
+    )
+    drn2 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        outlets=outlets,
+        steps=25,
+    )
+    drn3 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        residual=residual,
+        steps=25,
+    )
+    drn4 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        outlets=outlets,
+        residual=residual,
+        steps=25,
+    )
 
     # Ensure initial saturations correspond to amount of residual present
     assert drn1.snwp[0] == 0
@@ -116,22 +131,34 @@ def test_drainage(plot=False):
         voxel_size=voxel_size,
     )
 
-    drn1 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,)
-    drn2 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   outlets=outlets,)
-    drn3 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   residual=residual,)
-    drn4 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   outlets=outlets,
-                                   residual=residual,)
+    drn1 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        steps=25,
+    )
+    drn2 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        outlets=outlets,
+        steps=25,
+    )
+    drn3 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        residual=residual,
+        steps=25,
+    )
+    drn4 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        outlets=outlets,
+        residual=residual,
+        steps=25,
+    )
 
     # Ensure initial saturations correspond to amount of residual present
     assert drn1.snwp[0] == 0

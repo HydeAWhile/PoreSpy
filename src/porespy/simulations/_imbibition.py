@@ -1,27 +1,463 @@
+import inspect
 import numpy as np
-from skimage.morphology import ball, disk
 from porespy.filters import (
     find_trapped_regions,
     seq_to_satn,
     trim_disconnected_blobs,
+    fftmorphology,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     Results,
     get_tqdm,
     _insert_disks_at_points_parallel,
+    _insert_disk_at_points_parallel,
+    _insert_disk_at_points,
+    ps_round,
+    make_contiguous,
 )
 from porespy import settings
 from edt import edt
 from numba import njit, prange
 
 
+tqdm = get_tqdm()
+
+
 __all__ = [
     'imbibition',
+    # The following are reference implementations using different techniques
+    'imbibition_dt',
+    'imbibition_dt_fft',
+    'imbibition_fft',
+    'imbibition_dsi',
 ]
 
 
-tqdm = get_tqdm()
+def imbibition_dsi(
+    im,
+    inlets=None,
+    outlets=None,
+    steps=None,
+    smooth=True,
+):
+    r"""
+    Performs a distance transform based imbibition simulation using direct sphere
+    insertion to accomplish dilation and distance transform thresholding for erosion
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid can appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (non-wetting) phase would exit the domain. If not provided
+        then trapping of the non-wetting phase is ignored.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        ----------- ----------------------------------------------------------------
+        Attribute   Description
+        ----------- ----------------------------------------------------------------
+        `im_seq`    The sequence map indicating the sequence or step number at which
+                    each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        ----------- ----------------------------------------------------------------
+
+    Notes
+    -----
+    The sphere insert stesps will be executed in parallel if
+    `porespy.settings.ncores > 1`
+    """
+    if settings.ncores > 1:
+        func = _insert_disk_at_points_parallel
+    else:
+        func = _insert_disk_at_points
+    im = np.array(im, dtype=bool)
+    dt = edt(im, parallel=settings.ncores)
+    dt_int = dt.astype(int)
+    if steps is None:
+        bins = np.unique(np.around(dt[im], decimals=0))
+    elif type(steps) is int:
+        bins = np.arange(1, steps, 1)
+    else:
+        bins = np.unique(steps)
+        bins = bins[bins > 0]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    nwp = np.zeros_like(im, dtype=bool)
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        if smooth:
+            seeds = dt >= r
+            edges = dt_int == r
+        else:
+            seeds = dt > r
+            edges = (dt > r)*(dt_int <= (r + 1))
+        coords = np.vstack(np.where(edges))
+        nwp.fill(False)
+        if coords.size > 0:
+            nwp = func(
+                im=nwp,
+                coords=coords,
+                r=int(r),
+                v=True,
+                smooth=smooth,
+            )
+        nwp[seeds] = True
+        wp = (~nwp)*im
+        if inlets is not None:
+            wp = trim_disconnected_blobs(wp, inlets=inlets)
+        mask = wp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i + 1
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
+    results = Results()
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
+    return results
+
+
+def imbibition_dt_fft(
+    im,
+    inlets=None,
+    outlets=None,
+    residual=None,
+    steps=None,
+    smooth=True,
+):
+    r"""
+    Performs a distance transform based imbibition simulation using distance
+    transform thresholding for the erosion step and fft-based convolution for
+    the dilation step.
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid can appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (non-wetting) phase would exit the domain. If not provided
+        then trapping of the non-wetting phase is ignored.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        ----------- ----------------------------------------------------------------
+        Attribute   Description
+        ----------- ----------------------------------------------------------------
+        `im_seq`    The sequence map indicating the sequence or step number at which
+                    each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        ----------- ----------------------------------------------------------------
+
+    Notes
+    -----
+    The distance transform will be executed in parallel if
+    `porespy.settings.ncores > 1`
+    """
+    im = np.array(im, dtype=bool)
+    dt = edt(im, parallel=settings.ncores)
+    if steps is None:
+        bins = np.unique(np.around(dt[im], decimals=0))
+    elif type(steps) is int:
+        bins = np.arange(1, steps, 1)
+    else:
+        bins = np.unique(steps)
+        bins = bins[bins > 0]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        # Perform erosion using dt
+        seeds = dt >= r if smooth else dt > r
+        # Perform dilation using convolution
+        se = ps_round(r, ndim=im.ndim, smooth=smooth)
+        wp = im*~fftmorphology(seeds, se, mode='dilation')
+        # Trimming disconnected wetting phase
+        if inlets is not None:
+            wp = trim_disconnected_blobs(wp, inlets=inlets)
+        # TODO: Not sure this residual code works
+        # if residual is not None:
+        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
+        mask = wp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i+1
+    # if residual is not None:
+    #     im_seq[im_seq > 0] += 1
+    #     im_seq[residual] = 1
+    #     im_size[residual] = np.inf
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
+    results = Results()
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
+    return results
+
+
+def imbibition_dt(
+    im,
+    inlets=None,
+    outlets=None,
+    residual=None,
+    steps=None,
+    smooth=True,
+):
+    r"""
+    Performs a distance transform based imbibition simulation using distance
+    transform thresholding for the erosion step and a second distance transform
+    for the dilation step.
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid can appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (non-wetting) phase would exit the domain. If not provided
+        then trapping of the non-wetting phase is ignored.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
+
+    Returns
+    -------
+    results : Results object
+        A dataclass-like object with the following attributes:
+
+        ========== =================================================================
+        Attribute  Description
+        ========== =================================================================
+        im_seq     A numpy array with each voxel value indicating the sequence
+                   at which it was invaded.  Values of -1 indicate that it was
+                   not invaded.
+        im_size    A numpy array with each voxel value indicating the radius of
+                   spheres being inserted when it was invaded.
+        ========== =================================================================
+
+    Notes
+    -----
+    The distance transforms will be executed in parallel if
+    `porespy.settings.ncores > 1`
+    """
+    im = np.array(im, dtype=bool)
+    dt = edt(im, parallel=settings.ncores)
+    if steps is None:
+        bins = np.unique(np.around(dt[im], decimals=0))
+    elif type(steps) is int:
+        bins = np.arange(1, steps, 1)
+    else:
+        bins = np.unique(steps)
+        bins = bins[bins > 0]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        # Perform erosion using dt
+        seeds = dt >= r if smooth else dt > r
+        # Perform dilation using dt
+        tmp = edt(~seeds, parallel=settings.ncores)
+        wp = ~(tmp < r) if smooth else ~(tmp <= r)
+        wp[~im] = 0
+        # Trimming disconnected wetting phase
+        if inlets is not None:
+            wp = trim_disconnected_blobs(wp, inlets=inlets)
+        # TODO: Not sure this residual code works
+        # if residual is not None:
+        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
+        mask = wp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i+1
+    # if residual is not None:
+    #     im_seq[im_seq > 0] += 1
+    #     im_seq[residual] = 1
+    #     im_size[residual] = np.inf
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
+    results = Results()
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
+    return results
+
+
+def imbibition_fft(
+    im,
+    inlets=None,
+    outlets=None,
+    residual=None,
+    steps=None,
+    smooth=True,
+):
+    r"""
+    Performs a distance transform based imbibition simulation using fft-based
+    convolution for both the erosion and dilation steps
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid can appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (non-wetting) phase would exit the domain. If not provided
+        then trapping of the non-wetting phase is ignored.
+    steps : scalar or array_like
+        A list of which sphere sizes to invade. If `None` (default) then each unique
+        integer value in the distance transform is used. If a scalar then a list of
+        steps is generated from `steps` to 1.
+    smooth : boolean
+        If `True` (default) then the spheres are drawn without any single voxel
+        protrusions on the faces.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        ----------- ----------------------------------------------------------------
+        Attribute   Description
+        ----------- ----------------------------------------------------------------
+        `im_seq`    The sequence map indicating the sequence or step number at which
+                    each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        ----------- ----------------------------------------------------------------
+    """
+    im = np.array(im, dtype=bool)
+    dt = edt(im, parallel=settings.ncores)
+    if steps is None:
+        bins = np.unique(np.around(dt[im], decimals=0))
+    elif type(steps) is int:
+        bins = np.arange(1, steps, 1)
+    else:
+        bins = np.unique(steps)
+        bins = bins[bins > 0]
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        # Perform erosion using convolution
+        se = ps_round(r, ndim=im.ndim, smooth=smooth)
+        seeds = ~fftmorphology(~im, se, mode='dilation')
+        # Perform dilation using convolution
+        wp = im*~fftmorphology(seeds, se, mode='dilation')
+        # Trimming disconnected wetting phase
+        if inlets is not None:
+            wp = trim_disconnected_blobs(wp, inlets=inlets)
+        # TODO: Not sure this residual code works
+        # if residual is not None:
+        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
+        mask = wp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i+1
+    # if residual is not None:
+    #     im_seq[im_seq > 0] += 1
+    #     im_seq[residual] = 1
+    #     im_size[residual] = np.inf
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_regions(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            return_mask=True,
+            conn='min',
+            method='cluster',
+            min_size=0,
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
+    results = Results()
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
+    return results
 
 
 def imbibition(
@@ -101,7 +537,7 @@ def imbibition(
     -----
     The simulation proceeds as though the non-wetting phase pressure is very
     high and is slowly lowered. Then imbibition occurs into the smallest
-    accessible regions at each step. Blind or inaccessible pores are
+    accessible regions at each step. Closed or inaccessible pores are
     assumed to be filled with wetting phase.
 
     Examples
@@ -119,15 +555,16 @@ def imbibition(
 
     if isinstance(steps, int):
         mask = np.isfinite(pc)*im
-        Ps = np.logspace(np.log10(pc[mask].max()), np.log10(pc[mask].min()*.99), steps)
+        Ps = np.logspace(np.log10(pc[mask].max()),
+                         np.log10(pc[mask].min()*.99), steps)
     else:
         Ps = np.unique(steps)[::-1]  # To ensure they are in descending order
 
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
-    step = 1
-    for P in tqdm(Ps, **settings.tqdm):
+    im_size = np.zeros_like(im, dtype=int)
+    for step, P in enumerate(tqdm(Ps, **settings.tqdm)):
         # This can be made faster if I find a way to get only seeds on edge, so
         # less spheres need to be drawn
         invadable = (pc <= P)*im
@@ -156,7 +593,7 @@ def imbibition(
         if np.any(mask):
             im_seq[mask] = step
             im_pc[mask] = P
-            step += 1
+            im_size[mask] = np.amin(radii)
 
     trapped = None
     if outlets is not None:
