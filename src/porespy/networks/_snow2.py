@@ -9,9 +9,8 @@ from porespy.networks import (
     label_boundaries,
     label_phases,
     regions_to_network,
-    get_edt,
 )
-from porespy.tools import Results
+from porespy.tools import Results, get_edt
 
 
 __all__ = [

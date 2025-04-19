@@ -1,10 +1,5 @@
 import numpy as np
-from porespy.tools import (
-    get_edt
-)
-
-
-edt = get_edt()
+from ._utils import get_edt
 
 
 __all__ = [
@@ -13,9 +8,15 @@ __all__ = [
     'disk',
     'cube',
     'square',
+    'ps_disk',
+    'ps_ball',
     'ps_round',
     'ps_rect',
 ]
+
+
+edt = get_edt()
+
 
 
 def ball(r):
