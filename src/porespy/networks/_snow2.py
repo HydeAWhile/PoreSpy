@@ -1,7 +1,5 @@
 import logging
-
 import numpy as np
-
 from porespy.filters import (
     snow_partitioning,
     snow_partitioning_parallel,
@@ -11,13 +9,9 @@ from porespy.networks import (
     label_boundaries,
     label_phases,
     regions_to_network,
+    get_edt,
 )
 from porespy.tools import Results
-
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -26,6 +20,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 

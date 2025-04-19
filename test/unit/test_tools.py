@@ -6,12 +6,8 @@ import pytest
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
-
+edt = ps.tools.get_edt()
 ps.settings.tqdm['disable'] = True
 
 

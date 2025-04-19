@@ -3,10 +3,8 @@ import numpy as np
 import pandas as pd
 import porespy as ps
 
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+
+edt = ps.tools.get_edt()
 
 
 def test_inverse_Bo_study(plot=False):

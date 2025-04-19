@@ -10,20 +10,18 @@ from porespy.tools import (
     make_contiguous,
     _insert_disk_at_points,
     Results,
+    get_edt,
 )
 from typing import Literal
 from porespy.filters import (
     find_trapped_regions,
     seq_to_satn,
 )
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
+edt = get_edt()
 
 
 __all__ = [

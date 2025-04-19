@@ -1,20 +1,16 @@
 import os
 from pathlib import Path
 import numpy as np
-
 import porespy as ps
 import pytest
 import scipy.ndimage as spim
 from numpy.testing import assert_allclose
 from skimage import io
 from skimage.morphology import ball
-
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import get_edt
 
 
+edt = get_edt()
 ps.settings.tqdm['disable'] = True
 
 

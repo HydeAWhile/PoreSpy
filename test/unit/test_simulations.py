@@ -5,12 +5,10 @@ import scipy.ndimage as spim
 from skimage.morphology import disk, ball, skeletonize
 from skimage.util import random_noise
 from scipy.stats import norm
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import get_edt
 
 
+edt = get_edt()
 ps.settings.tqdm['disable'] = True
 
 

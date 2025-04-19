@@ -6,12 +6,9 @@ from porespy.tools import (
     Results,
     get_border,
     get_tqdm,
+    get_edt,
 )
 
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -19,6 +16,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 

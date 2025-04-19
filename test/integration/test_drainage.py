@@ -1,11 +1,9 @@
 import numpy as np
 import porespy as ps
 import matplotlib.pyplot as plt
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
+
+edt = ps.get_edt()
 ps.settings.tqdm['disable'] = False
 ps.settings.tqdm['leave'] = True
 
