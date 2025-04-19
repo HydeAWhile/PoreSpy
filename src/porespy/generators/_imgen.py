@@ -386,7 +386,8 @@ def random_spheres(
 
     """
     logger.debug(f"random_spheres: Adding spheres of size {r}")
-    shape = parse_shape(shape)
+    if shape:
+        shape = parse_shape(shape)
     if smooth:
         r = r + 1
 

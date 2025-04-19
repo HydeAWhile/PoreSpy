@@ -192,7 +192,8 @@ def pseudo_gravity_packing(
 
     """
     logger.debug(f'Adding spheres of radius {r}')
-    shape = parse_shape(shape)
+    if shape:
+        shape = parse_shape(shape)
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
@@ -347,7 +348,8 @@ def pseudo_electrostatic_packing(
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
-    shape = parse_shape(shape)
+    if shape:
+        shape = parse_shape(shape)
     if im is None:  # If shape was given, generate empty im
         im = np.zeros(shape, dtype=bool)
 
