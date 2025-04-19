@@ -6,6 +6,7 @@ import numpy as np
 from pathlib import Path
 from zipfile import ZipFile
 from porespy.tools import get_tqdm
+from porespy import settings
 
 
 tqdm = get_tqdm()
@@ -47,7 +48,7 @@ def folder_to_stack(target_dir):
         dtype=test_im.dtype,
     )
     desc = inspect.currentframe().f_code.co_name  # Get current func name
-    for i, f in enumerate(tqdm(os.listdir(p), desc=desc)):
+    for i, f in enumerate(tqdm(os.listdir(p), desc=desc, **settings.tqdm)):
         im[..., i] = imageio.v2.imread(os.path.join(p, f))
 
     return im
@@ -95,7 +96,7 @@ def zip_to_stack(f):
         dtype=test_im.dtype,
     )
     desc = inspect.currentframe().f_code.co_name  # Get current func name
-    for i, f in enumerate(tqdm(os.listdir(dir_for_files), desc=desc)):
+    for i, f in enumerate(tqdm(os.listdir(dir_for_files), desc=desc, **settings.tqdm)):
         im[..., i] = imageio.v2.imread(os.path.join(dir_for_files, f))
 
     # Remove the unzipped folder
