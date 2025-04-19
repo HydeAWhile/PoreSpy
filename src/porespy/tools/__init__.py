@@ -42,11 +42,12 @@ ways that do NOT return a modified version of the original image.
     tools.show_docstring
     tools.subdivide
     tools.unpad
-
 """
 
-from ._funcs import *
+
 from ._utils import *
+from ._morphology import *
+from ._funcs import *
 from ._funcs import _check_for_singleton_axes, center_of_mass
 from ._sphere_insertions import *
 from ._marching_cubes import *

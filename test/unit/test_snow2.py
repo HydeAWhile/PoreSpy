@@ -4,12 +4,8 @@ import porespy as ps
 import scipy.ndimage as spim
 from scipy import stats as spst
 
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
-
+edt = ps.tools.get_edt()
 ws = op.Workspace()
 ws.settings["loglevel"] = 50
 ps.settings.tqdm["disable"] = True

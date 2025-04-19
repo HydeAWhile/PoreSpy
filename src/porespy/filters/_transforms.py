@@ -1,15 +1,15 @@
 import numpy as np
 import numpy.typing as npt
 from porespy.generators import ramp
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import get_edt
 
 
 __all__ = [
     'capillary_transform',
 ]
+
+
+edt = get_edt()
 
 
 def capillary_transform(

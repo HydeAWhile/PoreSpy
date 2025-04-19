@@ -1,7 +1,7 @@
 import time
 import porespy as ps
 from porespy import tools
-from porespy.tools import Results
+from porespy.tools import Results, get_edt
 import porespy as ps
 import logging
 import numpy as np
@@ -9,10 +9,10 @@ import openpnm as op
 import pandas as pd
 import dask
 from dask.diagnostics import ProgressBar
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+
+
+edt = get_edt()
+
 
 __all__ = [
     'tortuosity_bt',
@@ -199,7 +199,7 @@ def analyze_blocks(im, block_size=None, method="chords", use_dask=True):
             dt = edt(im)
             # TODO: Is the following supposed to be over 2 or over im.ndim?
             block_size = min(dt.max() * scale_factor, min(np.array(im.shape)/2))
-        
+
         else:
             print("Provide a valid method")
             raise Exception
@@ -303,7 +303,7 @@ def df_to_tortuosity(im, df):
 def tortuosity_bt(im, block_size=None, method="chords", use_dask=True):
     r"""
     Computes the tortuosity of an image in all directions
-    
+
     Parameters
     ----------
     im : ndarray
@@ -332,7 +332,7 @@ def tortuosity_bt(im, block_size=None, method="chords", use_dask=True):
 if __name__ =="__main__":
     import porespy as ps
     import numpy as np
-    
+
     np.random.seed(1)
 
     im = ps.generators.blobs([100, 100, 100])

@@ -16,12 +16,8 @@ from porespy.tools import (
     jit_marching_squares_perimeter_and_area,
     make_contiguous,
     pad,
+    get_edt,
 )
-
-try:
-    from pyedt import edt, jit_edt_cpu
-except ModuleNotFoundError:
-    from edt import edt
 
 
 IDLE = np.uint32(0)
@@ -39,6 +35,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 

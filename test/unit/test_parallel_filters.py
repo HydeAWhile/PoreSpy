@@ -1,12 +1,8 @@
 import numpy as np
 import porespy as ps
 
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
-
+edt = ps.tools.get_edt()
 ps.settings.loglevel = "CRITICAL"
 ps.settings.tqdm['disable'] = True
 

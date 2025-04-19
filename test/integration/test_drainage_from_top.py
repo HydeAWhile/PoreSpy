@@ -1,10 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import porespy as ps
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+
+
+edt = ps.tools.get_edt()
 
 
 def test_drainage_from_top():

@@ -1,14 +1,12 @@
 import inspect as insp
 import logging
 from typing import List, Literal
-
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
 from numba import njit
-
 from porespy import metrics, settings
 from porespy.filters import chunked_func
 from porespy.tools import (
@@ -21,12 +19,8 @@ from porespy.tools import (
     insert_sphere,
     ps_ball,
     ps_disk,
+    get_edt,
 )
-
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -47,6 +41,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 

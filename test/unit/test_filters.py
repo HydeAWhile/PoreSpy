@@ -5,12 +5,9 @@ import scipy.ndimage as spim
 from skimage.morphology import disk, ball
 from skimage.util import random_noise
 import matplotlib.pyplot as plt
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
+edt = ps.tools.get_edt()
 ps.settings.tqdm['disable'] = True
 
 

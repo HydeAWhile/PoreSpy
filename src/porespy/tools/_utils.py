@@ -14,15 +14,16 @@ logger = logging.getLogger("porespy")
 __all__ = [
     "sanitize_filename",
     "get_tqdm",
-    "get_edt",
     "show_docstring",
     "Results",
     "tic",
     "toc",
+    "get_edt",
 ]
 
 
 def get_edt():
+    import importlib
     try:
         package = importlib.import_module("pyedt")
         return package.edt

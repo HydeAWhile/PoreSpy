@@ -13,12 +13,14 @@ debugging, and illustration purposes.
    :template: mybase.rst
    :toctree: generated/
 
-    generators.random_spheres
     generators.blobs
     generators.borders
     generators.bundle_of_tubes
     generators.cylinders
+    generators.cylindrical_pillars_array
+    generators.cylindrical_pillars_mesh
     generators.cylindrical_plug
+    generators.elevation
     generators.faces
     generators.fractal_noise
     generators.insert_shape
@@ -28,8 +30,12 @@ debugging, and illustration purposes.
     generators.polydisperse_spheres
     generators.pseudo_electrostatic_packing
     generators.pseudo_gravity_packing
+    generators.ramp
     generators.random_cantor_dust
+    generators.random_spheres
+    generators.rectangular_pillars_array
     generators.sierpinski_foam
+    generators.spheres_from_coords
     generators.voronoi_edges
 
 """

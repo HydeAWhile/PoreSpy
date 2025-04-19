@@ -15,6 +15,7 @@ from porespy.tools import (
     ps_rect,
     ps_round,
     make_contiguous,
+    get_edt,
 )
 from porespy.filters import (
     trim_disconnected_blobs,
@@ -26,10 +27,6 @@ from porespy.filters import (
 from porespy.generators import (
     borders,
 )
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -42,6 +39,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 

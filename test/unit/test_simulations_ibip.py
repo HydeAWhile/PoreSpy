@@ -3,12 +3,10 @@ import porespy as ps
 import scipy.ndimage as spim
 from skimage.morphology import square
 from GenericTest import GenericTest
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import get_edt
 
 
+edt = get_edt()
 ps.settings.tqdm['disable'] = True
 
 
