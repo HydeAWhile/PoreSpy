@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
+from typing import Literal
 from skimage.segmentation import clear_border
 from skimage.morphology import ball, disk, square, cube
 from porespy.tools import (
@@ -14,11 +15,8 @@ from porespy.tools import (
     ps_disk,
     ps_ball,
     ps_round,
-    get_tqdm,
     get_edt,
 )
-from porespy import settings
-from typing import Literal
 
 
 __all__ = [
@@ -34,7 +32,6 @@ __all__ = [
 
 
 edt = get_edt()
-tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 

@@ -1,16 +1,13 @@
 import logging
-
 import numba
 import numpy as np
 import scipy.ndimage as spim
 from numba import njit, prange
 from numba.core import types
 from numba.typed import Dict, List
-
 from porespy.tools import (
     center_of_mass,
     create_mc_template_list,
-    get_tqdm,
     jit_extend_slice,
     jit_marching_cubes_area_and_volume,
     jit_marching_squares_perimeter_and_area,
@@ -18,6 +15,10 @@ from porespy.tools import (
     pad,
     get_edt,
 )
+try:
+    from pyedt import jit_edt_cpu
+except ImportError as e:
+    print(e)
 
 
 IDLE = np.uint32(0)
@@ -36,7 +37,6 @@ __all__ = [
 
 
 edt = get_edt()
-tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
 

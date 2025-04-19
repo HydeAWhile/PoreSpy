@@ -1,5 +1,5 @@
 import numpy as np
-
+import inspect
 from porespy import settings
 from porespy.tools import get_tqdm
 
@@ -122,8 +122,9 @@ def polydisperse_cylinders(
     iters = 0
     enable_status = settings.tqdm['disable']
     f = 0.5**porosity  # Controls how much of the predicted phi is actually inserted
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
     while iters < maxiter:
-        for i, r in enumerate(tqdm(radii[:-1])):
+        for i, r in enumerate(tqdm(radii[:-1], desc=desc, **settings.tqdm)):
             settings.tqdm['disable'] = True  # Disable for call to cylinders
             phi = 1 - f*(1-e)*dist.pdf(r*voxel_size)*(radii[i+1] - radii[i])*voxel_size
             tmp = ~cylinders(

@@ -1,9 +1,8 @@
 import logging
-
+import inspect
 import numpy as np
 import scipy.ndimage as spim
 from skimage import measure
-
 from porespy import settings
 from porespy.tools import (
     Results,
@@ -13,6 +12,7 @@ from porespy.tools import (
     mesh_region,
     ps_round,
 )
+
 
 __all__ = [
     "mesh_surface_area",
@@ -63,8 +63,8 @@ def region_volumes(regions, method='marching_cubes', voxel_size=(1, 1, 1)):
     """
     slices = spim.find_objects(regions)
     vols = np.zeros([len(slices), ])
-    msg = "Computing region volumes".ljust(60)
-    for i, s in enumerate(tqdm(slices, desc=msg, **settings.tqdm)):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, s in enumerate(tqdm(slices, desc=desc, **settings.tqdm)):
         region = regions[s] == (i + 1)
         if method == 'marching_cubes':
             vols[i] = mesh_volume(region, voxel_size=voxel_size)
@@ -161,8 +161,8 @@ def region_surface_areas(regions, voxel_size=(1, 1, 1), strel=None):
     Ps = np.arange(1, np.amax(im) + 1)
     sa = np.zeros_like(Ps, dtype=float)
     # Start extracting marching cube area from im
-    msg = "Computing region surface area".ljust(60)
-    for i in tqdm(Ps, desc=msg, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i in tqdm(Ps, desc=desc, **settings.tqdm):
         reg = i - 1
         if slices[reg] is not None:
             s = extend_slice(slices[reg], im.shape)
@@ -279,8 +279,8 @@ def region_interface_areas(regions, areas, voxel_size=1, strel=None):
     sa_combined = []  # Difficult to preallocate since number of conns unknown
     cn = []
     # Start extracting area from im
-    msg = "Computing interfacial area between regions".ljust(60)
-    for i in tqdm(Ps, desc=msg, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i in tqdm(Ps, desc=desc, **settings.tqdm):
         reg = i - 1
         if slices[reg] is not None:
             s = extend_slice(slices[reg], im.shape)

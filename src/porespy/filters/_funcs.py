@@ -1,4 +1,4 @@
-import inspect as insp
+import inspect
 import logging
 import dask
 import numpy as np
@@ -901,7 +901,7 @@ def porosimetry(
     if isinstance(divs, int):
         divs = [divs]*im.ndim
     if max(divs) > 1:
-        logger.info(f'Performing {insp.currentframe().f_code.co_name} in parallel')
+        logger.info(f'Performing {inspect.currentframe().f_code.co_name} in parallel')
         parallel = True
 
     if mode == "mio":
@@ -910,7 +910,8 @@ def porosimetry(
         inlets = np.pad(inlets, mode="symmetric", pad_width=pw)
         # sizes = np.unique(np.around(sizes, decimals=0).astype(int))[-1::-1]
         imresults = np.zeros(np.shape(impad))
-        for r in tqdm(sizes, **settings.tqdm):
+        desc = inspect.currentframe().f_code.co_name  # Get current func name
+        for r in tqdm(sizes, desc=desc, **settings.tqdm):
             if parallel:
                 imtemp = chunked_func(func=fftmorphology,
                                       im=impad, strel=strel(r),
@@ -932,7 +933,8 @@ def porosimetry(
         imresults = extract_subsection(imresults, shape=im.shape)
     elif mode == "dt":
         imresults = np.zeros(np.shape(im))
-        for r in tqdm(sizes, **settings.tqdm):
+        desc = inspect.currentframe().f_code.co_name  # Get current func name
+        for r in tqdm(sizes, desc=desc, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
                 imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
@@ -947,7 +949,8 @@ def porosimetry(
                 imresults[(imresults == 0) * imtemp] = r
     elif mode == "hybrid":
         imresults = np.zeros(np.shape(im))
-        for r in tqdm(sizes, **settings.tqdm):
+        desc = inspect.currentframe().f_code.co_name  # Get current func name
+        for r in tqdm(sizes, desc=desc, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
                 imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')

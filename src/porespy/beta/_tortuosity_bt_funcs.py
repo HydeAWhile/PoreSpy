@@ -1,4 +1,5 @@
 import time
+import logging
 import porespy as ps
 from porespy import tools
 from porespy.tools import Results, get_edt
@@ -11,6 +12,7 @@ import dask
 from dask.diagnostics import ProgressBar
 
 
+logger = logging.getLogger(__name__)
 edt = get_edt()
 
 
@@ -201,7 +203,7 @@ def analyze_blocks(im, block_size=None, method="chords", use_dask=True):
             block_size = min(dt.max() * scale_factor, min(np.array(im.shape)/2))
 
         else:
-            print("Provide a valid method")
+            logger.error("Provide a valid method")
             raise Exception
 
     results = []
