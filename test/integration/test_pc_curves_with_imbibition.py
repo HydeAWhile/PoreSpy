@@ -3,7 +3,7 @@ import porespy as ps
 import matplotlib.pyplot as plt
 
 
-edt = ps.get_edt()
+edt = ps.tools.get_edt()
 
 
 def test_drainage(plot=False):

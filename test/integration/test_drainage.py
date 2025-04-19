@@ -3,7 +3,7 @@ import porespy as ps
 import matplotlib.pyplot as plt
 
 
-edt = ps.get_edt()
+edt = ps.tools.get_edt()
 ps.settings.tqdm['disable'] = False
 ps.settings.tqdm['leave'] = True
 
