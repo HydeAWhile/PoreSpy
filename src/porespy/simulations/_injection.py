@@ -1,6 +1,7 @@
+import inspect
+import logging
 import numpy as np
 import numpy.typing as npt
-import logging
 import heapq as hq
 from numba import njit
 from porespy import settings
@@ -381,7 +382,8 @@ def ibip(
     seq = -1*(~im)
     sizes = -1.0*(~im)
     scratch = np.copy(bd)
-    for step in tqdm(range(1, maxiter), **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for step in tqdm(range(1, maxiter), desc=desc, **settings.tqdm):
         # Find insertion points
         edge = scratch*(dt > 0)
         if ~edge.any():

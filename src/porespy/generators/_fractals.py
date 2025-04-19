@@ -1,10 +1,10 @@
 import logging
-
+import inspect
 import numpy as np
 import scipy.ndimage as spim
-
 from porespy import settings
 from porespy.tools import get_tqdm
+
 
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
@@ -69,7 +69,8 @@ def random_cantor_dust(
     else:
         for i in n:
             divs.append(p**i)
-    for i in tqdm(divs, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i in tqdm(divs, desc=desc, **settings.tqdm):
         sh = (np.array(im.shape)/i).astype(int)
         mask = np.random.rand(*sh) < f
         mask = spim.zoom(mask, zoom=i, order=0)

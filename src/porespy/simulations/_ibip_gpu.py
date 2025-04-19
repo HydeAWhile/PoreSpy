@@ -1,14 +1,12 @@
 import logging
-
+import inspect
 import numpy as np
-
 from porespy.tools import (
     Results,
     get_border,
     get_tqdm,
     get_edt,
 )
-
 
 
 __all__ = [
@@ -73,8 +71,8 @@ def ibip_gpu(im, dt=None, inlets=None, maxiter=10000):  # pragma: no cover
     inv_gpu = -1*((~im_gpu).astype(int))
     sizes_gpu = -1*((~im_gpu).astype(int))
     strel_gpu = ball_gpu if im_gpu.ndim == 3 else disk_gpu
-
-    for step in tqdm(range(1, maxiter)):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for step in tqdm(range(1, maxiter), desc=desc):
         temp_gpu = cndi.binary_dilation(input=bd_gpu,
                                         structure=strel_gpu(1, smooth=False))
         edge_gpu = temp_gpu * (dt_gpu > 0)

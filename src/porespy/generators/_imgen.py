@@ -1,4 +1,4 @@
-import inspect as insp
+import inspect
 import logging
 from typing import List, Literal
 import numpy as np
@@ -1100,7 +1100,7 @@ def blobs(
         divs = [divs]*len(shape)
     if max(divs) > 1:
         parallel = True
-        logger.info(f'Performing {insp.currentframe().f_code.co_name} in parallel')
+        logger.info(f'Performing {inspect.currentframe().f_code.co_name} in parallel')
     sigma = np.mean(shape) / (40 * blobiness)
     im = np.random.random(shape)
     if parallel:
@@ -1196,7 +1196,8 @@ def _cylinders(
     tqdm_settings = settings.tqdm.copy()
     if not settings.tqdm["disable"]:
         tqdm_settings = {**settings.tqdm, **{'disable': not verbose}}
-    with tqdm(ncylinders, **tqdm_settings) as pbar:
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    with tqdm(ncylinders, desc=desc, **tqdm_settings) as pbar:
         while n < ncylinders:
             # Choose a random starting point in domain
             x = np.random.rand(3) * (shape + 2 * L)
@@ -1357,7 +1358,8 @@ def cylinders(
         fractions.append(fractions[i - 1] + (maxiter - i) ** 2 * subdif)
 
     im = np.ones(shape, dtype=bool)
-    for frac in tqdm(fractions, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for frac in tqdm(fractions, desc=desc, **settings.tqdm):
         n_fibers_total = n_pixels_to_add / vol_fiber
         n_fibers = int(np.ceil(frac * n_fibers_total) - n_fibers_added)
         if n_fibers > 0:

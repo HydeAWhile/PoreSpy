@@ -1,13 +1,17 @@
 import logging
-
+import inspect
 import numpy as np
 import scipy.ndimage as spim
 from edt import edt
 from skimage.morphology import ball, disk
-
 from porespy import settings
-from porespy.metrics import region_interface_areas, region_surface_areas, region_volumes
+from porespy.metrics import (
+    region_interface_areas,
+    region_surface_areas,
+    region_volumes,
+)
 from porespy.tools import extend_slice, get_tqdm, make_contiguous
+
 
 __all__ = [
     "regions_to_network",
@@ -171,8 +175,8 @@ def regions_to_network(
     t_coords = []
 
     # Start extracting size information for pores and throats
-    msg = "Extracting pore and throat properties"
-    for i in tqdm(Ps, desc=msg, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i in tqdm(Ps, desc=desc, **settings.tqdm):
         pore = i - 1
         if slices[pore] is None:
             continue

@@ -11,7 +11,6 @@ from porespy.filters import trim_disconnected_blobs
 from porespy.tools import (
     _insert_disk_at_point,
     get_border,
-    get_tqdm,
     ps_round,
     unpad,
     get_edt,
@@ -26,7 +25,6 @@ __all__ = [
 
 
 edt = get_edt()
-tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
 
