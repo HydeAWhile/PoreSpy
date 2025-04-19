@@ -1,15 +1,12 @@
-from typing import Literal
-
-import numpy as np
 import psutil
-
-from porespy.tools import all_to_uniform
+import numpy as np
+from typing import Literal
+from porespy.tools import all_to_uniform, parse_shape
 
 
 __all__ = [
     'fractal_noise',
 ]
-
 
 
 def fractal_noise(
@@ -102,6 +99,7 @@ def fractal_noise(
         cores = psutil.cpu_count(logical=False)
     if seed is None:
         seed = np.random.randint(2**31)
+    shape = parse_shape(shape)
     perlin = Noise(numWorkers=cores)
     perlin.noiseType = getattr(NoiseType, f"{mode.capitalize()}Fractal")
     perlin.frequency = frequency

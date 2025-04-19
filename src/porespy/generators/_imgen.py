@@ -20,6 +20,7 @@ from porespy.tools import (
     ps_ball,
     ps_disk,
     get_edt,
+    parse_shape
 )
 
 
@@ -82,6 +83,7 @@ def elevation(
     # TODO: Create a notebook example for this function
 
     """
+    shape = parse_shape(shape)
     im = np.zeros(shape, dtype=bool)
     im = np.swapaxes(im, 0, axis)
     a = np.arange(0, im.shape[0])
@@ -133,7 +135,7 @@ def ramp(
     <https://porespy.org/examples/generators/reference/ramp.html>`_
     to view online example.
     """
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     vals = np.linspace(inlet, outlet, shape[axis])
     vals = np.reshape(vals, [shape[axis]]+[1]*len(shape[1:]))
     vals = np.swapaxes(vals, 0, axis)
@@ -171,7 +173,7 @@ def cylindrical_plug(shape, r=None, axis=2):
     to view online example.
 
     """
-    shape = np.array(shape, dtype=int)
+    shape = parse_shape(shape)
     axes = np.array(list(set([0, 1, 2]).difference(set([axis]))), dtype=int)
     if len(shape) == 3:
         im2d = np.ones(shape=shape[axes])
@@ -384,7 +386,7 @@ def random_spheres(
 
     """
     logger.debug(f"random_spheres: Adding spheres of size {r}")
-
+    shape = parse_shape(shape)
     if smooth:
         r = r + 1
 
@@ -570,7 +572,7 @@ def bundle_of_tubes(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if len(shape) == 2:
         shape = np.hstack((shape, [1]))
     shape2 = shape[shape > 1]
@@ -651,7 +653,7 @@ def polydisperse_spheres(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if np.size(shape) == 1:
         shape = np.full((3,), int(shape))
     Rs = dist.interval(np.linspace(0.05, 0.95, nbins))
@@ -714,7 +716,7 @@ def voronoi_edges(
     if seed is not None:
         np.random.seed(seed)
     logger.info(f"Generating {ncells} cells")
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if np.size(shape) == 1:
         shape = np.full((3,), int(shape))
     im = np.zeros(shape, dtype=bool)
@@ -840,7 +842,7 @@ def lattice_spheres(
 
     """
     logger.debug(f"Generating {lattice} lattice")
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     im = np.zeros(shape, dtype=bool)
 
     # Parse lattice type
@@ -968,9 +970,7 @@ def overlapping_spheres(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
-    if np.size(shape) == 1:
-        shape = np.full((3, ), int(shape))
+    shape = parse_shape(shape)
     ndim = (shape != 1).sum(dtype=np.int64)
     s_vol = ps_disk(r).sum(dtype=np.int64) if ndim == 2 \
         else ps_ball(r).sum(dtype=np.int64)
@@ -1083,11 +1083,7 @@ def blobs(
     """
     if seed is not None:
         np.random.seed(seed)
-    if isinstance(shape, int):
-        shape = [shape]*3
-    if len(shape) == 1:
-        shape = [shape[0]]*3
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if isinstance(blobiness, int):
         blobiness = [blobiness]*len(shape)
     blobiness = np.array(blobiness)
@@ -1170,10 +1166,8 @@ def _cylinders(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
-    if np.size(shape) == 1:
-        shape = np.full((3, ), int(shape))
-    elif np.size(shape) == 2:
+    shape = parse_shape(shape)
+    if np.size(shape) == 2:
         raise Exception("2D cylinders don't make sense")
     # Find hypotenuse of domain from [0,0,0] to [Nx,Ny,Nz]
     H = np.sqrt(np.sum(np.square(shape), dtype=np.int64)).astype(int)

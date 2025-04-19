@@ -3,7 +3,7 @@ import inspect
 import numpy as np
 import scipy.ndimage as spim
 from porespy import settings
-from porespy.tools import get_tqdm
+from porespy.tools import get_tqdm, parse_shape
 
 
 tqdm = get_tqdm()
@@ -56,7 +56,7 @@ def random_cantor_dust(
     if seed is not None:
         np.random.seed(seed)
     # Parse the given shape and adjust if necessary
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     trim = np.mod(shape, (p**n))
     if np.any(trim > 0):
         shape = shape - trim + p**n
@@ -114,6 +114,7 @@ def sierpinski_foam(
     to view online example.
 
     """
+    shape = parse_shape(shape)
     m = n
     if 3**(n+1)//3 < max(shape):
         while 3**(m+1)//3 < max(shape):

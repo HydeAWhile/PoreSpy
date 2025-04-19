@@ -19,7 +19,34 @@ __all__ = [
     "tic",
     "toc",
     "get_edt",
+    "parse_shape",
 ]
+
+
+def parse_shape(im_or_shape):
+    r"""
+    Given a list of dimensions or an image finds shape in a clean format
+
+    Parameters
+    ----------
+    im_or_shape : scalar, list or ndarray
+        Given a list of dimensions removes any `0`, `1`, `inf` or `None`
+        values. Given an image removes any singleton dimensions and returns
+        shape. If a scalar then assumes a 3D shape is requested.
+
+    Returns
+    -------
+    shape : list
+        List of [X, Y] or [X, Y, Z] dimensions
+    """
+    s = np.array(im_or_shape)
+    if s.ndim == 0:
+        shape = [s]*3
+    elif s.ndim > 1:  # if arg is an image
+        s = s.squeeze()
+        shape = np.shape(s)
+    shape = np.array([i for i in s if i not in [0, 1, np.inf, None]], dtype=int)
+    return shape
 
 
 def get_edt():

@@ -1,12 +1,10 @@
 import logging
-from typing import List, Literal
-
-import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
+import numpy as np
+from typing import List, Literal
 from numba import njit
 from skimage.morphology import ball, disk
-
 from porespy.filters import trim_disconnected_blobs
 from porespy.tools import (
     _insert_disk_at_point,
@@ -14,6 +12,7 @@ from porespy.tools import (
     ps_round,
     unpad,
     get_edt,
+    parse_shape,
 )
 
 
@@ -193,7 +192,7 @@ def pseudo_gravity_packing(
 
     """
     logger.debug(f'Adding spheres of radius {r}')
-
+    shape = parse_shape(shape)
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
@@ -348,7 +347,7 @@ def pseudo_electrostatic_packing(
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
-
+    shape = parse_shape(shape)
     if im is None:  # If shape was given, generate empty im
         im = np.zeros(shape, dtype=bool)
 
