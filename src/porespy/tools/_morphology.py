@@ -13,8 +13,8 @@ __all__ = [
     'disk',
     'cube',
     'square',
-    'ps_disk',
-    'ps_square',
+    'ps_round',
+    'ps_rect',
 ]
 
 
