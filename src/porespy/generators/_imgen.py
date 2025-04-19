@@ -711,9 +711,6 @@ def voronoi_edges(
     to view online example.
 
     """
-    if 'radius' in kwargs.keys():
-        r = kwargs['radius']
-        print('radius keyword is deprecated in favor of just r')
     if seed is not None:
         np.random.seed(seed)
     logger.info(f"Generating {ncells} cells")
