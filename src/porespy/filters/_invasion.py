@@ -1,5 +1,6 @@
 import heapq as hq
 import logging
+import inspect
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
@@ -251,7 +252,8 @@ def _find_trapped_regions_cluster(
     # Scan image for each value of sequence in the outlets
     bins = np.unique(seq[seq <= Lmax])[-1::-1]
     bins = bins[bins > 0]
-    for i in tqdm(range(len(bins)), **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i in tqdm(range(len(bins)), desc=desc, **settings.tqdm):
         s = bins[i]
         temp = seq >= s
         labels = spim.label(temp, structure=se)[0]

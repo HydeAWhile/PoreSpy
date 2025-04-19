@@ -1,12 +1,12 @@
+import inspect
 import os
 import shutil
-from pathlib import Path
-from zipfile import ZipFile
-
 import imageio
 import numpy as np
-
+from pathlib import Path
+from zipfile import ZipFile
 from porespy.tools import get_tqdm
+
 
 tqdm = get_tqdm()
 
@@ -39,9 +39,15 @@ def folder_to_stack(target_dir):
     p = Path(target_dir)
     test_im = imageio.v2.imread(os.path.join(p, os.listdir(p)[0]))
     im = np.zeros(
-        shape=[test_im.shape[0], test_im.shape[1], len(os.listdir(p))], dtype=test_im.dtype
+        shape=[
+            test_im.shape[0],
+            test_im.shape[1],
+            len(os.listdir(p)),
+        ],
+        dtype=test_im.dtype,
     )
-    for i, f in enumerate(tqdm(os.listdir(p))):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, f in enumerate(tqdm(os.listdir(p), desc=desc)):
         im[..., i] = imageio.v2.imread(os.path.join(p, f))
 
     return im
@@ -88,7 +94,8 @@ def zip_to_stack(f):
         shape=[test_im.shape[0], test_im.shape[1], len(os.listdir(dir_for_files))],
         dtype=test_im.dtype,
     )
-    for i, f in enumerate(tqdm(os.listdir(dir_for_files))):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, f in enumerate(tqdm(os.listdir(dir_for_files), desc=desc)):
         im[..., i] = imageio.v2.imread(os.path.join(dir_for_files, f))
 
     # Remove the unzipped folder

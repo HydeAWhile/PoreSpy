@@ -1,4 +1,5 @@
 import logging
+import inspect
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
@@ -102,7 +103,8 @@ def boxcount(im, bins=10):
         Ds = np.array(bins).astype(int)
 
     N = []
-    for d in tqdm(Ds, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for d in tqdm(Ds, desc=desc, **settings.tqdm):
         result = 0
         for i in range(0, im.shape[0], d):
             for j in range(0, im.shape[1], d):
@@ -185,7 +187,8 @@ def representative_elementary_volume(im, npoints=1000):
     slices = spim.find_objects(input=labels)
     porosity = np.zeros(shape=(N,), dtype=float)
     volume = np.zeros(shape=(N,), dtype=int)
-    for i in tqdm(np.arange(0, N), **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i in tqdm(np.arange(0, N), desc=desc, **settings.tqdm):
         s = slices[i]
         p = pads[i]
         new_s = extend_slice(s, shape=im.shape, pad=p)
@@ -1046,7 +1049,6 @@ def pc_curve(im, pc, seq=None):
     to view online example.
 
     """
-    tqdm = get_tqdm()
     Ps = np.unique(pc[im])
     # Utilize the fact that -inf and +inf will be at locations 0 & -1 in Ps
     if Ps[-1] == np.inf:
@@ -1059,7 +1061,8 @@ def pc_curve(im, pc, seq=None):
     y = []
     Vp = im.sum(dtype=np.int64)
     temp = pc[im]
-    for p in tqdm(Ps, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for p in tqdm(Ps, desc=desc, **settings.tqdm):
         y.append((temp <= p).sum(dtype=np.int64)/Vp)
     pc_curve = Results()
     pc_curve.pc = Ps
