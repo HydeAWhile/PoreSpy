@@ -138,9 +138,9 @@ def spheres_from_coords(df, mode='contained', smooth=False):
     bbox = find_bbox(im)
     im = im[bbox]
     mask = [np.all(df[col] == 0) for col in ['X', 'Y', 'Z']]
-    if np.any(mask):
+    if np.any(mask) and im.ndim > 2:
         ax = np.where(mask)[0][0]
-        im = np.cumsum(im, axis=ax) > 0
+        im = np.amax(im, axis=ax) > 0
     return im
 
 
@@ -156,4 +156,4 @@ if __name__ == "__main__":
     df['R'] = [5, 6, 7]
 
     im = spheres_from_coords(df)
-    ps.imshow(im)
+    plt.imshow(im)
