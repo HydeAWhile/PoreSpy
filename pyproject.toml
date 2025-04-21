@@ -152,6 +152,14 @@ path = "src/porespy/__version__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/porespy"]
+artifacts = [
+  "src/porespy_c/build/*.so",
+  "src/porespy_c/build/*.dll",
+  "src/porespy_c/build/*.dylib"
+]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
