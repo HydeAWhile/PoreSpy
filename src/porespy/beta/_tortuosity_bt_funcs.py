@@ -156,7 +156,7 @@ def tortuosity_map(im, block_size:int, dask_on=True):
 
 def rev_tortuosity(im, block_sizes=None, use_dask=True):
     """
-    Generates the data for creating an REV plot based on tortuosity
+    Generates the data for creating an REV plot based on tortuosity.
 
     Parameters
     ----------
@@ -171,6 +171,20 @@ def rev_tortuosity(im, block_sizes=None, use_dask=True):
     -------
     df : DataFrame
         A `pandas` data frame with the properties for each block on a given row
+
+        ========== ==================================================================
+        Attribute  Description
+        ========== ==================================================================
+        eps_orig   The porosity of the subdomain tested
+        eps_perc   The porosity of the subdomain tested after filling non-percolating paths
+        g          The calculated diffusive conductance for the subdomain tested
+        tau        The calculated tortuosity for the tested subdomain
+        volume     The total volume of each cubic subdomain tested
+        length     The length of one side of the subdomain tested
+        axis       The axis for which the above properties were calculated
+        time       The elapsed time required to perform the calculations
+        slice      The coordinates for the subdomain tested in the original image
+        ========== ==================================================================
     """
     all_dfs = []
     size = im.shape
@@ -212,7 +226,6 @@ def block_size_to_divs(shape, block_size):
 def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
     '''
     Creates REV plot from the output of `rev_tortuosity`.
-    All values of "np.inf" are treated as the next highest tortuosity within that bin.
     
     Parameters
     ----------
@@ -231,6 +244,10 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
 
     all_ax : list
         A list containing all of the matplotlib axes handles.
+
+    Notes
+    -----
+    All values of "np.inf" are treated as the next highest tortuosity within that bin.
         
     '''
 
