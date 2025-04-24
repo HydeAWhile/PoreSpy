@@ -90,7 +90,7 @@ class MetricsTest():
         assert np.sqrt((np.mean(tpcf_bf.probability[-5:]) - phi1)**2) < tol
 
     def test_rev(self):
-        rev = ps.metrics.representative_elementary_volume(self.blobs)
+        rev = ps.metrics.rev_porosity(self.blobs)
         assert (np.mean(rev.porosity) - 0.5)**2 < 0.05
 
     def test_radial_density(self):
@@ -214,7 +214,7 @@ class MetricsTest():
         assert np.allclose(k, [0.5, 1.5, 12])
         assert np.allclose(v, [0.2, 0.3, 0.5])
 
-    def test_representative_elementary_volume(self):
+    def test_rev_porosity(self):
         im = ps.generators.lattice_spheres(
             shape=[999, 999],
             r=15,
@@ -222,7 +222,7 @@ class MetricsTest():
             smooth=True,
             lattice='sc',
         )
-        rev = ps.metrics.representative_elementary_volume(im)
+        rev = ps.metrics.rev_porosity(im)
         assert_allclose(np.average(rev.porosity), im.sum() / im.size, rtol=1e-1)
 
         im = ps.generators.lattice_spheres(
@@ -232,7 +232,7 @@ class MetricsTest():
             smooth=True,
             lattice='sc',
         )
-        rev = ps.metrics.representative_elementary_volume(im)
+        rev = ps.metrics.rev_porosity(im)
         assert_allclose(np.average(rev.porosity), im.sum() / im.size, rtol=1e-1)
 
     def test_pc_curve(self):
