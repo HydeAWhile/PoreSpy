@@ -173,7 +173,7 @@ def rev_porosity(im, npoints=1000):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/representative_elementary_volume.html>`_
+    <https://porespy.org/examples/metrics/reference/rev_porosity.html>`_
     to view online example.
 
     """
