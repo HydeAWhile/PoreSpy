@@ -22,7 +22,6 @@ __all__ = [
     'get_block_sizes',
     'df_to_tortuosity',
     'rev_tortuosity',
-    'analyze_blocks',
 ]
 
 
