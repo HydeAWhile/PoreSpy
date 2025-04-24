@@ -35,7 +35,7 @@ __all__ = [
     "radial_density_distribution",
     "porosity",
     "porosity_profile",
-    "representative_elementary_volume",
+    "rev_porosity",
     "satn_profile",
     "two_point_correlation",
     "phase_fraction",
