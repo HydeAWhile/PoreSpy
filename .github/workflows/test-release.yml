@@ -19,8 +19,8 @@ jobs:
         include:
           - archs: auto
             platform: auto
-          # - os: linux-intel
-          #   runs-on: ubuntu-latest
+          - os: linux-intel
+            runs-on: ubuntu-latest
           # - os: linux-arm
           #   runs-on: ubuntu-24.04-arm
           - os: windows
