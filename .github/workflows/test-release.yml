@@ -18,12 +18,12 @@ jobs:
         include:
           - archs: auto
             platform: auto
-          - os: linux-intel
-            runs-on: ubuntu-latest
-          - os: linux-arm
-            runs-on: ubuntu-24.04-arm
-          - os: windows
-            runs-on: windows-latest
+          # - os: linux-intel
+          #   runs-on: ubuntu-latest
+          # - os: linux-arm
+          #   runs-on: ubuntu-24.04-arm
+          # - os: windows
+          #   runs-on: windows-latest
           - os: macos-13-intel
             # macos-13 was the last x86_64 runner
             runs-on: macos-13
