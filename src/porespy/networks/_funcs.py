@@ -1,16 +1,14 @@
 import logging
+
 import numpy as np
 import openpnm as op
 import scipy.ndimage as spim
-from skimage.segmentation import find_boundaries
 from skimage.morphology import ball, cube
-from porespy.tools import make_contiguous
-from porespy.tools import overlay
-from porespy.tools import insert_cylinder
-from porespy.generators import borders
-from porespy import settings
-from porespy.tools import get_tqdm
+from skimage.segmentation import find_boundaries
 
+from porespy import settings
+from porespy.generators import borders
+from porespy.tools import get_tqdm, insert_cylinder, make_contiguous, overlay
 
 __all__ = [
     "add_boundary_regions",
@@ -109,7 +107,8 @@ def add_boundary_regions(regions, pad_width=3):
     # Pad by t in all directions, this will be trimmed down later
     face_regions = np.pad(regions*(~bd), pad_width=t, mode='edge')
     # Set corners to 0 so regions don't connect across faces
-    edges = borders(shape=face_regions.shape, mode='edges', thickness=t)
+    m = 'corners' if len(regions.shape) == 2 else 'edges'
+    edges = borders(shape=face_regions.shape, mode=m, thickness=t)
     face_regions[edges] = 0
     # Extract a mask of just the faces
     mask = borders(shape=face_regions.shape, mode='faces', thickness=t)
@@ -186,7 +185,8 @@ def _generate_voxel_image(network, pore_shape, throat_shape, max_dim=200):
         raise Exception("Not yet implemented, try 'cylinder'.")
 
     # Generating voxels for pores
-    for i, pore in enumerate(tqdm(network.Ps, **settings.tqdm)):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, pore in enumerate(tqdm(network.Ps, desc=desc, **settings.tqdm)):
         elem = pore_elem(rp[i])
         try:
             im_pores = overlay(im1=im_pores, im2=elem, c=xyz[i])
@@ -197,7 +197,8 @@ def _generate_voxel_image(network, pore_shape, throat_shape, max_dim=200):
     im_pores[im_pores > 0] = 1
 
     # Generating voxels for throats
-    for i, throat in enumerate(tqdm(network.Ts, **settings.tqdm)):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, throat in enumerate(tqdm(network.Ts, desc=desc, **settings.tqdm)):
         try:
             im_throats = insert_cylinder(
                 im_throats, r=throat_radi[i], xyz0=xyz[cn[i, 0]], xyz1=xyz[cn[i, 1]])

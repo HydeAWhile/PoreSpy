@@ -1,20 +1,18 @@
 import logging
 import numpy as np
 import scipy.ndimage as spim
-from numba import njit, boolean
-from skimage.segmentation import relabel_sequential
+from numba import boolean, njit
 from skimage.morphology import ball, disk
-from ._utils import Results
+from skimage.segmentation import relabel_sequential
+from ._utils import Results, get_edt
+
 try:
     from skimage.measure import marching_cubes
 except ImportError:
     from skimage.measure import marching_cubes_lewiner as marching_cubes
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 
@@ -30,6 +28,7 @@ __all__ = [
     'find_bbox',
     'get_border',
     'get_planes',
+    'im_to_slabs',
     'insert_cylinder',
     'insert_sphere',
     'in_hull',
@@ -41,15 +40,97 @@ __all__ = [
     'overlay',
     'randomize_colors',
     'recombine',
-    'ps_ball',
-    'ps_disk',
-    'ps_rect',
-    'ps_round',
     'subdivide',
+    'tilde',
     'unpad',
     'jit_extend_slice',
     'pad',
 ]
+
+
+def tilde(im):
+    r"""
+    Inverts an image.
+
+    This is to replace the `~` operator which is being deprecated. It also ensures
+    `im` is actually a `boolean` array since inverting `1` and `0` gives different
+    results than `True` and `False`.
+
+    Parameters
+    ----------
+    im : ndarray
+        The image whose boolean values are to be inverted. If image is not a boolean
+        it will be converted to one.
+
+    Returns
+    -------
+    inv : ndarray
+        The result of calling `np.logical_not` on `im`.
+    """
+    im = im.astype(bool)
+    inv = np.logical_not(im)
+    return inv
+
+
+def im_to_slabs(im, axis=0, span=50, step=None, mode='tile'):
+    r"""
+    Generates a list of slice objects which can be used to obtain slabs of an image
+
+    Parameters
+    ----------
+    im : ndarray
+        The image for which the slices are desired
+    axis : int (Default = 0)
+        The axis along which the image will be sliced into slabs
+    span : int (Default = 50)
+        The thickness of the slabs
+    step : int (Default = None)
+        The spacing between the midpoints of the slabs. The default is `None` which
+        sets `step=1` voxel if `mode='slide'` and `step=span` if `mode='tile'`.
+        This can be used to create overlaps between slabs when `mode='tile'` by
+        setting `step<span`, or to reduce the number of slabs created when
+        `mode='slide'` by setting `step>1`.
+    mode : str (Default = 'tile')
+        Determines how the images is sliced into slabs. Options are:
+
+        =========== ================================================================
+        `mode`      Description
+        =========== ================================================================
+        'tile'      The returned slice objects produce discrete non-overlapping
+                    slabs with a thickness of `span`.
+        'slide'     The returned slice objects produce overlapping slabs
+                    representing a moving window of size `span` and the start of
+                    each slab is offsets from the start of the previous one by
+                    `step`.
+        =========== ================================================================
+
+    Returns
+    -------
+    slices : list of tuples contains `slice` objects
+        The retuned list contains `tuples` for each slab, with each `tuple`
+        containing `ndim` slice objects. These can be used to obtain slabs of
+        `im` using `slab_i = im[slices[i]]`.
+
+    Notes
+    -----
+    When `span=step` the result is identical for `mode` of `'tile'` or `'slide'`.
+
+    """
+    if mode not in ['slide', 'tile']:
+        raise Exception(f"Unrecognized mode {mode}")
+    if step is None:
+        step = 1 if mode == 'slide' else span
+    if step < 1:
+        raise Exception("Step size must be positive")
+    s = [slice(0, im.shape[i], None) for i in range(im.ndim)]
+    slices = []
+    for i in range(0, int(im.shape[axis]), step):
+        if i+span > im.shape[axis]:
+            s[axis] = slice(i, im.shape[axis], None)
+            break
+        s[axis] = slice(i, i+span, None)
+        slices.append(tuple(s))
+    return slices
 
 
 def unpad(im, pad_width):
@@ -67,7 +148,7 @@ def unpad(im, pad_width):
 
     Notes
     -----
-    A use case for this is when using ``skimage.morphology.skeletonize_3d``
+    A use case for this is when using ``skimage.morphology.skeletonize``
     to ensure that the skeleton extends beyond the edges of the image, but the
     padding should be subsequently removed.
 
@@ -257,7 +338,7 @@ def align_image_with_openpnm(im):
     return im
 
 
-def subdivide(im, divs=2, overlap=0):
+def subdivide(im, divs=2, block_size=None, overlap=0, mode='offset'):
     r"""
     Returns slices into an image describing the specified number of sub-arrays.
 
@@ -271,20 +352,39 @@ def subdivide(im, divs=2, overlap=0):
         The image of the porous media
     divs : scalar or array_like
         The number of sub-divisions to create in each axis of the image.  If a
-        scalar is given it is assumed this value applies in all dimensions.
+        scalar is given it is assumed this value applies in all dimensions. If
+        `block_size` is given this is ignored.
+    block_size : scalar or array_like
+        The size of the divisions to create. If a scalar is given then cubic
+        blocks are created. If this argument is given then `divs` is ignored.
     overlap : scalar or array_like
         The amount of overlap to use when dividing along each axis.  If a
         scalar is given it is assumed this value applies in all dimensions.
+    mode : str
+        This argument is only used if `block_size` is given and it controls how
+        to handle the situation when block sizes is not a clean multiple of
+        the image shape. The options are:
+
+        ========== ==================================================================
+        mode       description
+        ========== ==================================================================
+        'whole'    Blocks start at the beginning of each axis, and only "whole"
+                   blocks (that fit within the image) are included in the returned
+                   list of slice objects.
+        'offset'   Only whole blocks are included, but an offset is applied to the
+                   start of each axis so that an equal amount of voxels are missed
+                   at the start and end of each axis.
+        'partial'  Blocks start at the beginning of each axis, and any blocks which
+                   partially extend beyond the end of the image are returned.
+        'strict'   Raises an Exception of the image cannot be evenly divided by the
+                   given block size.
+        ========== ==================================================================
 
     Returns
     -------
     slices : ndarray
         An ndarray containing sets of slice objects for indexing into ``im``
-        that extract subdivisions of an image.  If ``flatten`` was ``True``,
-        then this array is suitable for iterating.  If ``flatten`` was
-        ``False`` then the slice objects must be accessed by row, col, layer
-        indices.  An ndarray is the preferred container since its shape can
-        be easily queried.
+        that extract subdivisions of an image.
 
     See Also
     --------
@@ -304,33 +404,57 @@ def subdivide(im, divs=2, overlap=0):
     to view online example.
 
     """
-    divs = np.ones((im.ndim,), dtype=int) * np.array(divs)
-    overlap = overlap * (divs > 1)
-
+    offset = np.zeros(im.ndim, dtype=int)
+    shape = np.array(im.shape, dtype=int)
+    if block_size is None:
+        divs = np.ones((im.ndim,), dtype=int) * np.array(divs)
+        overlap = overlap * (divs > 1)
+        spacing = np.round(shape/divs, decimals=0).astype(int)
+    else:
+        block_size = np.array(block_size, dtype=int)
+        spacing = np.ones((im.ndim,), dtype=int) * block_size
+        divs = shape/spacing
+        if mode == 'offset':
+            divs = np.array(divs, dtype=int)
+            offset = ((shape - block_size*divs)/2).astype(int)
+        elif mode == 'whole':
+            divs = np.array(divs, dtype=int)
+        elif mode == 'partial':
+            divs = np.ceil(divs).astype(int)
+        elif mode == 'strict':
+            if np.any(shape % block_size):
+                m = 'The image cannot be evenly divided by the given block_size'
+                raise Exception(m)
+            divs = np.array(divs).astype(int)
+        else:
+            raise Exception('Unsupported mode')
     s = np.zeros(shape=divs, dtype=object)
-    spacing = np.round(np.array(im.shape)/divs, decimals=0).astype(int)
     for i in range(s.shape[0]):
         x = spacing[0]
-        sx = slice(x*i, min(im.shape[0], x*(i+1)), None)
+        o = offset[0]
+        sx = slice(x*i + o, min(im.shape[0], x*(i+1)) + o, None)
         for j in range(s.shape[1]):
             y = spacing[1]
-            sy = slice(y*j, min(im.shape[1], y*(j+1)), None)
+            o = offset[1]
+            sy = slice(y*j + o, min(im.shape[1], y*(j+1)) + o, None)
             if im.ndim == 3:
                 for k in range(s.shape[2]):
                     z = spacing[2]
-                    sz = slice(z*k, min(im.shape[2], z*(k+1)), None)
+                    o = offset[2]
+                    sz = slice(z*k + o, min(im.shape[2], z*(k+1)) + o, None)
                     s[i, j, k] = tuple([sx, sy, sz])
             else:
                 s[i, j] = tuple([sx, sy])
     s = s.flatten().tolist()
-    for i, item in enumerate(s):
-        s[i] = extend_slice(slices=item, shape=im.shape, pad=overlap)
+    if np.any(overlap):
+        for i, item in enumerate(s):
+            s[i] = extend_slice(slices=item, shape=im.shape, pad=overlap)
     return s
 
 
 def recombine(ims, slices, overlap):
     r"""
-    Recombines image chunks back into full image of original shape
+    Recombines image chunks back into full image
 
     Parameters
     ----------
@@ -345,8 +469,7 @@ def recombine(ims, slices, overlap):
     Returns
     -------
     im : ndarray
-        An image constituted from the chunks in ``ims`` of the same shape
-        as the original image.
+        An image constituted from the chunks in ``ims``
 
     See Also
     --------
@@ -701,6 +824,7 @@ def extend_slice(slices, shape, pad=1):
         a.append(slice(start, stop, None))
     return tuple(a)
 
+
 @njit
 def jit_extend_slice(slices, shape, pad=1):
     shape = np.array(shape)
@@ -710,6 +834,7 @@ def jit_extend_slice(slices, shape, pad=1):
         stop = min(s.stop + pad, shape[i])
         a.append(slice(start, stop, None))
     return (a[0], a[1], a[2])
+
 
 @njit
 def pad(img):
@@ -953,7 +1078,7 @@ def in_hull(points, hull):
     to view online example.
 
     """
-    from scipy.spatial import Delaunay, ConvexHull
+    from scipy.spatial import ConvexHull, Delaunay
     if isinstance(hull, ConvexHull):
         hull = hull.points
     hull = Delaunay(hull)
@@ -990,7 +1115,10 @@ def all_to_uniform(im, scale=None):
     """
     if scale is None:
         scale = [im.min(), im.max()]
-    aargsort_im = np.argsort(np.argsort(im.flatten())) # twice for the inverse permutation
+    # Alternative, might be faster
+    # im2 = rankdata(im).reshape(im.shape)
+    # im = (im2 - im2.min())/(im2.max() - im2.min())*(scale[1] - scale[0]) + scale[0]
+    aargsort_im = np.argsort(np.argsort(im.flatten()))  # 2x forinverse permutation
     linspace_im = np.linspace(scale[0], scale[1], len(aargsort_im), endpoint=True)
     uniform_flatten_im = linspace_im[aargsort_im]
     im = np.reshape(uniform_flatten_im, im.shape)
@@ -1096,131 +1224,6 @@ def mesh_region(region: bool, strel=None, voxel_size=(1.0, 1.0, 1.0)):
     result.norm = norm
     result.val = val
     return result
-
-
-def ps_disk(r, smooth=True):
-    r"""
-    Creates circular disk structuring element for morphological operations
-
-    Parameters
-    ----------
-    r : float or int
-        The desired radius of the structuring element
-    smooth : boolean
-        Indicates whether the faces of the sphere should have the little
-        nibs (``True``) or not (``False``, default)
-
-    Returns
-    -------
-    disk : ndarray
-        A 2D numpy bool array of the structring element
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/tools/reference/ps_disk.html>`_
-    to view online example.
-
-    """
-    disk = ps_round(r=r, ndim=2, smooth=smooth)
-    return disk
-
-
-def ps_ball(r, smooth=True):
-    r"""
-    Creates spherical ball structuring element for morphological operations
-
-    Parameters
-    ----------
-    r : scalar
-        The desired radius of the structuring element
-    smooth : boolean
-        Indicates whether the faces of the sphere should have the little
-        nibs (``True``) or not (``False``, default)
-
-    Returns
-    -------
-    ball : ndarray
-        A 3D numpy array of the structuring element
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/tools/reference/ps_ball.html>`_
-    to view online example.
-
-    """
-    ball = ps_round(r=r, ndim=3, smooth=smooth)
-    return ball
-
-
-def ps_round(r, ndim, smooth=True):
-    r"""
-    Creates round structuring element with the given radius and dimensionality
-
-    Parameters
-    ----------
-    r : scalar
-        The desired radius of the structuring element
-    ndim : int
-        The dimensionality of the element, either 2 or 3.
-    smooth : boolean
-        Indicates whether the faces of the sphere should have the little
-        nibs (``True``) or not (``False``, default)
-
-    Returns
-    -------
-    strel : ndarray
-        A 3D numpy array of the structuring element
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/tools/reference/ps_round.html>`_
-    to view online example.
-
-    """
-    rad = int(np.ceil(r))
-    other = np.ones([2*rad + 1 for i in range(ndim)], dtype=bool)
-    other[tuple(rad for i in range(ndim))] = False
-    if smooth:
-        ball = edt(other) < r
-    else:
-        ball = edt(other) <= r
-    return ball
-
-
-def ps_rect(w, ndim):
-    r"""
-    Creates rectilinear structuring element with the given size and
-    dimensionality
-
-    Parameters
-    ----------
-    w : scalar
-        The desired width of the structuring element
-    ndim : int
-        The dimensionality of the element, either 2 or 3.
-
-    Returns
-    -------
-    strel : D-aNrray
-        A numpy array of the structuring element
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/tools/reference/ps_rect.html>`_
-    to view online example.
-
-    """
-    if ndim == 2:
-        from skimage.morphology import square
-        strel = square(w)
-    if ndim == 3:
-        from skimage.morphology import cube
-        strel = cube(w)
-    return strel
 
 
 def overlay(im1, im2, c):
@@ -1435,7 +1438,8 @@ def extract_regions(regions, labels: list, trim=True):
         x_min, x_max = min(s[i - 1][0].start, x_min), max(s[i - 1][0].stop, x_max)
         y_min, y_max = min(s[i - 1][1].start, y_min), max(s[i - 1][1].stop, y_max)
         if regions.ndim == 3:
-            z_min, z_max = min(s[i - 1][2].start, z_min), max(s[i - 1][2].stop, z_max)
+            z_min, z_max = \
+                min(s[i - 1][2].start, z_min), max(s[i - 1][2].stop, z_max)
     if trim:
         if regions.ndim == 3:
             bbox = bbox_to_slices([x_min, y_min, z_min, x_max, y_max, z_max])
@@ -1461,6 +1465,7 @@ def _check_for_singleton_axes(im):  # pragma: no cover
                        " dimensionality with np.squeeze(im) to avoid"
                        " unexpected behavior.")
 
+
 @njit
 def center_of_mass(im):
     w, h, d = im.shape
@@ -1482,4 +1487,3 @@ def center_of_mass(im):
         y_mass/y_sum,
         z_mass/z_sum,
         ))
-

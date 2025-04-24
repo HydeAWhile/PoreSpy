@@ -1,35 +1,24 @@
 import logging
-import numpy as np
 import numba
-from numba import njit, prange, gdb
-from numba.typed import List, Dict
-from numba.core import types
+import numpy as np
 import scipy.ndimage as spim
-from skimage.morphology import disk, ball
-from porespy import settings
+from numba import njit, prange
+from numba.core import types
+from numba.typed import Dict, List
 from porespy.tools import (
-    extend_slice,
-    jit_extend_slice,
     center_of_mass,
-)
-from porespy.tools import (
-    get_tqdm,
-    make_contiguous,
+    create_mc_template_list,
+    jit_extend_slice,
     jit_marching_cubes_area_and_volume,
     jit_marching_squares_perimeter_and_area,
-    create_mc_template_list,
-    calculate_area_and_volume,
+    make_contiguous,
     pad,
-)
-from porespy.metrics import (
-    region_surface_areas,
-    region_interface_areas,
-    region_volumes,
+    get_edt,
 )
 try:
-    from pyedt import edt, jit_edt_cpu
-except ModuleNotFoundError:
-    from edt import edt
+    from pyedt import jit_edt_cpu
+except ImportError as e:
+    print(e)
 
 
 IDLE = np.uint32(0)
@@ -47,7 +36,7 @@ __all__ = [
 ]
 
 
-tqdm = get_tqdm()
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 

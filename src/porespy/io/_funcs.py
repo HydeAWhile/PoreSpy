@@ -6,11 +6,10 @@ import skimage.measure as ms
 from skimage.morphology import ball
 from porespy.filters import reduce_peaks
 from porespy.networks import generate_voxel_image
-from porespy.tools import sanitize_filename
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import sanitize_filename, get_edt
+
+
+edt = get_edt()
 
 
 def dict_to_vtk(data, filename, voxel_size=1, origin=(0, 0, 0)):

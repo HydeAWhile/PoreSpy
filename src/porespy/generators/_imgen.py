@@ -1,30 +1,27 @@
+import inspect
 import logging
-import numpy as np
-import inspect as insp
-from numba import njit
-import scipy.spatial as sptl
-import scipy.ndimage as spim
-import scipy.stats as spst
-from porespy import metrics
-from porespy import settings
 from typing import List, Literal
+import numpy as np
+import numpy.typing as npt
+import scipy.ndimage as spim
+import scipy.spatial as sptl
+import scipy.stats as spst
+from numba import njit
+from porespy import metrics, settings
 from porespy.filters import chunked_func
 from porespy.tools import (
-    all_to_uniform,
-    ps_ball,
-    ps_disk,
-    get_border,
-    extract_subsection,
-    insert_sphere,
-    get_tqdm,
     _insert_disk_at_points,
     _insert_disk_at_points_parallel,
+    all_to_uniform,
+    extract_subsection,
+    get_border,
+    get_tqdm,
+    insert_sphere,
+    ps_ball,
+    ps_disk,
+    get_edt,
+    parse_shape
 )
-import numpy.typing as npt
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -32,6 +29,7 @@ __all__ = [
     "bundle_of_tubes",
     "cylinders",
     "cylindrical_plug",
+    "elevation",
     "insert_shape",
     "lattice_spheres",
     "line_segment",
@@ -44,8 +42,56 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
+
+
+def elevation(
+    shape: List,
+    voxel_size: float,
+    axis: int = 0,
+):
+    r"""
+    Generates a image of distances from given axis
+
+    Parameters
+    ----------
+    shape : ndarray or list
+        This dictates the shape of the output image. If an image is supplied, then
+        it's shape is used. Otherwise, the shape should be supplied as a N-D long
+        list of the shape for each axis (i.e. `[200, 200]` or `[300, 300, 300]`).
+    voxel_size : scalar
+        The size of the voxels in physical units (i.e. `100e-6` would be 100 um per
+        voxel side).
+    axis : int, optional, default is 0
+        The direction along which the height is calculated.  The default is 0, which
+        is the 'x-axis'.
+
+    Returns
+    -------
+    elevation : ndarray
+        A numpy array of the specified shape with the values in each voxel indicating
+        the height of that voxel from the beginning of the specified axis.
+
+    See Also
+    --------
+    ramp
+
+    Examples
+    --------
+    # TODO: Create a notebook example for this function
+
+    """
+    shape = parse_shape(shape)
+    im = np.zeros(shape, dtype=bool)
+    im = np.swapaxes(im, 0, axis)
+    a = np.arange(0, im.shape[0])
+    b = np.reshape(a, [im.shape[0], 1, 1])
+    c = np.tile(b, (1, *im.shape[1:]))
+    c = c*voxel_size
+    h = np.swapaxes(c, 0, axis)
+    return h
 
 
 def ramp(
@@ -79,13 +125,17 @@ def ramp(
         An array of the requested shape with values changing linearly from inlet
         to outlet in the direction specified.
 
+    See Also
+    --------
+    elevation
+
     Examples
     --------
     `Click here
     <https://porespy.org/examples/generators/reference/ramp.html>`_
     to view online example.
     """
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     vals = np.linspace(inlet, outlet, shape[axis])
     vals = np.reshape(vals, [shape[axis]]+[1]*len(shape[1:]))
     vals = np.swapaxes(vals, 0, axis)
@@ -123,7 +173,7 @@ def cylindrical_plug(shape, r=None, axis=2):
     to view online example.
 
     """
-    shape = np.array(shape, dtype=int)
+    shape = parse_shape(shape)
     axes = np.array(list(set([0, 1, 2]).difference(set([axis]))), dtype=int)
     if len(shape) == 3:
         im2d = np.ones(shape=shape[axes])
@@ -336,7 +386,8 @@ def random_spheres(
 
     """
     logger.debug(f"random_spheres: Adding spheres of size {r}")
-
+    if shape:
+        shape = parse_shape(shape)
     if smooth:
         r = r + 1
 
@@ -401,22 +452,22 @@ def random_spheres(
 
 
 @njit
-def _set_seed(a):
+def _set_seed(a):  # pragma: no cover
     np.random.seed(a)
 
 
 @njit
-def _get_rand_float(*args):
+def _get_rand_float(*args):  # pragma: no cover
     return np.random.rand(*args)
 
 
 @njit
-def _get_rand_int(*args):
+def _get_rand_int(*args):  # pragma: no cover
     return np.random.randint(*args)
 
 
 @njit
-def _make_choice(options_im, free_sites):
+def _make_choice(options_im, free_sites):  # pragma: no cover
     r"""
     This function is called by _begin_inserting to find valid insertion
     points.
@@ -522,7 +573,7 @@ def bundle_of_tubes(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if len(shape) == 2:
         shape = np.hstack((shape, [1]))
     shape2 = shape[shape > 1]
@@ -555,7 +606,8 @@ def polydisperse_spheres(
     dist,
     nbins: int = 5,
     r_min: int = 5,
-    seed=None):
+    seed=None,
+):
     r"""
     Create an image of randomly placed, overlapping spheres with a
     distribution of radii.
@@ -602,7 +654,7 @@ def polydisperse_spheres(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if np.size(shape) == 1:
         shape = np.full((3,), int(shape))
     Rs = dist.interval(np.linspace(0.05, 0.95, nbins))
@@ -662,13 +714,10 @@ def voronoi_edges(
     to view online example.
 
     """
-    if 'radius' in kwargs.keys():
-        r = kwargs['radius']
-        print('radius keyword is deprecated in favor of just r')
     if seed is not None:
         np.random.seed(seed)
     logger.info(f"Generating {ncells} cells")
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if np.size(shape) == 1:
         shape = np.full((3,), int(shape))
     im = np.zeros(shape, dtype=bool)
@@ -794,7 +843,7 @@ def lattice_spheres(
 
     """
     logger.debug(f"Generating {lattice} lattice")
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     im = np.zeros(shape, dtype=bool)
 
     # Parse lattice type
@@ -922,9 +971,7 @@ def overlapping_spheres(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
-    if np.size(shape) == 1:
-        shape = np.full((3, ), int(shape))
+    shape = parse_shape(shape)
     ndim = (shape != 1).sum(dtype=np.int64)
     s_vol = ps_disk(r).sum(dtype=np.int64) if ndim == 2 \
         else ps_ball(r).sum(dtype=np.int64)
@@ -974,7 +1021,8 @@ def blobs(
     porosity: float = 0.5,
     blobiness: int = 1,
     divs: int = 1,
-    seed=None,
+    seed: int = None,
+    periodic: bool = True,
 ):
     """
     Generates an image containing amorphous blobs
@@ -989,7 +1037,7 @@ def blobs(
         prior to returning.  If ``None`` is specified, then the scalar
         noise field is converted to a uniform distribution and returned
         without thresholding.
-    blobiness : int or list of ints(default = 1)
+    blobiness : int or list of ints (default = 1)
         Controls the morphology of the blobs.  A higher number results in
         a larger number of small blobs.  If a list is supplied then the
         blobs are anisotropic.
@@ -999,10 +1047,14 @@ def blobs(
         equivalent to ``[2, 2, 2]`` for a 3D image.  The number of cores
         used is specified in ``porespy.settings.ncores`` and defaults to
         all cores.
-    seed : int, optional, default = `None`
+    seed : int, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
         ``np.random.state(seed)`` prior to calling this function will be respected.
+    periodic : bool, default = `True`
+        If `True` the blobs will be periodic, meaning that the image can be tiled
+        and the phases will be continuous. `False` will provide the "legacy" version
+        of an image, which has high-porosity artifacts at the image boundaries.
 
     Returns
     -------
@@ -1032,20 +1084,17 @@ def blobs(
     """
     if seed is not None:
         np.random.seed(seed)
-    if isinstance(shape, int):
-        shape = [shape]*3
-    if len(shape) == 1:
-        shape = [shape[0]]*3
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if isinstance(blobiness, int):
         blobiness = [blobiness]*len(shape)
     blobiness = np.array(blobiness)
+    mode = 'wrap' if periodic else 'reflect'
     parallel = False
     if isinstance(divs, int):
         divs = [divs]*len(shape)
     if max(divs) > 1:
         parallel = True
-        logger.info(f'Performing {insp.currentframe().f_code.co_name} in parallel')
+        logger.info(f'Performing {inspect.currentframe().f_code.co_name} in parallel')
     sigma = np.mean(shape) / (40 * blobiness)
     im = np.random.random(shape)
     if parallel:
@@ -1054,7 +1103,7 @@ def blobs(
                           input=im, sigma=sigma,
                           divs=divs, overlap=overlap)
     else:
-        im = spim.gaussian_filter(im, sigma=sigma)
+        im = spim.gaussian_filter(im, sigma=sigma, mode=mode)
     im = all_to_uniform(im, scale=[0, 1])
     if porosity:
         im = im < porosity
@@ -1118,10 +1167,8 @@ def _cylinders(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
-    if np.size(shape) == 1:
-        shape = np.full((3, ), int(shape))
-    elif np.size(shape) == 2:
+    shape = parse_shape(shape)
+    if np.size(shape) == 2:
         raise Exception("2D cylinders don't make sense")
     # Find hypotenuse of domain from [0,0,0] to [Nx,Ny,Nz]
     H = np.sqrt(np.sum(np.square(shape), dtype=np.int64)).astype(int)
@@ -1141,7 +1188,8 @@ def _cylinders(
     tqdm_settings = settings.tqdm.copy()
     if not settings.tqdm["disable"]:
         tqdm_settings = {**settings.tqdm, **{'disable': not verbose}}
-    with tqdm(ncylinders, **tqdm_settings) as pbar:
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    with tqdm(ncylinders, desc=desc, **tqdm_settings) as pbar:
         while n < ncylinders:
             # Choose a random starting point in domain
             x = np.random.rand(3) * (shape + 2 * L)
@@ -1302,7 +1350,8 @@ def cylinders(
         fractions.append(fractions[i - 1] + (maxiter - i) ** 2 * subdif)
 
     im = np.ones(shape, dtype=bool)
-    for frac in tqdm(fractions, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for frac in tqdm(fractions, desc=desc, **settings.tqdm):
         n_fibers_total = n_pixels_to_add / vol_fiber
         n_fibers = int(np.ceil(frac * n_fibers_total) - n_fibers_added)
         if n_fibers > 0:

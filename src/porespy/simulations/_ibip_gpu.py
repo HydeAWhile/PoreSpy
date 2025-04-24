@@ -1,14 +1,13 @@
 import logging
+import inspect
 import numpy as np
+from porespy import settings
 from porespy.tools import (
-    get_tqdm,
-    get_border,
     Results,
+    get_border,
+    get_tqdm,
+    get_edt,
 )
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -16,6 +15,8 @@ __all__ = [
 ]
 
 
+
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
@@ -48,11 +49,11 @@ def ibip_gpu(im, dt=None, inlets=None, maxiter=10000):  # pragma: no cover
     results : Results object
         A custom object with the following two arrays as attributes:
 
-        'inv_sequence'
+        'im_seq'
             An ndarray the same shape as ``im`` with each voxel labelled by
             the sequence at which it was invaded.
 
-        'inv_size'
+        'im_size'
             An ndarray the same shape as ``im`` with each voxel labelled by
             the ``inv_size`` at which was filled.
 
@@ -72,8 +73,8 @@ def ibip_gpu(im, dt=None, inlets=None, maxiter=10000):  # pragma: no cover
     inv_gpu = -1*((~im_gpu).astype(int))
     sizes_gpu = -1*((~im_gpu).astype(int))
     strel_gpu = ball_gpu if im_gpu.ndim == 3 else disk_gpu
-
-    for step in tqdm(range(1, maxiter)):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for step in tqdm(range(1, maxiter), desc=desc, **settings.tqdm):
         temp_gpu = cndi.binary_dilation(input=bd_gpu,
                                         structure=strel_gpu(1, smooth=False))
         edge_gpu = temp_gpu * (dt_gpu > 0)
@@ -117,8 +118,8 @@ def ibip_gpu(im, dt=None, inlets=None, maxiter=10000):  # pragma: no cover
     inv_sequence = cp.asnumpy(inv_seq_gpu)
     inv_size = cp.asnumpy(sizes_gpu)
     results = Results()
-    results.inv_sequence = inv_sequence
-    results.inv_size = inv_size
+    results.im_seq = inv_sequence
+    results.im_size = inv_size
     return results
 
 

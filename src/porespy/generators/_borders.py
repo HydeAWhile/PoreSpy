@@ -1,8 +1,12 @@
 import numpy as np
 from typing import Literal
+from porespy.tools import parse_shape
 
 
-__all__ = ['faces', 'borders']
+__all__ = [
+    'faces',
+    'borders',
+]
 
 
 def faces(shape, inlet: int = None, outlet: int = None):
@@ -39,6 +43,7 @@ def faces(shape, inlet: int = None, outlet: int = None):
     to view online example.
 
     """
+    shape = parse_shape(shape)
     im = np.zeros(shape, dtype=bool)
     # Parse inlet and outlet
     if inlet is not None:
@@ -74,7 +79,7 @@ def borders(
         The number of pixels/voxels layers to place along perimeter.
     mode : string
         The type of border to create.  Options are 'faces', 'edges'
-        (default) and 'corners'.  In 2D 'corners' and 'edges' give the
+        (default) and 'corners'.  In 2D 'faces' and 'edges' give the
         same result.
 
     Returns
@@ -90,6 +95,7 @@ def borders(
     to view online example.
 
     """
+    shape = parse_shape(shape)
     ndims = len(shape)
     t = thickness
     border = np.ones(shape, dtype=bool)
@@ -100,8 +106,7 @@ def borders(
             border[t:-t, t:-t, t:-t] = False
     elif mode == 'edges':
         if ndims == 2:
-            border[t:-t, 0::] = False
-            border[0::, t:-t] = False
+            border[t:-t, t:-t] = False
         if ndims == 3:
             border[0::, t:-t, t:-t] = False
             border[t:-t, 0::, t:-t] = False

@@ -1,24 +1,19 @@
 import logging
-import heapq
-import numpy as np
-import scipy.ndimage as spim
 import numpy.typing as npt
+import scipy.ndimage as spim
+import numpy as np
+from typing import List, Literal
 from numba import njit
-from typing import Literal, List
-from skimage.morphology import disk, ball
-from porespy import settings
-from porespy.tools import (
-    get_tqdm,
-    ps_round,
-    get_border,
-    unpad,
-    _insert_disk_at_point,
-)
+from skimage.morphology import ball, disk
 from porespy.filters import trim_disconnected_blobs
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import (
+    _insert_disk_at_point,
+    get_border,
+    ps_round,
+    unpad,
+    get_edt,
+    parse_shape,
+)
 
 
 __all__ = [
@@ -28,7 +23,7 @@ __all__ = [
 ]
 
 
-tqdm = get_tqdm()
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 
@@ -197,7 +192,8 @@ def pseudo_gravity_packing(
 
     """
     logger.debug(f'Adding spheres of radius {r}')
-
+    if shape:
+        shape = parse_shape(shape)
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
@@ -232,8 +228,7 @@ def pseudo_gravity_packing(
     # Finalize the mask of valid insertion points
     inlets = np.zeros_like(im)
     inlets[-r:, ...] = True
-    s = ball(1) if im.ndim == 3 else disk(1)
-    mask = trim_disconnected_blobs(im=mask, inlets=inlets, strel=s)
+    mask = trim_disconnected_blobs(im=mask, inlets=inlets, conn='min')
 
     # Generate elevation values to initialize queue
     from porespy.generators import ramp
@@ -353,7 +348,8 @@ def pseudo_electrostatic_packing(
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
-
+    if shape:
+        shape = parse_shape(shape)
     if im is None:  # If shape was given, generate empty im
         im = np.zeros(shape, dtype=bool)
 
@@ -455,9 +451,10 @@ def _do_packing(im, mask, q, r, value, clearance, smooth, maxiter):
 
 
 if __name__ == "__main__":
-    import porespy as ps
     import matplotlib.pyplot as plt
     import scipy.ndimage as spim
+
+    import porespy as ps
     shape = [200, 200]
 
 

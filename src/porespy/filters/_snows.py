@@ -1,22 +1,23 @@
-import dask.array as da
-import inspect as insp
 import logging
+import inspect
+import dask.array as da
 import numpy as np
-from numba import njit, prange
 import scipy.ndimage as spim
 import scipy.spatial as sptl
+from numba import njit, prange
+from skimage.morphology import cube, square
 from skimage.segmentation import watershed
-from skimage.morphology import square, cube
-from porespy.tools import _check_for_singleton_axes
-from porespy.tools import extend_slice, ps_rect, ps_round
-from porespy.tools import Results
-from porespy.tools import get_tqdm
-from porespy.filters import chunked_func
 from porespy import settings
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.filters import chunked_func
+from porespy.tools import (
+    Results,
+    _check_for_singleton_axes,
+    extend_slice,
+    get_tqdm,
+    ps_rect,
+    ps_round,
+    get_edt,
+)
 
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
@@ -309,7 +311,7 @@ def find_peaks(dt, r_max=4, strel=None, sigma=None, divs=1):
         divs = [divs]*len(im.shape)
     if np.any(np.array(divs) > 1):
         parallel = True
-        logger.info(f'Performing {insp.currentframe().f_code.co_name} in parallel')
+        logger.info(f'Performing {inspect.currentframe().f_code.co_name} in parallel')
     if parallel:
         overlap = max(strel.shape)
         mx = chunked_func(func=spim.maximum_filter, overlap=overlap,
@@ -322,6 +324,51 @@ def find_peaks(dt, r_max=4, strel=None, sigma=None, divs=1):
         mx = spim.maximum_filter(dt + 2.0 * (~im), footprint=strel)
     peaks = (dt == mx) * im
     return peaks
+
+
+def reduce_peaks(peaks):
+    r"""
+    Any peaks that are broad or elongated are replaced with a single voxel
+    that is located at the center of mass of the original voxels.
+
+    Parameters
+    ----------
+    peaks : ndarray
+        An image containing ``True`` values indicating peaks in the
+        distance transform
+
+    Returns
+    -------
+    image : ndarray
+        An array with the same number of isolated peaks as the original
+        image, but fewer total ``True`` voxels.
+
+    Notes
+    -----
+    The center of mass of a group of voxels is used as the new single
+    voxel, so if the group has an odd shape (like a horse shoe), the new
+    voxel may *not* lie on top of the original set.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/reduce_peaks.html>`_
+    to view online example.
+
+    """
+    if peaks.ndim == 2:
+        strel = square
+    else:
+        strel = cube
+    markers, N = spim.label(input=peaks, structure=strel(3))
+    inds = spim.center_of_mass(
+        input=peaks, labels=markers, index=np.arange(1, N + 1)
+    )
+    inds = np.floor(inds).astype(int)
+    # Centroid may not be on old pixel, so create a new peaks image
+    peaks_new = np.zeros_like(peaks, dtype=bool)
+    peaks_new[tuple(inds.T)] = True
+    return peaks_new
 
 
 def trim_saddle_points(peaks, dt, maxiter=20):
@@ -366,7 +413,8 @@ def trim_saddle_points(peaks, dt, maxiter=20):
         from skimage.morphology import cube
     labels, N = spim.label(peaks > 0)
     slices = spim.find_objects(labels)
-    for i, s in tqdm(enumerate(slices), **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, s in tqdm(enumerate(slices), desc=desc, **settings.tqdm):
         sx = extend_slice(s, shape=peaks.shape, pad=maxiter)
         peaks_i = labels[sx] == i + 1
         dt_i = dt[sx]
@@ -440,7 +488,8 @@ def trim_saddle_points_legacy(peaks, dt, maxiter=10):
         from skimage.morphology import cube
     labels, N = spim.label(peaks > 0)
     slices = spim.find_objects(labels)
-    for i, s in tqdm(enumerate(slices), **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, s in tqdm(enumerate(slices), desc=desc, **settings.tqdm):
         sx = extend_slice(s, shape=peaks.shape, pad=10)
         peaks_i = labels[sx] == i + 1
         dt_i = dt[sx]
@@ -522,8 +571,7 @@ def trim_nearby_peaks(peaks, dt, f=1):
         from skimage.morphology import cube
 
     labels, N = spim.label(peaks > 0, structure=cube(3))
-    crds = spim.measurements.center_of_mass(peaks > 0, labels=labels,
-                                            index=np.arange(1, N + 1))
+    crds = spim.center_of_mass(peaks > 0, labels=labels, index=np.arange(1, N + 1))
     try:
         crds = np.vstack(crds).astype(int)  # Convert to numpy array of ints
     except ValueError:
@@ -762,51 +810,6 @@ def relabel_chunks(im, chunk_shape):
                    x * c[1]: (x + 1) * c[1]] = chunk
 
     return im
-
-
-def reduce_peaks(peaks):
-    r"""
-    Any peaks that are broad or elongated are replaced with a single voxel
-    that is located at the center of mass of the original voxels.
-
-    Parameters
-    ----------
-    peaks : ndarray
-        An image containing ``True`` values indicating peaks in the
-        distance transform
-
-    Returns
-    -------
-    image : ndarray
-        An array with the same number of isolated peaks as the original
-        image, but fewer total ``True`` voxels.
-
-    Notes
-    -----
-    The center of mass of a group of voxels is used as the new single
-    voxel, so if the group has an odd shape (like a horse shoe), the new
-    voxel may *not* lie on top of the original set.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/reduce_peaks.html>`_
-    to view online example.
-
-    """
-    if peaks.ndim == 2:
-        strel = square
-    else:
-        strel = cube
-    markers, N = spim.label(input=peaks, structure=strel(3))
-    inds = spim.measurements.center_of_mass(
-        input=peaks, labels=markers, index=np.arange(1, N + 1)
-    )
-    inds = np.floor(inds).astype(int)
-    # Centroid may not be on old pixel, so create a new peaks image
-    peaks_new = np.zeros_like(peaks, dtype=bool)
-    peaks_new[tuple(inds.T)] = True
-    return peaks_new
 
 
 def _trim_internal_slice(im, chunk_shape):
