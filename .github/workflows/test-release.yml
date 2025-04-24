@@ -14,15 +14,15 @@ jobs:
       matrix:
         # python-version: ['3.10', '3.11', '3.12']
         # os: [windows, macos-13-intel, macos-14-arm]
-        os: [linux-intel, linux-arm, windows, macos-13-intel, macos-14-arm]
-        # os: [macos-13-intel, macos-14-arm]
+        # os: [linux-intel, linux-arm, windows, macos-13-intel, macos-14-arm]
+        os: [windows,macos-13-intel, macos-14-arm]
         include:
           - archs: auto
             platform: auto
-          - os: linux-intel
-            runs-on: ubuntu-latest
-          - os: linux-arm
-            runs-on: ubuntu-24.04-arm
+          # - os: linux-intel
+          #   runs-on: ubuntu-latest
+          # - os: linux-arm
+          #   runs-on: ubuntu-24.04-arm
           - os: windows
             runs-on: windows-latest
           - os: macos-13-intel
@@ -105,24 +105,24 @@ jobs:
             mv build/walker.dll ../porespy/beta/
           fi
 
-      - name: ls
-        shell: bash
-        run: ls -lR src/porespy/beta
+      # - name: ls
+      #   shell: bash
+      #   run: ls -lR src/porespy/beta
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.23.2
         env:
           CIBW_PLATFORM: ${{ matrix.platform }}
           CIBW_ARCHS: ${{ matrix.archs }}
-          CIBW_ARCHS_LINUX: auto64
+          # CIBW_ARCHS_LINUX: auto64
           CIBW_SKIP: '*-musllinux_* pp*'
           CIBW_BUILD: cp310* cp311* cp312*
           # MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macOS-version }}
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_BEFORE_BUILD: "rm -f src/porespy/beta/*.so src/porespy/beta/*.dylib src/porespy/beta/*.dll"
+          # CIBW_BEFORE_BUILD: "rm -f src/porespy/beta/*.so src/porespy/beta/*.dylib src/porespy/beta/*.dll"
           # macOS specific configurations
           # CIBW_ARCHS_MACOS: "arm64 x86_64"
-          #CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macOS-version }}"
+          # CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macOS-version }}"
           # Linux specific configurations
           # CIBW_REPAIR_WHEEL_COMMAND_LINUX: "auditwheel repair --plat manylinux2014_x86_64 -w {dest_dir} {wheel}"
           # macOS specific configurations
