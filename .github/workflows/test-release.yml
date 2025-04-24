@@ -120,11 +120,13 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macOS-version }}
           CIBW_BUILD_VERBOSITY: 1
           CIBW_BEFORE_BUILD: "rm -f src/porespy/beta/*.so src/porespy/beta/*.dylib src/porespy/beta/*.dll"
-          # Add macOS specific configurations
+          # macOS specific configurations
           CIBW_ARCHS_MACOS: "arm64 x86_64"
           CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macOS-version }}"
-          CIBW_BEFORE_BUILD_MACOS: "rm -f src/porespy/beta/*.so src/porespy/beta/*.dylib src/porespy/beta/*.dll"
-          CIBW_REPAIR_WHEEL_COMMAND_MACOS: "delocate-wheel --require-archs {arch} -w {dest_dir} {wheel}"
+          # Linux specific configurations
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: "auditwheel repair --plat manylinux2014_x86_64 -w {dest_dir} {wheel}"
+          # macOS specific configurations
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: "delocate-wheel --require-archs arm64 --require-archs x86_64 -w {dest_dir} {wheel}"
 
       - name: ls
         shell: bash
