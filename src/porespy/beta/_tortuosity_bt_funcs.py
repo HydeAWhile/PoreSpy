@@ -10,11 +10,12 @@ import openpnm as op
 import pandas as pd
 import dask
 from dask.diagnostics import ProgressBar
+from tqdm import tqdm
 
+logger = logging.getLogger()
+logger.setLevel(50)
 
-logger = logging.getLogger(__name__)
 edt = get_edt()
-
 
 __all__ = [
     'tortuosity_bt',
@@ -101,6 +102,57 @@ def get_block_sizes(im, block_size_range=[10, 100]):
     block_sizes = np.unique(block_sizes[block_sizes >= Lmin])
     return block_sizes
 
+def tortuosity_map(im, block_size:int, dask_on=True):
+    """
+    Compute tortuosity and diffusive conductance on a series
+    of blocks determined by the block size.
+    
+    Parameters
+    ----------
+    im : np.array
+        The binary image to analyze with ``True`` indicating phase of interest.
+    block_size : int
+        The size of the blocks for the image to be subdivided into.
+        
+    Returns
+    -------
+    df_out : pd.DataFrame
+        A dataframe containing information of all the blocks analyzed.
+    
+    Notes
+    -----
+    This is called by `rev_tortuosity` to queue up all the blocks to be analyzed.
+    """
+    slices = ps.tools.subdivide(im, block_size=block_size)
+    tmp = np.zeros(im.shape)
+
+    results = []
+    for s in tqdm(slices):
+        for axis in range(im.ndim):
+            if dask_on:
+                tau_obj = dask.delayed(calc_g)(im[s], axis=axis)
+            
+            else:
+                tau_obj = calc_g(im[s], axis=axis)
+
+            tau_obj = tau_obj.compute()
+            tau_obj.slice = s
+
+            results.append(tau_obj)
+
+    df_out = pd.DataFrame()
+
+    df_out['eps_orig'] = [r.original_porosity for r in results]
+    df_out['eps_perc'] = [r.effective_porosity for r in results]
+    df_out['g'] = [r.diffusive_conductance for r in results]
+    df_out['tau'] = [r.tortuosity for r in results]
+    df_out['volume'] = [r.volume for r in results]
+    df_out['length'] = [block_size for r in results]
+    df_out['axis'] = [r.axis for r in results]
+    df_out['time'] = [r.time for r in results]
+    df_out['slice'] = [r.slice for r in results]
+
+    return df_out
 
 def rev_tortuosity(im, block_sizes=None, use_dask=True):
     """
@@ -120,13 +172,17 @@ def rev_tortuosity(im, block_sizes=None, use_dask=True):
     df : DataFrame
         A `pandas` data frame with the properties for each block on a given row
     """
-    if block_sizes is None:
-        block_sizes = get_block_sizes(im)
-    block_sizes = np.array(block_sizes, dtype=int)
-    tau = []
-    for s in block_sizes:
-        tau.append(analyze_blocks(im, block_size=s, use_dask=use_dask))
-    df = pd.concat(tau)
+    all_dfs = []
+    size = im.shape
+
+    if block_sizes == None:
+        block_sizes = get_block_sizes(im, [20, size[0]])
+        
+    for block in block_sizes:
+        tmp = tortuosity_map(im, block, True)
+        all_dfs.append(tmp)
+    
+    df = pd.concat(all_dfs)
     return df
 
 
@@ -153,97 +209,74 @@ def block_size_to_divs(shape, block_size):
     divs = np.clip(divs, a_min=2, a_max=shape)
     return divs
 
-
-def analyze_blocks(im, block_size=None, method="chords", use_dask=True):
-    r'''
-    Computes structural and transport properties of each block
-
+def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
+    '''
+    Creates REV plot from the output of `rev_tortuosity`.
+    All values of "np.inf" are treated as the next highest tortuosity within that bin.
+    
     Parameters
     ----------
-    im : np.ndarray
-        The binary image to analyze with ``True`` indicating phase of interest
-    block_size : int
-        The size of the blocks to use. Only cubic blocks are supported so an integer
-        must be given, or an exception is raised. If the image is not evenly
-        divisible by the given `block_size` any extra voxels are removed from the
-        end of each axis before all processing occcurs. Block size will be prioritized
-        if use_chords is also provided.
-    method : string
-        The method to use to determine block sizes if `block_size` is not provided.
-        =========== ==================================================================
-        method      description
-        =========== ==================================================================
-        'chords'    Uses `apply_chords_3D` from Porespy to determine the longest chord
-                    possible in the image as the length of each block.
-        'dt'        Uses the maximum length of the distance transform to determine
-                    the length of each block.
-        ========== ==================================================================
-    use_dask : bool
-        A boolean determining the usage of `dask`.
+    df : pd.DataFrame
+        The output of `rev_tortuosity`.
+    size : int
+        The length of one side of the cube image.
+    fig_size : list
+        The size of the figure to be outputted. Default to [10,7].
 
     Returns
     -------
-    df_out : DataFrame
-        A `pandas` data frame with the properties for each block on a given row.
+
+    all_fig : list
+        A list containing all of the matplotlib figure handles.
+
+    all_ax : list
+        A list containing all of the matplotlib axes handles.
+        
     '''
 
-    # determines block size, trimmed to fit in the image
-    if block_size is None:
-        if method == "chords":
-            tmp = ps.filters.apply_chords_3D(im)
+    import matplotlib.pyplot as plt
+    ps.visualization.set_mpl_style()
 
-            # find max chord length in each direction
-            block_size = np.int_(np.amax(ps.filters.region_size(im = tmp>0)))
-            block_size = min(block_size, min(np.array(im.shape)/2))
+    all_fig = []
+    all_ax = []
 
-        elif method == "dt":
-            scale_factor = 3
-            dt = edt(im)
-            # TODO: Is the following supposed to be over 2 or over im.ndim?
-            block_size = min(dt.max() * scale_factor, min(np.array(im.shape)/2))
+    for i, axis in enumerate(np.unique(df['axis'])):
+        fig, axes = plt.subplots(figsize=figsize)
 
-        else:
-            logger.error("Provide a valid method")
-            raise Exception
+        # filter for one axis
+        tmp = df[df['axis']==axis]
 
-    results = []
-    offset = int(block_size/2)
+        data = []
+        vol_frac = []
 
-    # create blocks and queues them for calculation
-    for ax in range(im.ndim):
+        for vol in np.unique(tmp['volume']):
+            taus = tmp[tmp['volume']==vol]["tau"]
 
-        # creates the masked images - removes half of a chunk from both ends of one axis
-        tmp = np.swapaxes(im, 0, ax)
-        tmp = tmp[offset:-offset, ...]
-        tmp = np.swapaxes(tmp, 0, ax)
-        slices = tools.subdivide(tmp, block_size=block_size, mode='whole')
-        if use_dask:
-                for s in slices:
-                    results.append(dask.delayed(calc_g)(tmp[s], axis=ax))
+            unique_tau = sorted(set(taus), reverse=True)
 
-        # or do it the regular way
-        else:
-            for s in slices:
-                results.append(calc_g(tmp[s], axis=ax))
+            if len(unique_tau) > 1:
+                highest = unique_tau[1]
+            
+            else:
+                highest = unique_tau[0] if unique_tau else 0
+            
+            taus = taus.replace([np.inf], highest)
+            
+            # if np.inf in taus and len(np.unique(taus) > 1):
+            #     taus[taus==np.inf] = max(taus[taus!=np.inf])
 
-    with ProgressBar():
-    # collect all the results and calculate if needed
-        results = np.asarray(dask.compute(results), dtype=object).flatten()
+            data.append(np.log10(taus))
+            vol_frac.append(np.log10(vol / (size**(len(np.unique(df['axis']))))))
 
-    # format results to be returned as a single dataframe
-    df_out = pd.DataFrame()
+        axes.violinplot(data, vol_frac, widths=0.1)
+        axes.set_title(f"REV: Axis {axis}")
+        axes.set_xlabel("Normalized Volume Fraction")
+        axes.set_ylabel(r"log$_{10}$($\tau$)")
+        
+        all_fig.append(fig)
+        all_ax.append(axes)
 
-    df_out['eps_orig'] = [r.original_porosity for r in results]
-    df_out['eps_perc'] = [r.effective_porosity for r in results]
-    df_out['g'] = [r.diffusive_conductance for r in results]
-    df_out['tau'] = [r.tortuosity for r in results]
-    df_out['volume'] = [r.volume for r in results]
-    df_out['length'] = [block_size for r in results]
-    df_out['axis'] = [r.axis for r in results]
-    df_out['time'] = [r.time for r in results]
-
-    return df_out
-
+    return all_fig, all_ax
 
 def df_to_tortuosity(im, df):
     """
@@ -326,7 +359,7 @@ def tortuosity_bt(im, block_size=None, method="chords", use_dask=True):
     use_dask : bool
         A boolean determining the usage of `dask` for parallel processing.
     """
-    df = analyze_blocks(im, block_size, method, use_dask)
+    df = tortuosity_map(im, block_size, use_dask)
     tau = df_to_tortuosity(im, df)
     return tau
 
@@ -337,8 +370,6 @@ if __name__ =="__main__":
 
     np.random.seed(1)
 
-    im = ps.generators.blobs([100, 100, 100])
-    # df = analyze_blocks(im, method="dt")
-    # tau = df_to_tortuosity(im, df)
-    r1 = tortuosity_bt(im, method="chords")
-    print(r1)
+    im = ps.generators.blobs([100]*2)
+    df = rev_tortuosity(im,)
+    plots = rev_plot(df, 100)
