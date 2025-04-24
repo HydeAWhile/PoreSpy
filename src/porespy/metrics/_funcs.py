@@ -126,7 +126,7 @@ def boxcount(im, bins=10):
     return data
 
 
-def representative_elementary_volume(im, npoints=1000):
+def rev_porosity(im, npoints=1000):
     r"""
     Calculates the porosity of an image as a function subdomain size.
 
@@ -138,7 +138,7 @@ def representative_elementary_volume(im, npoints=1000):
     im : ndarray
         The image of the porous material
     npoints : int
-        The number of randomly located and sized boxes to sample.  The default
+        The number of randomly located and sized boxes to sample. The default
         is 1000.
 
     Returns
