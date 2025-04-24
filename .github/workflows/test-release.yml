@@ -115,11 +115,16 @@ jobs:
           CIBW_PLATFORM: ${{ matrix.platform }}
           CIBW_ARCHS: ${{ matrix.archs }}
           CIBW_ARCHS_LINUX: auto64
-          CIBW_SKIP: '*-musllinux_* pp*' # Skip musllinux
-          CIBW_BUILD: cp310* cp311* cp312* # Set Python versions
+          CIBW_SKIP: '*-musllinux_* pp*'
+          CIBW_BUILD: cp310* cp311* cp312*
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macOS-version }}
           CIBW_BUILD_VERBOSITY: 1
           CIBW_BEFORE_BUILD: "rm -f src/porespy/beta/*.so src/porespy/beta/*.dylib src/porespy/beta/*.dll"
+          # Add macOS specific configurations
+          CIBW_ARCHS_MACOS: "arm64 x86_64"
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macOS-version }}"
+          CIBW_BEFORE_BUILD_MACOS: "rm -f src/porespy/beta/*.so src/porespy/beta/*.dylib src/porespy/beta/*.dll"
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: "delocate-wheel --require-archs {arch} -w {dest_dir} {wheel}"
 
       - name: ls
         shell: bash
