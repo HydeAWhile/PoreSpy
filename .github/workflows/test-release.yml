@@ -13,16 +13,16 @@ jobs:
     strategy:
       matrix:
         # python-version: ['3.10', '3.11', '3.12']
-        os: [linux-intel, windows, macos-13-intel, macos-14-arm]
-        # os: [linux-intel, linux-arm, windows, macos-13-intel, macos-14-arm]
+        # os: [windows, macos-13-intel, macos-14-arm]
+        os: [linux-intel, linux-arm, windows, macos-13-intel, macos-14-arm]
         # os: [macos-13-intel, macos-14-arm]
         include:
           - archs: auto
             platform: auto
           - os: linux-intel
             runs-on: ubuntu-latest
-          # - os: linux-arm
-          #   runs-on: ubuntu-24.04-arm
+          - os: linux-arm
+            runs-on: ubuntu-24.04-arm
           - os: windows
             runs-on: windows-latest
           - os: macos-13-intel
@@ -63,21 +63,29 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Bump up version and create tag
-        run: |
-          hatch version ${{ github.event.inputs.version }}
-          echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
+      # - name: Bump up version and create tag
+      #   run: |
+      #     hatch version ${{ github.event.inputs.version }}
+      #     echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
 
-      - name: Commit version bump + push tag
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Bump version to ${{ env.VERSION }}
-          commit_author: GitHub Actions <actions@github.com>
-          tagging_message: ${{ env.VERSION }}
+      # - name: Commit version bump + push tag
+      #   uses: stefanzweifel/git-auto-commit-action@v5
+      #   with:
+      #     commit_message: Bump version to ${{ env.VERSION }}
+      #     commit_author: GitHub Actions <actions@github.com>
+      #     tagging_message: ${{ env.VERSION }}
 
       - name: Install Ninja on Windows
         if: runner.os == 'Windows'
         run: choco install ninja -y
+
+      - name: Clean up any existing build artifacts
+        shell: bash
+        run: |
+          rm -f src/porespy/beta/*.so
+          rm -f src/porespy/beta/*.dylib
+          rm -f src/porespy/beta/*.dll
+          rm -rf src/porespy_c/build
 
       - name: Set up build directory and compile
         run: |
@@ -90,11 +98,11 @@ jobs:
         run: |
           cd src/porespy_c
           if [ "$RUNNER_OS" == "Linux" ]; then
-            mv build/libwalker.so ../porespy/beta
+            mv build/libwalker.so ../porespy/beta/
           elif [ "$RUNNER_OS" == "macOS" ]; then
-            mv build/libwalker.dylib ../porespy/beta
+            mv build/libwalker.dylib ../porespy/beta/
           elif [ "$RUNNER_OS" == "Windows" ]; then
-            mv build/walker.dll ../porespy/beta
+            mv build/walker.dll ../porespy/beta/
           fi
 
       - name: ls
@@ -111,6 +119,7 @@ jobs:
           CIBW_BUILD: cp310* cp311* cp312* # Set Python versions
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macOS-version }}
           CIBW_BUILD_VERBOSITY: 1
+          CIBW_BEFORE_BUILD: "rm -f src/porespy/beta/*.so src/porespy/beta/*.dylib src/porespy/beta/*.dll"
 
       - name: ls
         shell: bash
