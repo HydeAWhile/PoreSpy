@@ -88,11 +88,11 @@ jobs:
         shell: bash
         run: |
           cd src/porespy_c
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
+          if [ "$RUNNER_OS" == "Linux" ]; then
             mv build/libwalker.so ../porespy/beta
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          elif [ "$RUNNER_OS" == "macOS" ]; then
             mv build/libwalker.dylib ../porespy/beta
-          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+          elif [ "$RUNNER_OS" == "Windows" ]; then
             mv build/walker.dll ../porespy/beta
           fi
 
@@ -142,5 +142,5 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          user: __token__
-          password: ${{ secrets.TESTPYPI_TOKEN }}
+          # user: __token__
+          # password: ${{ secrets.TESTPYPI_TOKEN }}
