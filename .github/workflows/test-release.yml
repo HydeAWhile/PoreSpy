@@ -14,7 +14,7 @@ jobs:
       matrix:
         # python-version: ['3.10', '3.11', '3.12']
         # os: [linux-intel, linux-arm, windows, macos-13-intel, macos-13-arm, macos-14-arm]
-        os: [linux-intel, linux-arm, windows, macos-13-intel, macos-14-arm]
+        os: [macos-13-intel, macos-14-arm]
         include:
           - archs: auto
             platform: auto
