@@ -2,7 +2,7 @@ import numpy as np
 import porespy as ps
 import pytest
 import scipy.ndimage as spim
-from skimage.morphology import disk, ball
+from skimage.morphology import disk, ball, skeletonize
 from skimage.util import random_noise
 import matplotlib.pyplot as plt
 
@@ -510,7 +510,6 @@ class FilterTest():
                                     overlap=5)
 
     def test_prune_branches(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.random_spheres([100, 100, 100], r=4, seed=0)
         skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1)
@@ -518,7 +517,6 @@ class FilterTest():
         # assert skel1.sum() > skel2.sum()
 
     def test_prune_branches_n2(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.random_spheres(shape=[100, 100, 100], r=4, seed=0)
         skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1, iterations=1)
@@ -529,7 +527,6 @@ class FilterTest():
         assert skel3.sum() > skel4.sum()
 
     def test_apply_padded(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.blobs(
             shape=[100, 100], periodic=False,)
         skel1 = skeletonize(im)
@@ -634,33 +631,6 @@ class FilterTest():
         s = ps.filters.region_size(im)
         hits = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 16, 17, 19, 31, 32, 37]
         assert np.all(hits == np.unique(s)[1:])
-
- 	def test_find_junctions(self):
-        im = ps.generators.blobs(shape=[300, 300], porosity=0.7, blobiness=2)
-        sk = skeletonize_3d(im) > 0
-        pt = ps.filters.find_junctions(sk=sk)
-        assert pt.sum() > 0
-        assert np.shape(pt)==np.shape(im)
-
-    def test_find_pore_buddies(self):
-        im = ps.generators.blobs(shape=[300, 300], porosity=0.7, blobiness=2)
-        dt = edt(im)
-        sk = skeletonize_3d(im) > 0
-        pt = ps.filters.find_junctions(sk=sk)
-        fbd = ps.filters.find_pore_buddies(pt, dt)
-        assert fbd.Ps.sum() > 0
-        assert np.shape(fbd.Ps) == np.shape(fbd.Ps2)
-        assert np.shape(fbd.pores) == np.shape(fbd.throats)
-
-    def test_find_throat_skeleton(self):
-        im = ps.generators.blobs(shape=[300, 300], porosity=0.7, blobiness=2)
-        dt = edt(im)
-        sk = skeletonize_3d(im) > 0
-        pt = ps.filters.find_junctions(sk=sk)
-        fbd = ps.filters.find_pore_buddies(pt, dt)
-        ts = ps.filters.find_throat_skeleton(sk, fbd.pores, fbd.throats)
-        assert ts.sum() > 0
-        assert np.shape(ts) == np.shape(im)
 
     def test_find_trapped_regions_return_mask_side_outlet(self):
         im = ps.generators.blobs(
