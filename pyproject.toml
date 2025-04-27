@@ -153,9 +153,9 @@ path = "src/porespy/__version__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/porespy"]
 artifacts = [
-  "src/porespy_c/build/*.so",
-  "src/porespy_c/build/*.dll",
-  "src/porespy_c/build/*.dylib"
+  "src/porespy/beta/*.so",
+  "src/porespy/beta/*.dll",
+  "src/porespy/beta/*.dylib"
 ]
 
 [tool.hatch.build.targets.wheel.hooks.custom]
