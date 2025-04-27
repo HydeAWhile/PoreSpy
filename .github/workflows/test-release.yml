@@ -105,9 +105,9 @@ jobs:
             mv build/walker.dll ../porespy/beta/
           fi
 
-      # - name: ls
-      #   shell: bash
-      #   run: ls -lR src/porespy/beta
+      - name: ls
+        shell: bash
+        run: ls -lR src/porespy/beta
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.23.2
