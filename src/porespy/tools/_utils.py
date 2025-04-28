@@ -3,12 +3,10 @@ import inspect
 import logging
 import sys
 import time
-from dataclasses import dataclass
-
-import numpy as np
 import psutil
-
-logger = logging.getLogger("porespy")
+import numpy as np
+from dataclasses import dataclass
+from functools import partial
 
 
 __all__ = [
@@ -21,6 +19,9 @@ __all__ = [
     "get_edt",
     "parse_shape",
 ]
+
+
+logger = logging.getLogger("porespy")
 
 
 def parse_shape(im_or_shape):
@@ -56,7 +57,9 @@ def get_edt():
         return package.edt
     except ModuleNotFoundError:
         package = importlib.import_module("edt")
-        return package.edt
+        edt = package.edt
+        edt = partial(edt, parallel=Settings().ncores)
+        return edt
 
 
 def _format_time(timespan, precision=3):
