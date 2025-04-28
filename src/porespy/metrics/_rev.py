@@ -25,6 +25,31 @@ logger = logging.getLogger()
 logger.setLevel(50)
 tqdm = get_tqdm()
 
+def results_to_df(obj):
+    r"""
+    A helper function to convert results objects to pandas DataFrames. The
+    contents of the results object are expected to be DataFrame compatible
+    data types.
+    
+    Parameters
+    ----------
+    obj : porespy.tools.Results
+        The custom Results object to be converted to a DataFrame
+        
+    Returns
+    -------
+    df : pandas.DataFrame
+        A DataFrame containing all of the custom attributes on the inputted
+        Results object.
+    """
+    keys = [key for key in obj.__dict__.keys() if key[0]!="_"]
+    df = {}
+    for key in keys:
+        df[key] = obj.__dict__[key]
+
+    df = pd.DataFrame(df)
+    
+    return df
 
 def random_slices(im, npoints=1000):
     r"""    
@@ -106,7 +131,6 @@ def rev_porosity(im, slices=None):
     `Click here
     <https://porespy.org/examples/metrics/reference/rev_porosity.html>`_
     to view online example.
-
     """
     # TODO: this function is a prime target for parallelization since the
     # ``npoints`` are calculated independenlty.
@@ -317,14 +341,24 @@ def rev_tortuosity(im, mode="grid", use_dask=True):
             all_dfs.append(tmp)
     
         df = pd.concat(all_dfs)
-        return df
     
     elif mode == "random":
         slices = random_slices(im,)
         df = tortuosity_map(im, block_size=None, slices=slices)
-        return df
 
     # TODO: add a mode for "slabs"
+
+    profile = Results()
+    profile.porosity_orig = df['eps_orig']
+    profile.porosity_perc = df['eps_perc']
+    profile.g = df['g']
+    profile.tau = df['tau']
+    profile.volume = df['volume']
+    profile.length = df['length']
+    profile.axis = df['axis']
+    profile.time = df['time']
+    profile.slice = df['slice']
+    return profile
 
 
 def block_size_to_divs(shape, block_size):
@@ -427,9 +461,10 @@ if __name__ == "__main__":
     np.random.seed(1)
 
     im = ps.generators.blobs([100]*2)
-    df = ps.metrics.rev_tortuosity(im, "random")
-    plots = ps.metrics.rev_plot(df, 100)
+    rev = ps.metrics.rev_tortuosity(im, "grid")
 
-    # poro = ps.metrics.rev_porosity(im, None)
-    
-    # plt.plot(poro.volume, poro.porosity, '.r')
+    converted = results_to_df(rev)
+    plots = ps.metrics.rev_plot(converted, 100)
+
+    poro = ps.metrics.rev_porosity(im, slices=None)
+    plt.plot(poro.volume, poro.porosity, '.r')
