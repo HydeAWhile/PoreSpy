@@ -25,20 +25,52 @@ logger = logging.getLogger()
 logger.setLevel(50)
 tqdm = get_tqdm()
 
-def rev_porosity(im, npoints=1000):
+
+def random_slices(im, npoints=1000):
+    r"""    
+    This function extracts a specified number of subdomains of random size.
+
+    Parameters
+    ----------
+    im : ndarry
+        The image of the porous material
+    npoints : int
+        The number of random subdomains to be generated
+
+    Returns
+    -------
+    new_slices : list
+        A list containing slice objects which can be iterated over
+        to access the image slices.
+    """
+    im_temp = np.zeros_like(im)
+    crds = np.array(np.random.rand(npoints, im.ndim) * im.shape, dtype=int)
+    pads = np.array(np.random.rand(npoints) * np.amin(im.shape) / 2 + 10, dtype=int)
+    im_temp[tuple(crds.T)] = True
+    labels, N = spim.label(input=im_temp)
+    slices = spim.find_objects(input=labels)
+
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    new_slices = []
+    for i in tqdm(np.arange(0, N), desc=desc, **settings.tqdm):
+        s = slices[i]
+        p = pads[i]
+        new_s = extend_slice(s, shape=im.shape, pad=p)
+        new_slices.append(new_s)
+    
+    return new_slices
+
+def rev_porosity(im, slices=None):
     r"""
     Calculates the porosity of an image as a function subdomain size.
-
-    This function extracts a specified number of subdomains of random size,
-    then finds their porosity.
 
     Parameters
     ----------
     im : ndarray
         The image of the porous material
-    npoints : int
-        The number of randomly located and sized boxes to sample. The default
-        is 1000.
+    slices : list
+        Slices of the image to be analyzed. If left as `None`, slices will be
+        generated using `random_slices`.
 
     Returns
     -------
@@ -79,19 +111,15 @@ def rev_porosity(im, npoints=1000):
     # TODO: this function is a prime target for parallelization since the
     # ``npoints`` are calculated independenlty.
     im_temp = np.zeros_like(im)
-    crds = np.array(np.random.rand(npoints, im.ndim) * im.shape, dtype=int)
-    pads = np.array(np.random.rand(npoints) * np.amin(im.shape) / 2 + 10, dtype=int)
-    im_temp[tuple(crds.T)] = True
-    labels, N = spim.label(input=im_temp)
-    slices = spim.find_objects(input=labels)
+    if slices == None:
+        slices = random_slices(im,)
+    
+    N = len(slices)
     porosity = np.zeros(shape=(N,), dtype=float)
     volume = np.zeros(shape=(N,), dtype=int)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i in tqdm(np.arange(0, N), desc=desc, **settings.tqdm):
-        s = slices[i]
-        p = pads[i]
-        new_s = extend_slice(s, shape=im.shape, pad=p)
-        temp = im[new_s]
+        temp = im[slices[i]]
         Vp = np.sum(temp, dtype=np.int64)
         Vt = np.size(temp)
         porosity[i] = Vp / Vt
@@ -371,9 +399,13 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
 if __name__ == "__main__":
     import porespy as ps
     import numpy as np
-
+    import matplotlib.pyplot as plt
     np.random.seed(1)
 
     im = ps.generators.blobs([100]*2)
-    df = ps.metrics.rev_tortuosity(im,)
-    plots = ps.metrics.rev_plot(df, 100)
+    # df = ps.metrics.rev_tortuosity(im,)
+    # plots = ps.metrics.rev_plot(df, 100)
+
+    poro = ps.metrics.rev_porosity(im, None)
+    
+    plt.plot(poro.volume, poro.porosity, '.r')
