@@ -35,7 +35,6 @@ __all__ = [
     "radial_density_distribution",
     "porosity",
     "porosity_profile",
-    "rev_porosity",
     "satn_profile",
     "two_point_correlation",
     "phase_fraction",
@@ -124,83 +123,6 @@ def boxcount(im, bins=10):
     data.count = N
     data.slope = slope
     return data
-
-
-def rev_porosity(im, npoints=1000):
-    r"""
-    Calculates the porosity of an image as a function subdomain size.
-
-    This function extracts a specified number of subdomains of random size,
-    then finds their porosity.
-
-    Parameters
-    ----------
-    im : ndarray
-        The image of the porous material
-    npoints : int
-        The number of randomly located and sized boxes to sample. The default
-        is 1000.
-
-    Returns
-    -------
-    result : Results object
-        A custom object with the following data added as named attributes:
-
-        ========== ==================================================================
-        Attribute  Description
-        ========== ==================================================================
-        volume     The total volume of each cubic subdomain tested
-        porosity   The porosity of each subdomain tested
-        ========== ==================================================================
-
-        These attributes can be conveniently plotted by passing the Results
-        object to matplotlib's ``plot`` function using the
-        \* notation: ``plt.plot(\*result, 'b.')``.  The resulting plot is
-        similar to the sketch given by Bachmat and Bear [1]_
-
-    Notes
-    -----
-    This function is frustratingly slow.  Profiling indicates that all the time
-    is spent on scipy's ``sum`` function which is needed to sum the number of
-    void voxels (1's) in each subdomain.
-
-    References
-    ----------
-    .. [1] Bachmat and Bear. On the Concept and Size of a Representative
-       Elementary Volume (Rev), Advances in Transport Phenomena in Porous Media
-       (1987)
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/metrics/reference/rev_porosity.html>`_
-    to view online example.
-
-    """
-    # TODO: this function is a prime target for parallelization since the
-    # ``npoints`` are calculated independenlty.
-    im_temp = np.zeros_like(im)
-    crds = np.array(np.random.rand(npoints, im.ndim) * im.shape, dtype=int)
-    pads = np.array(np.random.rand(npoints) * np.amin(im.shape) / 2 + 10, dtype=int)
-    im_temp[tuple(crds.T)] = True
-    labels, N = spim.label(input=im_temp)
-    slices = spim.find_objects(input=labels)
-    porosity = np.zeros(shape=(N,), dtype=float)
-    volume = np.zeros(shape=(N,), dtype=int)
-    desc = inspect.currentframe().f_code.co_name  # Get current func name
-    for i in tqdm(np.arange(0, N), desc=desc, **settings.tqdm):
-        s = slices[i]
-        p = pads[i]
-        new_s = extend_slice(s, shape=im.shape, pad=p)
-        temp = im[new_s]
-        Vp = np.sum(temp, dtype=np.int64)
-        Vt = np.size(temp)
-        porosity[i] = Vp / Vt
-        volume[i] = Vt
-    profile = Results()
-    profile.volume = volume
-    profile.porosity = porosity
-    return profile
 
 
 def porosity(im, mask=None, fill_closed=False, fill_surface=False):

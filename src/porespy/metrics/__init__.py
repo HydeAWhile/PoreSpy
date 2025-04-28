@@ -34,7 +34,8 @@ but a few functions can be applied directly to the binary image.
     metrics.region_surface_areas
     metrics.region_volumes
     metrics.regionprops_3D
-    metrics.representative_elementary_volume
+    metrics.rev_porosity
+    metrics.rev_tortuosity
     metrics.satn_profile
     metrics.two_point_correlation
 
@@ -43,3 +44,4 @@ but a few functions can be applied directly to the binary image.
 from ._regionprops import *
 from ._funcs import *
 from ._meshtools import *
+from ._rev import *
