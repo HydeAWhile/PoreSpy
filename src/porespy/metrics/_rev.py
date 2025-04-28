@@ -205,7 +205,7 @@ def get_block_sizes(im, block_size_range=[10, 100]):
     block_sizes = np.unique(block_sizes[block_sizes >= Lmin])
     return block_sizes
 
-def tortuosity_map(im, block_size:int, dask_on=True):
+def tortuosity_map(im, block_size:int=None, slices=None, dask_on=True):
     """
     Compute tortuosity and diffusive conductance on a series
     of blocks determined by the block size.
@@ -216,6 +216,8 @@ def tortuosity_map(im, block_size:int, dask_on=True):
         The binary image to analyze with ``True`` indicating phase of interest.
     block_size : int
         The size of the blocks for the image to be subdivided into.
+    slices : list
+        A list containing slice objects for the image to be analyzed.
         
     Returns
     -------
@@ -225,9 +227,11 @@ def tortuosity_map(im, block_size:int, dask_on=True):
     Notes
     -----
     This is called by `rev_tortuosity` to queue up all the blocks to be analyzed.
+    If both `block_size` and `slices` are left empty, the default mode of obtaining
+    slices is set to `grid`.
     """
-    slices = subdivide(im, block_size=block_size)
-    tmp = np.zeros(im.shape)
+    if block_size != None and slices == None:
+        slices = subdivide(im, block_size=block_size)
 
     results = []
     for s in tqdm(slices):
@@ -257,7 +261,7 @@ def tortuosity_map(im, block_size:int, dask_on=True):
 
     return df_out
 
-def rev_tortuosity(im, block_sizes=None, use_dask=True):
+def rev_tortuosity(im, mode="grid", use_dask=True):
     """
     Generates the data for creating an REV plot based on tortuosity.
 
@@ -265,10 +269,18 @@ def rev_tortuosity(im, block_sizes=None, use_dask=True):
     ----------
     im : ndarray
         The binary image to analyze with ``True`` indicating phase of interest
-    block_sizes : np.ndarray
-        An array containing integers of block sizes to be calculated
+    mode : str (Default = 'grid')
+        The mode which block generation is done. Options are:
+
+        ======== ==============================================================
+        mode     description
+        ======== ==============================================================
+        'grid'   The subdomains are created on a grid, with no overlap over.
+        'random' The subdomains are created at random locations with random
+                 levels of padding.
+        ======== ==============================================================
     use_dask : bool
-        A boolean determining the usage of `dask`.
+        A boolean determining the usage of `dask` for parallelization
 
     Returns
     -------
@@ -288,19 +300,31 @@ def rev_tortuosity(im, block_sizes=None, use_dask=True):
         time       The elapsed time required to perform the calculations
         slice      The coordinates for the subdomain tested in the original image
         ========== ==================================================================
+
+    Notes
+    -----
+    If both `block_sizes` and `slices` are left empty, the default mode of block generation
+    is gridding the image.
     """
     all_dfs = []
     size = im.shape
 
-    if block_sizes == None:
+    if mode == "grid":
         block_sizes = get_block_sizes(im, [20, size[0]])
-        
-    for block in block_sizes:
-        tmp = tortuosity_map(im, block, True)
-        all_dfs.append(tmp)
+
+        for block in block_sizes:
+            tmp = tortuosity_map(im, block,)
+            all_dfs.append(tmp)
     
-    df = pd.concat(all_dfs)
-    return df
+        df = pd.concat(all_dfs)
+        return df
+    
+    elif mode == "random":
+        slices = random_slices(im,)
+        df = tortuosity_map(im, block_size=None, slices=slices)
+        return df
+
+    # TODO: add a mode for "slabs"
 
 
 def block_size_to_divs(shape, block_size):
@@ -403,9 +427,9 @@ if __name__ == "__main__":
     np.random.seed(1)
 
     im = ps.generators.blobs([100]*2)
-    # df = ps.metrics.rev_tortuosity(im,)
-    # plots = ps.metrics.rev_plot(df, 100)
+    df = ps.metrics.rev_tortuosity(im, "random")
+    plots = ps.metrics.rev_plot(df, 100)
 
-    poro = ps.metrics.rev_porosity(im, None)
+    # poro = ps.metrics.rev_porosity(im, None)
     
-    plt.plot(poro.volume, poro.porosity, '.r')
+    # plt.plot(poro.volume, poro.porosity, '.r')
