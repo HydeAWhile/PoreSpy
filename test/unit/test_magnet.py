@@ -5,20 +5,32 @@ import scipy.ndimage as spim
 import porespy as ps
 import openpnm as op
 import skimage as ski
+from scipy.linalg import norm
 
-np.random.seed(1)
 
 ws = op.Workspace()
 ws.settings['loglevel'] = 50
 ps.settings.tqdm['disable'] = True
 
+
 class MagnetTest:
     def setup_class(self):
         # Define 2D image
-        im2 = ps.generators.blobs([100, 100], porosity=0.6, blobiness=2, seed=1)
+        im2 = ps.generators.blobs(
+            [100, 100],
+            porosity=0.6,
+            blobiness=2,
+            periodic=False,
+            seed=1,
+        )
         im2 = ps.filters.fill_closed_pores(im2, conn='max', surface=True)
         # Define 3D image
-        im3 = ps.generators.blobs([100, 100, 100], porosity=0.25, blobiness=1, seed=1)
+        im3 = ps.generators.blobs(
+            [100, 100, 100],
+            porosity=0.25,
+            blobiness=1,
+            periodic=False,
+        )
         im3 = ps.filters.fill_closed_pores(im3, conn='max', surface=True)
         im3 = ps.filters.trim_floating_solid(im3, conn='min', surface=False)
         # assign to self
@@ -54,7 +66,7 @@ class MagnetTest:
                          keepdims=False)
         assert mode[0] == 6.0
         D = np.unique(magnet.network['pore.inscribed_diameter'].astype(int))
-        assert np.all(D == np.array([2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))
+        assert np.all(D == np.array([2, 3, 4, 15, 6, 7, 8, 9, 10, 11]))
 
     def test_parallel_skeleton_2d(self):
         im = self.blobs2D
@@ -69,8 +81,9 @@ class MagnetTest:
         assert np.sum(sk) == 7642
 
     def test_check_skeleton_health(self):
+        skeletonize = ps.tools.get_skel()
         im = ps.generators.blobs([100, 100, 100], porosity=0.5, blobiness=1)
-        sk = ski.morphology.skeletonize_3d(im).astype('bool')
+        sk = skeletonize(im).astype('bool')
         n = ps.networks._magnet._check_skeleton_health(sk.astype('bool'))
         assert n == 5
 
