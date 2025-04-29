@@ -15,12 +15,12 @@ ps.settings.tqdm['disable'] = True
 class MagnetTest:
     def setup_class(self):
         # Define 2D image
-        im2 = ps.generators.blobs([100, 100], porosity=0.6, blobiness=2)
-        im2 = ps.filters.fill_blind_pores(im2, conn=8, surface=True)
+        im2 = ps.generators.blobs([100, 100], porosity=0.6, blobiness=2, seed=1)
+        im2 = ps.filters.fill_closed_pores(im2, conn='max', surface=True)
         # Define 3D image
-        im3 = ps.generators.blobs([100, 100, 100], porosity=0.25, blobiness=1)
-        im3 = ps.filters.fill_blind_pores(im3, conn=26, surface=True)
-        im3 = ps.filters.trim_floating_solid(im3, conn=6, surface=False)
+        im3 = ps.generators.blobs([100, 100, 100], porosity=0.25, blobiness=1, seed=1)
+        im3 = ps.filters.fill_closed_pores(im3, conn='max', surface=True)
+        im3 = ps.filters.trim_floating_solid(im3, conn='min', surface=False)
         # assign to self
         self.blobs2D = im2
         self.blobs3D = im3
@@ -54,7 +54,7 @@ class MagnetTest:
                          keepdims=False)
         assert mode[0] == 6.0
         D = np.unique(magnet.network['pore.inscribed_diameter'].astype(int))
-        assert np.all(D == np.array([2, 3, 4, 5, 6, 7, 8, 9, 10]))
+        assert np.all(D == np.array([2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))
 
     def test_parallel_skeleton_2d(self):
         im = self.blobs2D
