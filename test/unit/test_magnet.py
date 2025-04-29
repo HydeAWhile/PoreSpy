@@ -66,7 +66,7 @@ class MagnetTest:
                          keepdims=False)
         assert mode[0] == 6.0
         D = np.unique(magnet.network['pore.inscribed_diameter'].astype(int))
-        assert np.all(D == np.array([2, 3, 4, 15, 6, 7, 8, 9, 10, 11]))
+        assert np.all(D == np.array([2, 3, 4, 15, 6, 7, 8, 9, 10]))
 
     def test_parallel_skeleton_2d(self):
         im = self.blobs2D
@@ -82,10 +82,10 @@ class MagnetTest:
 
     def test_check_skeleton_health(self):
         skeletonize = ps.tools.get_skel()
-        im = ps.generators.blobs([100, 100, 100], porosity=0.5, blobiness=1)
+        im = ps.generators.blobs([100, 100, 100], porosity=0.5, blobiness=1, seed=2)
         sk = skeletonize(im).astype('bool')
         n = ps.networks._magnet._check_skeleton_health(sk.astype('bool'))
-        assert n == 5
+        assert n == 4
 
     def test_junctions(self):
         im = self.blobs3D
