@@ -36,6 +36,7 @@ from numba import jit
 
 tqdm = get_tqdm()
 edt = get_edt()
+skeletonize = get_skel()
 logger = logging.getLogger(__name__)
 
 
@@ -205,7 +206,6 @@ def skeleton(im, surface=False, parallel=False, **kwargs):
         im = trim_floating_solid(im, conn='min', surface=surface)
     # perform skeleton
     if parallel is False:  # serial
-        skeletonize = get_skel()
         sk = skeletonize(im).astype('bool')
     if parallel is True:  # parallel
         sk = skeleton_parallel(im, **kwargs)
@@ -243,7 +243,6 @@ def skeleton_parallel(im, divs, overlap=None, cores=None):
         Skeleton of image
 
     """
-    skeletonize = get_skel()
     if overlap is None:
         overlap = _estimate_overlap(im, mode='dt') * 2
     if cores is None:
@@ -692,7 +691,7 @@ def skeletonize_magnet2(im):
         shape = np.array(im.shape)
         im = np.pad(im, pad_width=pw, mode='edge')
         im = np.pad(im, pad_width=shape, mode='symmetric')
-        sk = ski.morphology.skeletonize_3d(im) > 0
+        sk = skeletonize(im) > 0
         sk = extract_subsection(sk, shape)
         return sk
     else:
@@ -728,7 +727,7 @@ def skeletonize_magnet2(im):
         # Extend the faces to convert holes into tunnels
         im2 = np.pad(im2, 20, mode='edge')
         # Perform skeletonization
-        sk = ski.morphology.skeletonize_3d(im2) > 0
+        sk = skeletonize(im2) > 0
         # Extract the original 'center' of the image prior to padding
         sk = extract_subsection(sk, shape)
         return sk

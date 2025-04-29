@@ -51,13 +51,12 @@ def parse_shape(im_or_shape):
 
 
 def get_skel():
-    warnings.filterwarnings("error")
     package = importlib.import_module("skimage.morphology")
-    try:
-        func = package.skeletonize_3d
-    except (AttributeError, FutureWarning) as e:
-        func = package.skeletonize
-    warnings.resetwarnings()
+    with warnings.catch_warnings(action="ignore"):
+        try:
+            func = package.skeletonize_3d
+        except (FutureWarning, AttributeError):
+            func = package.skeletonize
     return func
 
 
@@ -405,3 +404,7 @@ class Results:
                 lines.append("{0:<25s} {1}".format(item, self[item]))
         lines.append(header)
         return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    pass
