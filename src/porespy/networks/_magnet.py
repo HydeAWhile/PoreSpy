@@ -1,25 +1,41 @@
-from porespy.filters import trim_floating_solid, flood_func, region_size
-from porespy.filters._snows import _estimate_overlap
-from porespy.tools import ps_rect, Results, extend_slice, make_contiguous
-from porespy.tools import _insert_disks_at_points, ps_round, extract_subsection
-from porespy.generators import borders
-from skimage.morphology import square, cube
-from scipy.ndimage import maximum_position
-from skfmm import distance
-from porespy import settings
-from edt import edt
 import skimage as ski
 import dask.array as da
 import scipy.ndimage as spim
 import scipy.signal as spsg
 import logging
 import numpy as np
-from porespy.tools import get_tqdm, ps_ball, ps_disk
-from porespy.filters import chunked_func
+from porespy.filters import (
+    trim_floating_solid,
+    flood_func,
+    region_size,
+    fill_closed_pores,
+    chunked_func,
+)
+from porespy.filters._snows import _estimate_overlap
+from porespy.tools import (
+    ps_rect,
+    Results,
+    extend_slice,
+    make_contiguous,
+    _insert_disks_at_points,
+    ps_round,
+    extract_subsection,
+    get_tqdm,
+    ps_ball,
+    ps_disk,
+    get_edt,
+    get_skel,
+)
+from porespy.generators import borders
+from skimage.morphology import square, cube
+from scipy.ndimage import maximum_position
+from skfmm import distance
+from porespy import settings
 from numba import jit
 
 
 tqdm = get_tqdm()
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +106,7 @@ def magnet(im,
         diameter is returned. The default value is FALSE, for computational
         efficiency sake. See get_throat_area() documentation for more
         information.
-    
+
     Returns
     -------
     results : Results object
@@ -186,10 +202,11 @@ def skeleton(im, surface=False, parallel=False, **kwargs):
     """
     # trim floating solid from 3D images
     if im.ndim == 3:
-        im = trim_floating_solid(im, conn=6, surface=surface)
+        im = trim_floating_solid(im, conn='min', surface=surface)
     # perform skeleton
     if parallel is False:  # serial
-        sk = ski.morphology.skeletonize_3d(im).astype('bool')
+        skeletonize = get_skel()
+        sk = skeletonize(im).astype('bool')
     if parallel is True:  # parallel
         sk = skeleton_parallel(im, **kwargs)
     if im.ndim == 3:
@@ -226,6 +243,7 @@ def skeleton_parallel(im, divs, overlap=None, cores=None):
         Skeleton of image
 
     """
+    skeletonize = get_skel()
     if overlap is None:
         overlap = _estimate_overlap(im, mode='dt') * 2
     if cores is None:
@@ -236,7 +254,7 @@ def skeleton_parallel(im, divs, overlap=None, cores=None):
     chunk_shape = (np.array(im.shape) / np.array(divs)).astype(int)
     skel = da.from_array(im, chunks=chunk_shape)
     skel = da.overlap.overlap(skel, depth=depth, boundary='none')
-    skel = skel.map_blocks(ski.morphology.skeletonize_3d)
+    skel = skel.map_blocks(skeletonize)
     skel = da.overlap.trim_internal(skel, depth, boundary='none')
     skel = skel.compute(num_workers=cores).astype(bool)
     return skel
@@ -560,8 +578,8 @@ def junctions_to_network(sk, juncs, throats, dt, throat_area, voxel_size=1):
         # dilate throat_im to capture connecting pore indices
         throat_im_dilated = spim.binary_dilation(throat_im, strel)
         throat_im_dilated = throat_im_dilated * sub_sk
-        throat_im_dilated = throat_im_dilated * sub_juncs
         # throat conns
+        throat_im_dilated = throat_im_dilated * sub_juncs
         Pn_l = np.unique(throat_im_dilated)[1:] - 1
         t_conns[throat, :] = Pn_l
         # throat diameter
@@ -670,7 +688,7 @@ def skeletonize_magnet2(im):
     """
     if im.ndim == 2:
         pw = 5
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        im = fill_closed_pores(im, conn='max', surface=True)
         shape = np.array(im.shape)
         im = np.pad(im, pad_width=pw, mode='edge')
         im = np.pad(im, pad_width=shape, mode='symmetric')
@@ -681,8 +699,8 @@ def skeletonize_magnet2(im):
         shape = np.array(im.shape)  # Save for later
         dt3D = edt(im)
         # Tidy-up image so skeleton is clean
-        im2 = ps.filters.fill_blind_pores(im, conn=26, surface=True)
-        im2 = trim_floating_solid(im2, conn=6)
+        im2 = fill_closed_pores(im, conn='max', surface=True)
+        im2 = trim_floating_solid(im2, conn='min')
         # Add one layer to outside where holes will be defined
         im2 = np.pad(im2, 1, mode='edge')
         # This is needed for later since numpy is getting harder and harder to

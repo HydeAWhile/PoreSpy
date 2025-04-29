@@ -4,7 +4,7 @@ import logging
 import sys
 import time
 from dataclasses import dataclass
-
+import warnings
 import numpy as np
 import psutil
 
@@ -19,6 +19,7 @@ __all__ = [
     "tic",
     "toc",
     "get_edt",
+    "get_skel",
     "parse_shape",
 ]
 
@@ -47,6 +48,17 @@ def parse_shape(im_or_shape):
         s = np.shape(s)
     shape = np.array([i for i in s if i not in [0, np.inf, None]], dtype=int)
     return shape
+
+
+def get_skel():
+    warnings.filterwarnings("error")
+    package = importlib.import_module("skimage.morphology")
+    try:
+        func = package.skeletonize_3d
+    except (AttributeError, FutureWarning) as e:
+        func = package.skeletonize
+    warnings.resetwarnings()
+    return func
 
 
 def get_edt():
