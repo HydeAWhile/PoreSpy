@@ -52,7 +52,8 @@ def parse_shape(im_or_shape):
 
 def get_skel():
     package = importlib.import_module("skimage.morphology")
-    with warnings.catch_warnings(action="ignore"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
         try:
             func = package.skeletonize_3d
         except (FutureWarning, AttributeError):
