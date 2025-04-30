@@ -8,7 +8,7 @@ import openpnm as op
 from porespy.tools import (
     Results,
     get_tqdm,
-    subdivide,
+    get_slices_grid,
     im_to_blocks,
 )
 from porespy import settings
@@ -227,7 +227,7 @@ def tortuosity_map(im, block_size: int = None, slices=None, dask_on=True):
     slices is set to `grid`.
     """
     if block_size != None and slices == None:
-        slices = subdivide(im, block_size=block_size)
+        slices = get_slices_grid(im, block_size=block_size)
 
     results = []
     for s in tqdm(slices):

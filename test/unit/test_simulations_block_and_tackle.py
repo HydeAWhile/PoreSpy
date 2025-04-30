@@ -1,5 +1,5 @@
 import numpy as np
-from porespy.tools import subdivide
+from porespy.tools import get_slices_grid
 import openpnm as op
 from porespy import beta
 from porespy import generators
@@ -21,7 +21,7 @@ class TestBlockAndTackle(GenericTest):
             im_temp = np.swapaxes(im, 0, ax)
             im_temp = im_temp[offset:-offset, ...]
             im_temp = np.swapaxes(im_temp, 0, ax)
-            slices = subdivide(im_temp, block_size=block_size, mode='strict')
+            slices = get_slices_grid(im_temp, block_size=block_size, mode='strict')
             for s in slices:
                 queue[ax].append(np.unique(im_temp[s]))
         queue.reverse()

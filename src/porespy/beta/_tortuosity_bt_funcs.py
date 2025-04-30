@@ -1,21 +1,12 @@
 import time
 import logging
+import dask
 import porespy as ps
-from porespy import tools
-from porespy.tools import Results, get_edt
-import porespy as ps
-import logging
 import numpy as np
 import openpnm as op
 import pandas as pd
-import dask
-from dask.diagnostics import ProgressBar
-from tqdm import tqdm
+from porespy.tools import Results, get_edt, get_tqdm
 
-logger = logging.getLogger()
-logger.setLevel(50)
-
-edt = get_edt()
 
 __all__ = [
     'tortuosity_bt',
@@ -23,6 +14,11 @@ __all__ = [
     'df_to_tortuosity',
     'rev_tortuosity',
 ]
+
+
+logger = logging.getLogger()
+tqdm = get_tqdm()
+edt = get_edt()
 
 
 def calc_g(im, axis, solver_args={}):
@@ -101,28 +97,29 @@ def get_block_sizes(im, block_size_range=[10, 100]):
     block_sizes = np.unique(block_sizes[block_sizes >= Lmin])
     return block_sizes
 
+
 def tortuosity_map(im, block_size:int, dask_on=True):
     """
     Compute tortuosity and diffusive conductance on a series
     of blocks determined by the block size.
-    
+
     Parameters
     ----------
     im : np.array
         The binary image to analyze with ``True`` indicating phase of interest.
     block_size : int
         The size of the blocks for the image to be subdivided into.
-        
+
     Returns
     -------
     df_out : pd.DataFrame
         A dataframe containing information of all the blocks analyzed.
-    
+
     Notes
     -----
     This is called by `rev_tortuosity` to queue up all the blocks to be analyzed.
     """
-    slices = ps.tools.subdivide(im, block_size=block_size)
+    slices = ps.tools.get_slices_grid(im, block_size=block_size)
     tmp = np.zeros(im.shape)
 
     results = []
@@ -130,7 +127,7 @@ def tortuosity_map(im, block_size:int, dask_on=True):
         for axis in range(im.ndim):
             if dask_on:
                 tau_obj = dask.delayed(calc_g)(im[s], axis=axis)
-            
+
             else:
                 tau_obj = calc_g(im[s], axis=axis)
 
@@ -190,11 +187,11 @@ def rev_tortuosity(im, block_sizes=None, use_dask=True):
 
     if block_sizes == None:
         block_sizes = get_block_sizes(im, [20, size[0]])
-        
+
     for block in block_sizes:
         tmp = tortuosity_map(im, block, True)
         all_dfs.append(tmp)
-    
+
     df = pd.concat(all_dfs)
     return df
 
@@ -225,7 +222,7 @@ def block_size_to_divs(shape, block_size):
 def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
     '''
     Creates REV plot from the output of `rev_tortuosity`.
-    
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -247,7 +244,7 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
     Notes
     -----
     All values of "np.inf" are treated as the next highest tortuosity within that bin.
-        
+
     '''
 
     import matplotlib.pyplot as plt
@@ -272,12 +269,12 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
 
             if len(unique_tau) > 1:
                 highest = unique_tau[1]
-            
+
             else:
                 highest = unique_tau[0] if unique_tau else 0
-            
+
             taus = taus.replace([np.inf], highest)
-            
+
             # if np.inf in taus and len(np.unique(taus) > 1):
             #     taus[taus==np.inf] = max(taus[taus!=np.inf])
 
@@ -288,7 +285,7 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
         axes.set_title(f"REV: Axis {axis}")
         axes.set_xlabel("Normalized Volume Fraction")
         axes.set_ylabel(r"log$_{10}$($\tau$)")
-        
+
         all_fig.append(fig)
         all_ax.append(axes)
 

@@ -180,49 +180,49 @@ class ToolsTest():
         with pytest.raises(Exception):
             im = ps.tools.insert_cylinder(im, [20, 20, 20], [80, 80, 80], r=30)
 
-    def test_subdivide_2D_with_vector_overlap(self):
+    def test_get_slices_grid_2D_with_vector_overlap(self):
         im = np.ones([150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20])
         assert np.all(im[s[0]].shape == (60, 70))
         assert np.all(im[s[1]].shape == (60, 90))
         assert np.all(im[s[4]].shape == (70, 90))
 
-    def test_subdivide_2D_with_scalar_overlap(self):
+    def test_get_slices_grid_2D_with_scalar_overlap(self):
         im = np.ones([150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=10)
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=10)
         assert np.all(im[s[0]].shape == (60, 60))
         assert np.all(im[s[1]].shape == (60, 70))
         assert np.all(im[s[4]].shape == (70, 70))
 
-    def test_subdivide_2D_with_vector_overlap_flattened(self):
+    def test_get_slices_grid_2D_with_vector_overlap_flattened(self):
         im = np.ones([150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20])
         assert np.all(im[s[0]].shape == (60, 70))
         assert np.all(im[s[1]].shape == (60, 90))
         assert np.all(im[s[4]].shape == (70, 90))
 
-    def test_subdivide_3D_with_vector_overlap(self):
+    def test_get_slices_grid_3D_with_vector_overlap(self):
         im = np.ones([150, 150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20, 30])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20, 30])
         assert np.all(im[s[0]].shape == (60, 70, 80))
         assert np.all(im[s[1]].shape == (60, 70, 110))
         assert np.all(im[s[13]].shape == (70, 90, 110))
 
-    def test_subdivide_3D_with_scalar_overlap(self):
+    def test_get_slices_grid_3D_with_scalar_overlap(self):
         im = np.ones([150, 150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=10)
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=10)
         assert np.all(im[s[0]].shape == (60, 60, 60))
         assert np.all(im[s[1]].shape == (60, 60, 70))
         assert np.all(im[s[13]].shape == (70, 70, 70))
 
-    def test_subdivided_shape(self):
+    def test_get_slices_gridd_shape(self):
         im = np.ones([150, 150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20, 30])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20, 30])
         assert np.all(len(s) == 27)
 
     def test_recombine_2d_zero_overlap(self):
         im = np.random.rand(160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=[0, 0])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[0, 0])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -231,7 +231,7 @@ class ToolsTest():
 
     def test_recombine_2d_with_vector_overlap(self):
         im = np.random.rand(160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=[10, 10])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[10, 10])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -242,7 +242,7 @@ class ToolsTest():
 
     def test_recombine_2d_with_scalar_overlap(self):
         im = np.random.rand(160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=10)
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=10)
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -251,7 +251,7 @@ class ToolsTest():
 
     def test_recombine_3d_zero_overlap(self):
         im = np.random.rand(160, 160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=[0, 0, 0])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[0, 0, 0])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -260,7 +260,7 @@ class ToolsTest():
 
     def test_recombine_3d_with_vector_overlap(self):
         im = np.random.rand(160, 160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=[10, 10, 10])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[10, 10, 10])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -271,7 +271,7 @@ class ToolsTest():
 
     def test_recombine_2d_odd_shape(self):
         im = np.random.rand(143, 152)
-        s = ps.tools.subdivide(im, divs=2, overlap=10)
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=10)
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -280,7 +280,7 @@ class ToolsTest():
 
     def test_recombine_2d_odd_shape_vector_overlap(self):
         im = np.random.rand(143, 177)
-        s = ps.tools.subdivide(im, divs=2, overlap=[10, 20])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[10, 20])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -289,16 +289,16 @@ class ToolsTest():
 
     def test_recombine_3d_odd_shape_vector_overlap(self):
         im = np.random.rand(143, 177, 111)
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20, 25])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20, 25])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
         im2 = ps.tools.recombine(ims=ims, slices=s, overlap=[10, 20, 25])
         assert np.all(im == im2)
 
-    def test_subdivide_with_mode_offset(self):
+    def test_get_slices_grid_with_mode_offset(self):
         im = im = np.random.rand(143, 177, 111)
-        s = ps.tools.subdivide(im, block_size=10, mode='offset')
+        s = ps.tools.get_slices_grid(im, block_size=10, mode='offset')
         assert s[0][0].start > 0
         assert s[0][1].start > 0
         assert s[0][2].start == 0  # If only 1 remainder, the start is 0
@@ -306,19 +306,19 @@ class ToolsTest():
         assert s[-1][1].stop < im.shape[1]
         assert s[-1][2].stop < im.shape[2]
 
-    def test_subdivide_with_mode_unsupported(self):
+    def test_get_slices_grid_with_mode_unsupported(self):
         im = im = np.random.rand(143, 177, 111)
         with pytest.raises(Exception):
-            ps.tools.subdivide(im, block_size=10, mode='blah')
+            ps.tools.get_slices_grid(im, block_size=10, mode='blah')
 
-    def test_subdivide_with_mode_strict(self):
+    def test_get_slices_grid_with_mode_strict(self):
         im = im = np.random.rand(143, 177, 111)
         with pytest.raises(Exception):
-            ps.tools.subdivide(im, block_size=10, mode='strict')
+            ps.tools.get_slices_grid(im, block_size=10, mode='strict')
 
-    def test_subdivide_with_mode_partial(self):
+    def test_get_slices_grid_with_mode_partial(self):
         im = im = np.random.rand(143, 177, 111)
-        s = ps.tools.subdivide(im, block_size=10, mode='partial')
+        s = ps.tools.get_slices_grid(im, block_size=10, mode='partial')
         assert s[0][0].start == 0
         assert s[0][1].start == 0
         assert s[0][2].start == 0  # If only 1 remainder, the start is 0
@@ -326,9 +326,9 @@ class ToolsTest():
         assert s[-1][1].stop == im.shape[1]
         assert s[-1][2].stop == im.shape[2]
 
-    def test_subdivide_with_mode_whole(self):
+    def test_get_slices_grid_with_mode_whole(self):
         im = im = np.random.rand(143, 177, 111)
-        s = ps.tools.subdivide(im, block_size=10, mode='whole')
+        s = ps.tools.get_slices_grid(im, block_size=10, mode='whole')
         assert s[0][0].start == 0
         assert s[0][1].start == 0
         assert s[0][2].start == 0  # If only 1 remainder, the start is 0

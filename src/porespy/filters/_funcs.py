@@ -10,8 +10,7 @@ from skimage.segmentation import clear_border
 from skimage.morphology import ball, disk, square, cube, diamond, octahedron
 from porespy.tools import (
     _check_for_singleton_axes,
-    get_border,
-    subdivide,
+    get_slices_grid,
     recombine,
     unpad,
     extract_subsection,
@@ -21,6 +20,7 @@ from porespy.tools import (
     get_tqdm,
     get_edt,
 )
+from porespy.generators import borders
 from porespy import settings
 from typing import Literal
 
@@ -883,7 +883,7 @@ def porosimetry(
     dt = edt(im > 0)
 
     if inlets is None:
-        inlets = get_border(im.shape, mode="faces")
+        inlets = borders(im.shape, mode="faces")
 
     if isinstance(sizes, int):
         sizes = np.logspace(start=np.log10(np.amax(dt)), stop=0, num=sizes)
@@ -1271,7 +1271,7 @@ def chunked_func(
                 strel = kwargs[item]
                 break
         overlap = np.array(strel.shape) * (divs > 1)
-    slices = subdivide(im=im, divs=divs, overlap=overlap)
+    slices = get_slices_grid(im=im, divs=divs, overlap=overlap)
     # Apply func to each subsection of the image
     res = []
     for s in slices:
