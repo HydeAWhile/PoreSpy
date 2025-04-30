@@ -1,6 +1,7 @@
 import logging
 import inspect
 import numpy as np
+import pandas as pd
 import scipy.ndimage as spim
 from numba import boolean, njit
 from skimage.morphology import ball, disk
@@ -41,6 +42,7 @@ __all__ = [
     'overlay',
     'randomize_colors',
     'recombine',
+    'results_to_df',
     'unpad',
     'jit_extend_slice',
     'pad',
@@ -278,13 +280,46 @@ def get_slices_grid(im, divs=2, block_size=None, overlap=0, mode='offset'):
     return s
 
 
-def get_slices_multigrid(im, block_size_range, overlap=0, mode='offset'):
-    sizes = get_block_sizes(im=im, block_size_range=block_size_range)
+def get_slices_multigrid(im, block_size_range, overlap=0, mode='whole'):
+    if len(block_size_range) == 2:
+        sizes = get_block_sizes(im=im, block_size_range=block_size_range)
+    else:
+        sizes = np.arange(*block_size_range)
     slices = []
     for s in sizes:
         tmp = get_slices_grid(im=im, block_size=s, overlap=overlap, mode=mode)
         slices.extend(tmp)
     return slices
+
+
+def results_to_df(obj):
+    r"""
+    A helper function to convert Results objects to pandas DataFrames.
+
+    Parameters
+    ----------
+    obj : porespy.tools.Results
+        The custom Results object to be converted to a DataFrame
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        A DataFrame containing all of the custom attributes on the inputted
+        Results object.
+
+    Notes
+    -----
+    The contents of the Results object are expected to be DataFrame compatible
+    data types.
+    """
+    keys = [key for key in obj.__dict__.keys() if key[0] != "_"]
+    df = {}
+    for key in keys:
+        df[key] = obj.__dict__[key]
+
+    df = pd.DataFrame(df)
+
+    return df
 
 
 def get_block_sizes(im, block_size_range=[10, 100]):

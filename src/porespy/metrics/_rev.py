@@ -26,36 +26,6 @@ logger.setLevel(50)
 tqdm = get_tqdm()
 
 
-def results_to_df(obj):
-    r"""
-    A helper function to convert Results objects to pandas DataFrames.
-
-    Parameters
-    ----------
-    obj : porespy.tools.Results
-        The custom Results object to be converted to a DataFrame
-
-    Returns
-    -------
-    df : pandas.DataFrame
-        A DataFrame containing all of the custom attributes on the inputted
-        Results object.
-
-    Notes
-    -----
-    The contents of the Results object are expected to be DataFrame compatible
-    data types.
-    """
-    keys = [key for key in obj.__dict__.keys() if key[0] != "_"]
-    df = {}
-    for key in keys:
-        df[key] = obj.__dict__[key]
-
-    df = pd.DataFrame(df)
-
-    return df
-
-
 def rev_porosity(im, n=1000, slices=None):
     r"""
     Calculates the porosity for a many subdomains of diffrent sizes, suitable for
@@ -176,7 +146,7 @@ def calc_g(im, axis, solver_args={}):
     return results
 
 
-def tortuosity_map(im, block_size: int = None, slices=None, dask_on=True):
+def tortuosity_map(im, block_size: int = None, axis: int = None, slices=None, dask_on=True):
     """
     Compute tortuosity and diffusive conductance on a series of blocks determined
     by the block size.
@@ -189,6 +159,9 @@ def tortuosity_map(im, block_size: int = None, slices=None, dask_on=True):
         The size of the blocks for the image to be subdivided into.
     slices : list
         A list containing slice objects for the image to be analyzed.
+    axis : int
+        The axis along which to simulate the diffusion. If `None` then all
+        axes are considered.
 
     Returns
     -------
@@ -204,23 +177,27 @@ def tortuosity_map(im, block_size: int = None, slices=None, dask_on=True):
     if block_size is not None and slices is None:
         slices = get_slices_grid(im, block_size=block_size)
 
+    if axis is None:
+        axes = range(im.ndim)
+    else:
+        axes = [axis]
     results = []
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for s in tqdm(slices, desc=desc, **settings.tqdm):
-        for axis in range(im.ndim):
+        for ax in axes:
             if dask_on:
-                tau_obj = dask.delayed(calc_g)(im[s], axis=axis)
+                tau_obj = dask.delayed(calc_g)(im[s], axis=ax)
 
             else:
-                tau_obj = calc_g(im[s], axis=axis)
+                tau_obj = calc_g(im[s], axis=ax)
 
-            tau_obj = tau_obj.compute()
+            if dask_on:
+                tau_obj = tau_obj.compute()
             tau_obj.slice = s
 
             results.append(tau_obj)
 
     df_out = pd.DataFrame()
-
     df_out['eps_orig'] = [r.original_porosity for r in results]
     df_out['eps_perc'] = [r.effective_porosity for r in results]
     df_out['g'] = [r.diffusive_conductance for r in results]
@@ -234,7 +211,7 @@ def tortuosity_map(im, block_size: int = None, slices=None, dask_on=True):
     return df_out
 
 
-def rev_tortuosity(im, n=100, slices=None):
+def rev_tortuosity(im, n=100, axis=None, slices=None, dask_on=False):
     """
     Calculates the tortuosity for a range of subdomain sizes suitable for an REV plot
 
@@ -248,16 +225,9 @@ def rev_tortuosity(im, n=100, slices=None):
     slices : list
         A list of `slice` objects into the image which define the subdomains. If
         not provided then `n` random blocks are used.
-    mode : str (Default = 'grid')
-        The mode which block generation is done. Options are:
-
-        ======== ==============================================================
-        mode     description
-        ======== ==============================================================
-        'grid'   The subdomains are created on a grid, with no overlap
-        'random' The subdomains are created at random locations with random
-                 levels of padding.
-        ======== ==============================================================
+    axis : int
+        The axis along which to simulate the diffusion. If `None` then all
+        axes are considered.
 
     Returns
     -------
@@ -287,7 +257,7 @@ def rev_tortuosity(im, n=100, slices=None):
     """
     if slices is None:
         slices = get_slices_random(im=im, n=n)
-    df = tortuosity_map(im, block_size=None, slices=slices)
+    df = tortuosity_map(im, block_size=None, axis=axis, slices=slices, dask_on=dask_on)
 
     profile = Results()
     profile.porosity_orig = df['eps_orig']
@@ -379,19 +349,29 @@ if __name__ == "__main__":
     ps.settings.tqdm['disable'] = False
     ps.settings.tqdm['leave'] = True
 
-    im = ps.generators.blobs([300]*2, blobiness=2, seed=1)
+    im = ps.generators.blobs([300]*2, porosity=0.7, blobiness=2, seed=1)
+    # im = ps.generators.random_cantor_dust([500, 500])
 
-    slices = ps.tools.get_slices_multigrid(im, [20, 100])
-    # slices = ps.tools.get_slices_random(im, 1000)
-    rev = ps.metrics.rev_tortuosity(im, slices=slices)
-    converted = results_to_df(rev)
+    # slices = ps.tools.get_slices_multigrid(im, [40, 300])
+    slices = ps.tools.get_slices_random(im, 500)
+    rev = ps.metrics.rev_tortuosity(im, slices=slices, axis=0, dask_on=True)
+    converted = ps.tools.results_to_df(rev)
     poro = ps.metrics.rev_porosity(im, slices=slices)
 
+    # %%
     fig, ax = plt.subplots(1, 3)
-    ax[0].scatter(poro.volume, poro.porosity, marker='.', alpha=0.5, fc='tab:red', ec='none')
-    ax[1].scatter(rev.volume, rev.tau, marker='.', alpha=0.5, fc='tab:blue', ec='none')
-    ax[2].scatter(rev.porosity_perc, rev.tau, marker='.', alpha=0.5, fc='tab:green', ec='none')
+    ax[0].scatter(poro.volume, poro.porosity, marker='.', alpha=0.25, fc='tab:red', ec='none')
+    ax[1].scatter(rev.volume[rev.axis==0], rev.tau[rev.axis==0], marker='.', alpha=0.25, fc='tab:blue', ec='none')
+    ax[2].scatter(rev.porosity_perc[rev.axis==0], rev.tau[rev.axis==0], marker='.', alpha=0.25, fc='tab:green', ec='none')
     ax[0].set_ylim([0, 1])
-    ax[1].set_ylim([0, 10])
+    ax[0].set_xlim([0, im.size])
+    ax[0].set_ylabel('Porosity')
+    ax[0].set_xlabel('Subdomain Volume')
+    ax[1].set_ylim([0, None])
+    ax[1].set_xlim([0, im.size])
+    ax[1].set_ylabel('log(Tortuosity)')
+    ax[1].set_xlabel('Subdomain Volume')
     ax[2].set_xlim([0, 1])
-    ax[2].set_ylim([0, 10])
+    ax[2].set_ylim([0, None])
+    ax[2].set_xlabel('Porosity')
+    ax[2].set_ylabel('log(Tortuosity)')

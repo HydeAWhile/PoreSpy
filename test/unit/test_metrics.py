@@ -348,7 +348,7 @@ class MetricsTest():
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
         im = ps.filters.fill_closed_pores(im, conn='max', surface=True)
-        inlets = ps.tools.get_border(shape=im.shape, mode='faces')
+        inlets = ps.generators.borders(shape=im.shape, mode='faces')
 
         # Do drainage without sequence
         drn = ps.simulations.drainage(im, steps=None)
@@ -442,7 +442,7 @@ class MetricsTest():
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
         im = ps.filters.fill_closed_pores(im, conn="max", surface=True)
-        inlets = ps.tools.get_border(shape=im.shape, mode='faces')
+        inlets = ps.generators.borders(shape=im.shape, mode='faces')
 
         ibip = ps.simulations.ibip(im=im, inlets=inlets, return_sizes=True)
         qbip = ps.simulations.qbip(im=im, pc=None, inlets=inlets, return_sizes=True)
