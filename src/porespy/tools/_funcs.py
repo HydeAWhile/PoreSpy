@@ -1,19 +1,16 @@
 import logging
+import inspect
 import numpy as np
 import scipy.ndimage as spim
 from numba import boolean, njit
 from skimage.morphology import ball, disk
 from skimage.segmentation import relabel_sequential
-from ._utils import Results, get_edt
+from ._utils import Results, get_edt, get_tqdm, Settings
 
 try:
     from skimage.measure import marching_cubes
 except ImportError:
     from skimage.measure import marching_cubes_lewiner as marching_cubes
-
-
-edt = get_edt()
-logger = logging.getLogger(__name__)
 
 
 __all__ = [
@@ -29,6 +26,7 @@ __all__ = [
     'get_border',
     'get_planes',
     'im_to_slabs',
+    'im_to_blocks',
     'insert_cylinder',
     'insert_sphere',
     'in_hull',
@@ -46,6 +44,12 @@ __all__ = [
     'jit_extend_slice',
     'pad',
 ]
+
+
+logger = logging.getLogger(__name__)
+edt = get_edt()
+tqdm = get_tqdm()
+settings = Settings()
 
 
 def tilde(im):
@@ -70,6 +74,42 @@ def tilde(im):
     im = im.astype(bool)
     inv = np.logical_not(im)
     return inv
+
+
+def im_to_blocks(im, n=1000):
+    r"""
+    Generates a list of slice objects which can be used to obtain cubic subdomains
+    of random size and location from the image
+
+    Parameters
+    ----------
+    im : ndarry
+        The image of the porous material
+    n : int
+        The number of random subdomains to be generated
+
+    Returns
+    -------
+    new_slices : list
+        A list containing `slice` objects which can be iterated over
+        to access the image slices.
+    """
+    im_temp = np.zeros_like(im)
+    crds = np.array(np.random.rand(n, im.ndim) * im.shape, dtype=int)
+    pads = np.array(np.random.rand(n) * np.amin(im.shape) / 2 + 10, dtype=int)
+    im_temp[tuple(crds.T)] = True
+    labels, N = spim.label(input=im_temp)
+    slices = spim.find_objects(input=labels)
+
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    new_slices = []
+    for i in tqdm(np.arange(0, N), desc=desc, **settings.tqdm):
+        s = slices[i]
+        p = pads[i]
+        new_s = extend_slice(s, shape=im.shape, pad=p)
+        new_slices.append(new_s)
+
+    return new_slices
 
 
 def im_to_slabs(im, axis=0, span=50, step=None, mode='tile'):

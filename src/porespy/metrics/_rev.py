@@ -1,93 +1,66 @@
 import logging
-import numpy as np
 import inspect
-import scipy.ndimage as spim
 import time
+import dask
+import numpy as np
 import pandas as pd
+import openpnm as op
 from porespy.tools import (
     Results,
     get_tqdm,
-    extend_slice,
-    subdivide
+    subdivide,
+    im_to_blocks,
 )
 from porespy import settings
 from porespy.visualization import set_mpl_style
-import openpnm as op
-import dask
 
-__all__=[
+
+__all__ = [
     "rev_porosity",
     "rev_tortuosity",
     "rev_plot"
 ]
 
+
 logger = logging.getLogger()
 logger.setLevel(50)
 tqdm = get_tqdm()
 
+
 def results_to_df(obj):
     r"""
-    A helper function to convert results objects to pandas DataFrames. The
-    contents of the results object are expected to be DataFrame compatible
-    data types.
-    
+    A helper function to convert Results objects to pandas DataFrames.
+
+
     Parameters
     ----------
     obj : porespy.tools.Results
         The custom Results object to be converted to a DataFrame
-        
+
     Returns
     -------
     df : pandas.DataFrame
         A DataFrame containing all of the custom attributes on the inputted
         Results object.
+
+    Notes
+    -----
+    The contents of the Results object are expected to be DataFrame compatible
+    data types.
     """
-    keys = [key for key in obj.__dict__.keys() if key[0]!="_"]
+    keys = [key for key in obj.__dict__.keys() if key[0] != "_"]
     df = {}
     for key in keys:
         df[key] = obj.__dict__[key]
 
     df = pd.DataFrame(df)
-    
+
     return df
 
-def random_slices(im, npoints=1000):
-    r"""    
-    This function extracts a specified number of subdomains of random size.
-
-    Parameters
-    ----------
-    im : ndarry
-        The image of the porous material
-    npoints : int
-        The number of random subdomains to be generated
-
-    Returns
-    -------
-    new_slices : list
-        A list containing slice objects which can be iterated over
-        to access the image slices.
-    """
-    im_temp = np.zeros_like(im)
-    crds = np.array(np.random.rand(npoints, im.ndim) * im.shape, dtype=int)
-    pads = np.array(np.random.rand(npoints) * np.amin(im.shape) / 2 + 10, dtype=int)
-    im_temp[tuple(crds.T)] = True
-    labels, N = spim.label(input=im_temp)
-    slices = spim.find_objects(input=labels)
-
-    desc = inspect.currentframe().f_code.co_name  # Get current func name
-    new_slices = []
-    for i in tqdm(np.arange(0, N), desc=desc, **settings.tqdm):
-        s = slices[i]
-        p = pads[i]
-        new_s = extend_slice(s, shape=im.shape, pad=p)
-        new_slices.append(new_s)
-    
-    return new_slices
 
 def rev_porosity(im, slices=None):
     r"""
-    Calculates the porosity of an image as a function subdomain size.
+    Calculates the porosity for a range of domain sizes suitable for an rev plot
 
     Parameters
     ----------
@@ -114,12 +87,6 @@ def rev_porosity(im, slices=None):
         \* notation: ``plt.plot(\*result, 'b.')``.  The resulting plot is
         similar to the sketch given by Bachmat and Bear [1]_
 
-    Notes
-    -----
-    This function is frustratingly slow.  Profiling indicates that all the time
-    is spent on scipy's ``sum`` function which is needed to sum the number of
-    void voxels (1's) in each subdomain.
-
     References
     ----------
     .. [1] Bachmat and Bear. On the Concept and Size of a Representative
@@ -132,12 +99,15 @@ def rev_porosity(im, slices=None):
     <https://porespy.org/examples/metrics/reference/rev_porosity.html>`_
     to view online example.
     """
+    # TODO: This function is frustratingly slow.  Profiling indicates that all the
+    # time is spent on scipy's ``sum`` function which is needed to sum the number of
+    # void voxels (1's) in each subdomain.
+
     # TODO: this function is a prime target for parallelization since the
-    # ``npoints`` are calculated independenlty.
-    im_temp = np.zeros_like(im)
+    # `n` points are calculated independenlty.
     if slices == None:
-        slices = random_slices(im,)
-    
+        slices = im_to_blocks(im,)
+
     N = len(slices)
     porosity = np.zeros(shape=(N,), dtype=float)
     volume = np.zeros(shape=(N,), dtype=int)
@@ -152,6 +122,7 @@ def rev_porosity(im, slices=None):
     profile.volume = volume
     profile.porosity = porosity
     return profile
+
 
 def calc_g(im, axis, solver_args={}):
     r"""
@@ -229,11 +200,12 @@ def get_block_sizes(im, block_size_range=[10, 100]):
     block_sizes = np.unique(block_sizes[block_sizes >= Lmin])
     return block_sizes
 
-def tortuosity_map(im, block_size:int=None, slices=None, dask_on=True):
+
+def tortuosity_map(im, block_size: int = None, slices=None, dask_on=True):
     """
-    Compute tortuosity and diffusive conductance on a series
-    of blocks determined by the block size.
-    
+    Compute tortuosity and diffusive conductance on a series of blocks determined
+    by the block size.
+
     Parameters
     ----------
     im : np.array
@@ -242,12 +214,12 @@ def tortuosity_map(im, block_size:int=None, slices=None, dask_on=True):
         The size of the blocks for the image to be subdivided into.
     slices : list
         A list containing slice objects for the image to be analyzed.
-        
+
     Returns
     -------
     df_out : pd.DataFrame
         A dataframe containing information of all the blocks analyzed.
-    
+
     Notes
     -----
     This is called by `rev_tortuosity` to queue up all the blocks to be analyzed.
@@ -262,7 +234,7 @@ def tortuosity_map(im, block_size:int=None, slices=None, dask_on=True):
         for axis in range(im.ndim):
             if dask_on:
                 tau_obj = dask.delayed(calc_g)(im[s], axis=axis)
-            
+
             else:
                 tau_obj = calc_g(im[s], axis=axis)
 
@@ -285,9 +257,10 @@ def tortuosity_map(im, block_size:int=None, slices=None, dask_on=True):
 
     return df_out
 
+
 def rev_tortuosity(im, mode="grid", use_dask=True):
     """
-    Generates the data for creating an REV plot based on tortuosity.
+    Calculates the tortuosity for a range of domain sizes suitable for an rev plot
 
     Parameters
     ----------
@@ -299,7 +272,7 @@ def rev_tortuosity(im, mode="grid", use_dask=True):
         ======== ==============================================================
         mode     description
         ======== ==============================================================
-        'grid'   The subdomains are created on a grid, with no overlap over.
+        'grid'   The subdomains are created on a grid, with no overlap
         'random' The subdomains are created at random locations with random
                  levels of padding.
         ======== ==============================================================
@@ -314,8 +287,10 @@ def rev_tortuosity(im, mode="grid", use_dask=True):
         ========== ==================================================================
         Attribute  Description
         ========== ==================================================================
-        eps_orig   The porosity of the subdomain tested
-        eps_perc   The porosity of the subdomain tested after filling non-percolating paths
+        eps_orig   Theoriginal porosity of the subdomain tested
+        eps_perc   The porosity of the subdomain tested after filling
+                   non-percolating paths (e.g. blind and closed pores). This is the
+                   domain on which the calculation of tortuosity is performed.
         g          The calculated diffusive conductance for the subdomain tested
         tau        The calculated tortuosity for the tested subdomain
         volume     The total volume of each cubic subdomain tested
@@ -327,8 +302,8 @@ def rev_tortuosity(im, mode="grid", use_dask=True):
 
     Notes
     -----
-    If both `block_sizes` and `slices` are left empty, the default mode of block generation
-    is gridding the image.
+    If both `block_sizes` and `slices` are left empty, the default mode of block
+    generation is gridding the image.
     """
     all_dfs = []
     size = im.shape
@@ -339,11 +314,11 @@ def rev_tortuosity(im, mode="grid", use_dask=True):
         for block in block_sizes:
             tmp = tortuosity_map(im, block,)
             all_dfs.append(tmp)
-    
+
         df = pd.concat(all_dfs)
-    
+
     elif mode == "random":
-        slices = random_slices(im,)
+        slices = im_to_blocks(im,)
         df = tortuosity_map(im, block_size=None, slices=slices)
 
     # TODO: add a mode for "slabs"
@@ -384,10 +359,11 @@ def block_size_to_divs(shape, block_size):
     divs = np.clip(divs, a_min=2, a_max=shape)
     return divs
 
-def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
+
+def rev_plot(df: pd.DataFrame, size: int, figsize: list = [10, 7]):
     '''
     Creates REV plot from the output of `rev_tortuosity`.
-    
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -410,7 +386,7 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
     -----
     All values of "np.inf" are treated as the next highest tortuosity within that bin
     purely for the sake of plotting. The original dataset is not altered.
-        
+
     '''
 
     import matplotlib.pyplot as plt
@@ -423,22 +399,22 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
         fig, axes = plt.subplots(figsize=figsize)
 
         # filter for one axis
-        tmp = df[df['axis']==axis]
+        tmp = df[df['axis'] == axis]
 
         data = []
         vol_frac = []
 
         for vol in np.unique(tmp['volume']):
-            taus = tmp[tmp['volume']==vol]["tau"]
+            taus = tmp[tmp['volume'] == vol]["tau"]
 
             unique_tau = sorted(set(taus), reverse=True)
 
             if len(unique_tau) > 1:
                 highest = unique_tau[1]
-            
+
             else:
                 highest = unique_tau[0] if unique_tau else 0
-            
+
             taus = taus.replace([np.inf], highest)
 
             data.append(np.log10(taus))
@@ -448,11 +424,12 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
         axes.set_title(f"REV: Axis {axis}")
         axes.set_xlabel("Normalized Volume Fraction")
         axes.set_ylabel(r"log$_{10}$($\tau$)")
-        
+
         all_fig.append(fig)
         all_ax.append(axes)
 
     return all_fig, all_ax
+
 
 if __name__ == "__main__":
     import porespy as ps
