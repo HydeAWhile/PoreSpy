@@ -66,7 +66,7 @@ class MagnetTest:
                          keepdims=False)
         assert mode[0] == 6.0
         D = np.unique(magnet.network['pore.inscribed_diameter'].astype(int))
-        assert np.all(D == np.array([2, 3, 4, 15, 6, 7, 8, 9, 10]))
+        assert np.all(D == np.array([2, 3, 4, 5, 6, 7, 8, 9, 10]))
 
     def test_parallel_skeleton_2d(self):
         im = self.blobs2D
