@@ -17,14 +17,17 @@ __all__ = [
     '_check_for_singleton_axes',
     'align_image_with_openpnm',
     'bbox_to_slices',
+    'block_size_to_divs',
     'extend_slice',
     'extract_cylinder',
     'extract_subsection',
     'extract_regions',
     'find_outer_region',
     'find_bbox',
+    'get_block_sizes',
     'get_planes',
     'get_slices_grid',
+    'get_slices_multigrid',
     'get_slices_random',
     'get_slices_slabs',
     'insert_cylinder',
@@ -273,6 +276,67 @@ def get_slices_grid(im, divs=2, block_size=None, overlap=0, mode='offset'):
         for i, item in enumerate(s):
             s[i] = extend_slice(slices=item, shape=im.shape, pad=overlap)
     return s
+
+
+def get_slices_multigrid(im, block_size_range, overlap=0, mode='offset'):
+    sizes = get_block_sizes(im=im, block_size_range=block_size_range)
+    slices = []
+    for s in sizes:
+        tmp = get_slices_grid(im=im, block_size=s, overlap=overlap, mode=mode)
+        slices.extend(tmp)
+    return slices
+
+
+def get_block_sizes(im, block_size_range=[10, 100]):
+    """
+    Finds all viable block sizes between lower and upper limits
+
+    Parameters
+    ----------
+    im : np.array
+        The binary image to analyze with ``True`` indicating phase of interest.
+    block_size_range : sequence of 2 ints
+        The [lower, upper] range of the desired block sizes. Default is [10, 100]
+
+    Returns
+    -------
+    sizes : ndarray
+        All the viable block sizes in the specified range
+
+    Notes
+    -----
+    This is called by `rev_tortuosity` to determine what size blocks to use.
+    """
+    shape = im.shape
+    Lmin, Lmax = block_size_range
+    a = np.ceil(min(shape)/Lmax).astype(int)
+    block_sizes = min(shape) // np.arange(a, 9999)  # Generate WAY more than needed
+    block_sizes = np.unique(block_sizes[block_sizes >= Lmin])
+    return block_sizes
+
+
+def block_size_to_divs(shape, block_size):
+    r"""
+    Finds the number of blocks in each direction given the size of the blocks
+
+    Parameters
+    ----------
+    shape : sequence of ints
+        The [x, y, z] shape of the image
+    block_size : int or sequence of ints
+        The size of the blocks
+
+    Returns
+    -------
+    divs : list of ints
+        The number of blocks to divide the image into along each axis. The minimum
+        number of blocks is 2.
+    """
+    shape = np.array(shape)
+    divs = shape // np.array(block_size)
+    # scraps = shape % np.array(block_size)
+    divs = np.clip(divs, a_min=2, a_max=shape)
+    return divs
 
 
 def unpad(im, pad_width):

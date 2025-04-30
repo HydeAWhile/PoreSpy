@@ -20,7 +20,7 @@ from porespy.tools import (
     _check_for_singleton_axes,
     extend_slice,
     get_tqdm,
-    im_to_slabs,
+    get_slices_slabs,
     get_edt
 )
 
@@ -241,7 +241,7 @@ def porosity_profile(im, axis=0, span=1, mode='tile'):
     """
     if axis >= im.ndim:
         raise Exception('axis out of range')
-    slices = im_to_slabs(im=im, axis=axis, span=span, mode=mode)
+    slices = get_slices_slabs(im=im, axis=axis, span=span, mode=mode)
     eps = np.zeros(len(slices))
     z = np.zeros_like(eps)
     for i, s in enumerate(slices):
@@ -1175,7 +1175,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
         if satn.max() < s:
             raise Exception(msg)
 
-    slices = im_to_slabs(im=satn, axis=axis, span=span, mode=mode)
+    slices = get_slices_slabs(im=satn, axis=axis, span=span, mode=mode)
     y = np.zeros(len(slices))
     z = np.zeros_like(y)
     for i, slab in enumerate(slices):

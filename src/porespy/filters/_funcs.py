@@ -20,7 +20,6 @@ from porespy.tools import (
     get_tqdm,
     get_edt,
 )
-from porespy.generators import borders
 from porespy import settings
 from typing import Literal
 
@@ -879,6 +878,7 @@ def porosimetry(
 
     """
     from porespy.filters import fftmorphology
+    from porespy.generators import borders
     im = np.squeeze(im)
     dt = edt(im > 0)
 
