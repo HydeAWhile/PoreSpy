@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 def magnet(im,
            sk=None,
-           parallel=False,
+           parallel_kw=None,
            surface=False,
            voxel_size=1,
            s=None,
@@ -81,10 +81,13 @@ def magnet(im,
         trimmed. This is the default mode. However, if `True`, disconnected
         solid at the surface of the image is trimmed. This is NOT applied when
         im is 2d.
-    parallel : boolean
-        If `False` the skeleton is calculated in serial. This is the default
-        mode. However, if `True`, the skeleton is calculated in parallel using
-        chunking in Dask. The default mode is `False`
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. If
+        `None` is provided, parallelization does not occur. The default is
+        `None`. The optional settings include `divs` (scalar or list of scalars,
+        default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+        and `cores` (scalar, default is all available cores). See documentaion
+        on `ps.networks.skeleton` for more information.
     voxel_size : scalar (default = 1)
         The resolution of the image, expressed as the length of one side of a
         voxel, so the volume of a voxel would be voxel_size-cubed
@@ -127,7 +130,7 @@ def magnet(im,
     """
     # get the skeleton
     if sk is None:
-        sk, im = skeleton(im, surface, parallel, **kwargs)  # take skeleton
+        sk, im = skeleton(im, surface, parallel_kw)  # take skeleton
     else:
         if im.ndim == 3:
             _check_skeleton_health(sk.astype('bool'))
@@ -170,7 +173,7 @@ def magnet(im,
     return results
 
 
-def skeleton(im, surface=False, parallel=False, **kwargs):
+def skeleton(im, surface=False, parallel_kw=None):
     r"""
     Takes the skeleton of an image. This function ensures that no shells are
     found in the resulting skeleton by trimming floating solids from the image
@@ -188,10 +191,34 @@ def skeleton(im, surface=False, parallel=False, **kwargs):
         trimmed. This is the default mode. However, if `True`, disconnected
         solid at the surface of the image is trimmed. Note that disconnected
         solids are NOT removed if a 2D image is passed.
-    parallel : boolean
-        If `False` the skeleton is calculated in serial. This is the default
-        mode. However, if `True`, the skeleton is calculated in parallel using
-        chunking in Dask.
+     parallel_kw : dict
+         Dictionary containing the settings for parallelization by chunking. If
+         `None` is provided, parallelization does not occur. The default is
+         `None`.
+         
+         The optional settings include `divs` (scalar or list of scalars,
+         default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+         and `cores` (scalar, default is all available cores).
+         
+         `divs` is the number of times to divide the image for parallel
+         processing. If `1` then parallel processing does not occur. `2` is
+         equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
+         respective axis will be divided by its corresponding number in the
+         list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
+         and 4 respectively.
+         
+         `overlap` is the amount of overlap to include when dividing up the
+         image. This value will almost always be the size (i.e. raduis) of the
+         structuring element. If not specified then the amount of overlap
+         is inferred from the size of the structuring element, in which
+         case the `strel_arg` must be specified.
+         
+         `cores` is the number of cores that will be used to parallel process
+         all domains. If ``None`` then all cores will be used but user can
+         specify any integer values to control the memory usage. Setting value
+         to 1 will effectively process the chunks in serial to minimize memory
+         usage.
+    
 
     Returns
     -------
@@ -205,16 +232,16 @@ def skeleton(im, surface=False, parallel=False, **kwargs):
     if im.ndim == 3:
         im = trim_floating_solid(im, conn='min', surface=surface)
     # perform skeleton
-    if parallel is False:  # serial
+    if parallel_kw is None:  # serial
         sk = skeletonize(im).astype('bool')
-    if parallel is True:  # parallel
-        sk = skeleton_parallel(im, **kwargs)
+    if parallel_kw is not None:  # parallel
+        sk = skeleton_parallel(im, parallel_kw)
     if im.ndim == 3:
         _check_skeleton_health(sk.astype('bool'))
     return sk, im
 
 
-def skeleton_parallel(im, divs, overlap=None, cores=None):
+def skeleton_parallel(im, parallel_kw={}):
     r"""
     Performs `skimage.morphology.skeleton_3d` in parallel using dask
 
@@ -223,18 +250,31 @@ def skeleton_parallel(im, divs, overlap=None, cores=None):
     im : ndarray
         A binary image of porous media with 'True' values indicating
         phase of interest.
-    divs : ndarray
-        The number of divisions in each dimension used for chunking the image
-        (e.g. [2, 2, 4])
-    overlap : float (optional)
-        The amount of overlap to apply between chunks.  If not provided it
-        will be estiamted using ``porespy.tools.estimate_overlap`` with
-        ``mode='dt'``.
-    cores : int or None
-        Number of cores that will be used to parallel process all domains.
-        If ``None`` then all cores will be used but user can specify any
-        integer values to control the memory usage.  Setting value to 1
-        will effectively process the chunks in serial to minimize memory
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. If
+        not provided, the defaults in `ps.settings` are used!
+        
+        The optional settings include `divs` (scalar or list of scalars,
+        default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+        and `cores` (scalar, default is all available cores).
+        
+        `divs` is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
+        respective axis will be divided by its corresponding number in the
+        list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
+        and 4 respectively.
+        
+        `overlap` is the amount of overlap to include when dividing up the
+        image. This value will almost always be the size (i.e. raduis) of the
+        structuring element. If not specified then the amount of overlap
+        is inferred from the size of the structuring element, in which
+        case the `strel_arg` must be specified.
+        
+        `cores` is the number of cores that will be used to parallel process
+        all domains. If ``None`` then all cores will be used but user can
+        specify any integer values to control the memory usage. Setting value
+        to 1 will effectively process the chunks in serial to minimize memory
         usage.
 
     Returns
@@ -243,6 +283,11 @@ def skeleton_parallel(im, divs, overlap=None, cores=None):
         Skeleton of image
 
     """
+    # parse out divs, cores, overlap from parallel_kw
+    # take default from settings if not on parallel_kw dict
+    divs = parallel_kw.get("divs", settings.divs)
+    cores = parallel_kw.get("cores", settings.ncores)
+    overlap = parallel_kw.get("overlap", settings.overlap)
     if overlap is None:
         overlap = _estimate_overlap(im, mode='dt') * 2
     if cores is None:

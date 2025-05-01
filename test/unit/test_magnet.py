@@ -70,13 +70,13 @@ class MagnetTest:
 
     def test_parallel_skeleton_2d(self):
         im = self.blobs2D
-        magnet = ps.networks.magnet(im, parallel=True, divs=4)
+        magnet = ps.networks.magnet(im, parallel_kw={'divs': 4})
         sk = magnet.sk
         assert np.sum(sk) == 1259
 
     def test_parallel_skeleton_3d(self):
         im = self.blobs3D
-        magnet = ps.networks.magnet(im, parallel=True, divs=4)
+        magnet = ps.networks.magnet(im, parallel_kw={'divs': 4})
         sk = magnet.sk
         assert np.sum(sk) == 7642
 
