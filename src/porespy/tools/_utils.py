@@ -201,6 +201,9 @@ class Settings:  # pragma: no cover
         "file": sys.stdout,
     }
     _loglevel = 40 if _is_ipython_notebook() else 30
+    # add parallel settings
+    divs = 2  # choose 2 as default
+    overlap = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

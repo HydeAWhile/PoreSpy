@@ -457,9 +457,9 @@ class FilterTest():
         im = ps.generators.overlapping_spheres(shape=[1000, 1000],
                                                r=10,
                                                porosity=0.5)
+        parallel_kw = {"divs": [2, 2], "cores": None, "overlap": None}
         snow = ps.filters.snow_partitioning_parallel(im,
-                                                     divs=[2, 2],
-                                                     cores=None,
+                                                     parallel_kw=parallel_kw,
                                                      r_max=5,
                                                      sigma=0.4)
         # assert np.amax(snow.regions) == 919
@@ -472,8 +472,9 @@ class FilterTest():
         im = disk(50)
         f = ps.filters.fftmorphology
         s = disk(1)
-        a = ps.filters.chunked_func(func=f, im=im, overlap=3, im_arg='im',
-                                    strel=s, mode='erosion')
+        parallel_kw = {"divs": 2, "overlap": 3, "cores": None}
+        a = ps.filters.chunked_func(func=f, im=im, parallel_kw=parallel_kw,
+                                    im_arg='im', strel=s, mode='erosion')
         b = ps.filters.fftmorphology(im, strel=s, mode='erosion')
         assert np.all(a == b)
 
@@ -482,8 +483,10 @@ class FilterTest():
         im = ball(50)
         f = ps.filters.fftmorphology
         s = ball(1)
-        a = ps.filters.chunked_func(func=f, im=im, im_arg='im', overlap=3,
-                                    strel=s, mode='erosion')
+        parallel_kw = {"divs": 2, "overlap": 3, "cores": None}
+        a = ps.filters.chunked_func(func=f, im=im, im_arg='im',
+                                    parallel_kw=parallel_kw, strel=s,
+                                    mode='erosion')
         b = ps.filters.fftmorphology(im, strel=s, mode='erosion')
         assert np.all(a == b)
 
@@ -503,11 +506,12 @@ class FilterTest():
             shape=[100, 100, 100], porosity=0.497569, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.497569
         with pytest.raises(IndexError):
+            parallel_kw = {"divs": 2, "overlap": 5, "cores": None}
             ps.filters.chunked_func(func=spsg.convolve,
                                     in1=im*1.0,
                                     in2=ps.tools.ps_ball(5),
                                     im_arg='in1', strel_arg='in2',
-                                    overlap=5)
+                                    parallel_kw=parallel_kw)
 
     def test_prune_branches(self):
         im = ps.generators.random_spheres([100, 100, 100], r=4, seed=0)
