@@ -5,6 +5,7 @@ from porespy.filters import (
     seq_to_satn,
     trim_disconnected_blobs,
     fftmorphology,
+    erode,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
@@ -544,6 +545,8 @@ def imbibition(
     --------
 
     """
+    im = np.array(im, dtype=bool)
+
     if dt is None:
         dt = edt(im)
 
@@ -555,8 +558,13 @@ def imbibition(
 
     if isinstance(steps, int):
         mask = np.isfinite(pc)*im
-        Ps = np.logspace(np.log10(pc[mask].max()),
-                         np.log10(pc[mask].min()*.99), steps)
+        Ps = np.logspace(
+            np.log10(pc[mask].max()),
+            np.log10(pc[mask].min())*0.99,
+            steps,
+        )
+    elif steps is None:
+        Ps = np.unique(pc[im])[::-1]
     else:
         Ps = np.unique(steps)[::-1]  # To ensure they are in descending order
 
@@ -564,13 +572,19 @@ def imbibition(
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=int)
-    for step, P in enumerate(tqdm(Ps, **settings.tqdm)):
+
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         # This can be made faster if I find a way to get only seeds on edge, so
         # less spheres need to be drawn
         invadable = (pc <= P)*im
+        # Using FFT-based erosion to find edges.  When struct is small, this is
+        # quite fast so it saves time overall by reducing the number of spheres
+        # that need to be inserted.
+        edges = (~erode(invadable, r=1, smooth=False))*invadable
         nwp_mask = np.zeros_like(im, dtype=bool)
-        if np.any(invadable):
-            coords = np.where(invadable)
+        if np.any(edges):
+            coords = np.where(edges)
             radii = dt[coords].astype(int)
             nwp_mask = _insert_disks_at_points_parallel(
                 im=nwp_mask,
@@ -580,6 +594,7 @@ def imbibition(
                 smooth=True,
                 overwrite=True,
             )
+            nwp_mask += invadable
         if inlets is not None:
             nwp_mask = ~trim_disconnected_blobs(
                 im=(~nwp_mask)*im,
@@ -593,9 +608,9 @@ def imbibition(
         if np.any(mask):
             im_seq[mask] = step
             im_pc[mask] = P
-            im_size[mask] = np.amin(radii)
+            # im_size[mask] = np.amin(radii)
 
-    trapped = None
+    trapped = None  # Initialize trapped to None in case outlets not given
     if outlets is not None:
         if inlets is not None:
             outlets[inlets] = False  # Ensure outlets do not overlap inlets
@@ -677,11 +692,12 @@ if __name__ == '__main__':
     ps.visualization.set_mpl_style()
 
     cm = copy(plt.cm.turbo)
-    cm.set_under('grey')
-    cm.set_over('k')
+    cm.set_under('k')
+    cm.set_over('grey')
 
     i = np.random.randint(1, 100000)  # bad: 38364, good: 65270, 71698
-    i = 95063
+    i = 50591
+    # i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
     print(i)
     im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
     im = ps.filters.fill_closed_pores(im, surface=True)
@@ -704,30 +720,48 @@ if __name__ == '__main__':
          ['(c)', '(d)', '(e)', '(e)']],
         figsize=[12, 8],
      )
-    # imb1.im_pc[~im] = -1
-    ax['(a)'].imshow(imb1.im_seq/im, origin='lower', cmap=cm, vmin=0)
+    tmp = np.copy(imb1.im_seq).astype(float)
+    vmax = tmp.max()
+    tmp[tmp < 0] = vmax + 1
+    tmp[tmp == 0] = np.nan
+    tmp[~im] = -1
+    ax['(a)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-    vmax = imb2.im_seq.max()
-    ax['(b)'].imshow(imb2.im_seq/im, origin='lower', cmap=cm, vmin=0, vmax=vmax)
+    tmp = np.copy(imb2.im_seq).astype(float)
+    vmax = tmp.max()
+    tmp[tmp < 0] = vmax + 1
+    tmp[tmp == 0] = np.nan
+    tmp[~im] = -1
+    ax['(b)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-    ax['(c)'].imshow(imb3.im_seq/im, origin='lower', cmap=cm, vmin=0)
+    tmp = np.copy(imb3.im_seq).astype(float)
+    vmax = tmp.max()
+    tmp[tmp < 0] = vmax + 1
+    tmp[tmp == 0] = np.nan
+    tmp[~im] = -1
+    ax['(c)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-    ax['(d)'].imshow(imb4.im_seq/im, origin='lower', cmap=cm, vmin=0)
+    tmp = np.copy(imb4.im_seq).astype(float)
+    vmax = tmp.max()
+    tmp[tmp < 0] = vmax + 1
+    tmp[tmp == 0] = np.nan
+    tmp[~im] = -1
+    ax['(d)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-    pc, s = ps.metrics.pc_map_to_pc_curve(
+    Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
         pc=imb1.im_pc, seq=imb1.im_seq, im=im, mode='imbibition')
-    ax['(e)'].semilogx(pc, s, 'b->', label='imbibition')
+    ax['(e)'].semilogx(Pc, Snwp, 'b->', label='imbibition')
 
-    pc, s = ps.metrics.pc_map_to_pc_curve(
+    Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
         pc=imb2.im_pc, seq=imb2.im_seq, im=im, mode='imbibition')
-    ax['(e)'].semilogx(pc, s, 'r-<', label='imbibition w trapping')
+    ax['(e)'].semilogx(Pc, Snwp, 'r-<', label='imbibition w trapping')
 
-    pc, s = ps.metrics.pc_map_to_pc_curve(
+    Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
         pc=imb3.im_pc, seq=imb3.im_seq, im=im, mode='imbibition')
-    ax['(e)'].semilogx(pc, s, 'g-^', label='imbibition w residual')
+    ax['(e)'].semilogx(Pc, Snwp, 'g-^', label='imbibition w residual')
 
-    pc, s = ps.metrics.pc_map_to_pc_curve(
+    Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
         pc=imb4.im_pc, seq=imb4.im_seq, im=im, mode='imbibition')
-    ax['(e)'].semilogx(pc, s, 'm-*', label='imbibition w residual & trapping')
+    ax['(e)'].semilogx(Pc, Snwp, 'm-*', label='imbibition w residual & trapping')
 
     ax['(e)'].legend()

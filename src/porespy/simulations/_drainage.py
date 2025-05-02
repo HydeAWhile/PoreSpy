@@ -565,9 +565,6 @@ def drainage(
     if dt is None:
         dt = edt(im)
 
-    if inlets is None:
-        inlets = borders(shape=im.shape, mode='faces') * im
-
     if outlets is not None:
         outlets = outlets*im
         if np.sum(inlets * outlets):
@@ -579,7 +576,11 @@ def drainage(
 
     if isinstance(steps, int):  # Use values in pc for invasion steps
         mask = np.isfinite(pc)*im
-        Ps = np.logspace(np.log10(pc[mask].min()), np.log10(pc[mask].max()), steps)
+        Ps = np.logspace(
+            np.log10(pc[mask].min()),
+            np.log10(pc[mask].max()),
+            steps,
+        )
     elif steps is None:
         Ps = np.unique(pc[im])
     else:
@@ -670,7 +671,7 @@ def drainage(
         im_seq[residual] = 0
 
     # Analyze trapping and adjust computed images accordingly
-    trapped = None
+    trapped = None  # Initialize trapped to None in case outlets not given
     if outlets is not None:
         trapped = find_trapped_regions(
             im=im,
