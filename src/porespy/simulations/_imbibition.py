@@ -83,7 +83,7 @@ def imbibition_dsi(
 
     Notes
     -----
-    The sphere insert stesps will be executed in parallel if
+    The sphere insertion steps will be executed in parallel if
     `porespy.settings.ncores > 1`
     """
     if settings.ncores > 1:
@@ -581,7 +581,7 @@ def imbibition(
         # Using FFT-based erosion to find edges.  When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
         # that need to be inserted.
-        edges = (~erode(invadable, r=1, smooth=False))*invadable
+        edges = (~erode(invadable, r=1, smooth=False, method='conv'))*invadable
         nwp_mask = np.zeros_like(im, dtype=bool)
         if np.any(edges):
             coords = np.where(edges)

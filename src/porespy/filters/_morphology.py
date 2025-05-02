@@ -17,9 +17,9 @@ __all__ = [
 
 def erode(im, r, dt=None, method='dt', smooth=True):
     from porespy import settings
-    if dt is None:
-        dt = edt(im, parallel=settings.ncores)
     if method == 'dt':
+        if dt is None:
+            dt = edt(im, parallel=settings.ncores)
         ero = dt >= r if smooth else dt > r
     elif method.startswith('conv'):
         se = ps_round(r=r, ndim=im.ndim, smooth=smooth)
