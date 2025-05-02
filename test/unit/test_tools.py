@@ -564,14 +564,41 @@ class ToolsTest():
         slabs2 = ps.tools.get_slices_slabs(im, span=10, step=10, mode='tile')
         assert slabs1 == slabs2
 
-    def test_get_slices_slabs_2D(self):
-        im = np.ones([30, 30])
-        span = 10
-        slabs = ps.tools.get_slices_slabs(im, span=span, mode='slide')
-        assert len(slabs[0]) == im.ndim
-        assert len(slabs) == im.shape[0] - span + 1
-        assert im[slabs[0]].sum() == 30*10
-        assert im[slabs[-1]].sum() == 30*10
+    def test_get_slices_random_2D(self):
+        im = np.ones([100, 100])
+        s = ps.tools.get_slices_random(im, n=10)
+        assert len(s) == 10
+        for sl in s:
+            # Check that slices are within image bounds
+            assert sl[0].start >= 0 and sl[0].stop <= im.shape[0]
+            assert sl[1].start >= 0 and sl[1].stop <= im.shape[1]
+
+    def test_get_slices_random_3D(self):
+        im = np.ones([100, 100, 100])
+        s = ps.tools.get_slices_random(im, n=10)
+        assert len(s) == 10
+        for sl in s:
+            # Check that slices are within image bounds
+            assert sl[0].start >= 0 and sl[0].stop <= im.shape[0]
+            assert sl[1].start >= 0 and sl[1].stop <= im.shape[1]
+            assert sl[2].start >= 0 and sl[2].stop <= im.shape[2]
+
+    def test_get_slices_multigrid_2D(self):
+        im = np.ones([100, 100])
+        s = ps.tools.get_slices_multigrid(im, block_size_range=[10, 50])
+        # Should get slices for each size
+        assert len(s) == 384
+
+    def test_get_slices_multigrid_3D(self):
+        im = np.ones([100, 100, 100])
+        s = ps.tools.get_slices_multigrid(im, block_size_range=[10, 50])
+        # Should get slices for each size
+        assert len(s) == 3024
+
+    def test_get_slices_multigrid_with_overlap(self):
+        im = np.ones([100, 100])
+        s1 = ps.tools.get_slices_multigrid(im, block_size_range=[10, 50], overlap=5)
+        assert len(s1) == 384
 
 
 if __name__ == '__main__':

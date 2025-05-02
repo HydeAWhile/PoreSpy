@@ -235,6 +235,53 @@ class MetricsTest():
         rev = ps.metrics.rev_porosity(im)
         assert_allclose(np.average(rev.porosity), im.sum() / im.size, rtol=1e-1)
 
+    def test_rev_porosity_with_slices(self):
+        im = ps.generators.blobs(shape=[100, 100], porosity=0.5, seed=0)
+        slices = ps.tools.get_slices_random(im=im, n=10)
+        rev = ps.metrics.rev_porosity(im, slices=slices)
+        assert len(rev.porosity) == 10
+        assert len(rev.volume) == 10
+        assert np.all(rev.porosity >= 0)
+        assert np.all(rev.porosity <= 1)
+        assert np.all(rev.volume > 0)
+
+    def test_rev_tortuosity(self):
+        im = ps.generators.blobs(shape=[100, 100], porosity=0.5, seed=0)
+        rev = ps.metrics.rev_tortuosity(im, n=10, axis=0)
+        assert hasattr(rev, 'porosity_orig')
+        assert hasattr(rev, 'porosity_perc')
+        assert hasattr(rev, 'g')
+        assert hasattr(rev, 'tau')
+        assert hasattr(rev, 'volume')
+        assert hasattr(rev, 'length')
+        assert hasattr(rev, 'axis')
+        assert hasattr(rev, 'time')
+        assert hasattr(rev, 'slice')
+        assert len(rev.porosity_orig) == 10
+        assert np.all(rev.porosity_orig >= 0)
+        assert np.all(rev.porosity_orig <= 1)
+        assert np.all(rev.volume > 0)
+        rev = ps.metrics.rev_tortuosity(im, n=10, axis=None)
+        assert len(rev.porosity_orig) == 20
+
+    def test_rev_tortuosity_with_slices(self):
+        im = ps.generators.blobs(shape=[100, 100], porosity=0.5, seed=0)
+        slices = ps.tools.get_slices_random(im=im, n=10)
+        rev = ps.metrics.rev_tortuosity(im, slices=slices, axis=0)
+        assert len(rev.porosity_orig) == 10
+        assert len(rev.volume) == 10
+        assert np.all(rev.porosity_orig >= 0)
+        assert np.all(rev.porosity_orig <= 1)
+        assert np.all(rev.volume > 0)
+
+    def test_rev_tortuosity_3d(self):
+        im = ps.generators.blobs(shape=[50, 50, 50], porosity=0.5, seed=0)
+        rev = ps.metrics.rev_tortuosity(im, n=10)
+        assert len(rev.porosity_orig) == 30  # 10 samples * 3 axes
+        assert np.all(rev.porosity_orig >= 0)
+        assert np.all(rev.porosity_orig <= 1)
+        assert np.all(rev.volume > 0)
+
     def test_pc_curve(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.7026, seed=0, periodic=False,)
