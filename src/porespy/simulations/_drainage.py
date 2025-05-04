@@ -6,13 +6,11 @@ from skimage.morphology import ball, disk, cube, square
 from porespy import settings
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
-    _insert_disks_at_points,
     _insert_disks_at_points_parallel,
     _insert_disk_at_points,
     _insert_disk_at_points_parallel,
     get_tqdm,
     Results,
-    ps_rect,
     ps_round,
     make_contiguous,
     get_edt,
@@ -21,11 +19,8 @@ from porespy.filters import (
     trim_disconnected_blobs,
     find_trapped_regions,
     pc_to_satn,
-    pc_to_seq,
     fftmorphology,
-)
-from porespy.generators import (
-    borders,
+    erode,
 )
 
 
@@ -606,6 +601,7 @@ def drainage(
             )
         # Isolate only newly found locations to speed up inserting
         temp = invadable*(~seeds)
+        # edges = (~erode(invadable, r=1, smooth=False, method='conv'))*invadable
         # Find (i, j, k) coordinates of new locations
         coords = np.where(temp)
         # Add new locations to list of invaded locations
@@ -677,7 +673,7 @@ def drainage(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            method='cluster',
+            method='cluster' if len(Ps) < 100 else 'scanning',
             min_size=min_size,
         )
         trapped[im_seq == -1] = True
@@ -709,7 +705,6 @@ def drainage(
 
 
 if __name__ == "__main__":
-    import numpy as np
     import porespy as ps
     import matplotlib.pyplot as plt
     from copy import copy
@@ -818,6 +813,6 @@ if __name__ == "__main__":
 
         pc, s = ps.metrics.pc_map_to_pc_curve(
             pc=drn4.im_pc, seq=drn4.im_seq, im=im, mode='drainage')
-        ax['(e)'].plot(np.log10(pc), s, 'm-*', label='drainage w residual & trapping')
+        ax['(e)'].plot(np.log10(pc), s, 'm-*', label='drainage w residual+trapping')
 
         ax['(e)'].legend()

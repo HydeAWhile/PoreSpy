@@ -619,7 +619,7 @@ def imbibition(
             seq=im_seq,
             outlets=outlets,
             return_mask=True,
-            method='cluster',
+            method='cluster' if len(Ps) < 100 else 'scanning',
             min_size=min_size,
         )
         im_pc[trapped] = -np.inf

@@ -1096,7 +1096,7 @@ def pc_map_to_pc_curve(
         when computing the saturation.
     seq : ndarray, optional
         A numpy array with each voxel containing the sequence at which it was
-        invaded. This is required when analyzing results from invasion percolation
+        invaded. This is required when analyzing results from injection simulations
         since the pressures in `pc` do not correspond to the sequence in which
         they were filled.
     mode : str
