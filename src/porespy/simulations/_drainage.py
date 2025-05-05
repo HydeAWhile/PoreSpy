@@ -17,7 +17,7 @@ from porespy.tools import (
 )
 from porespy.filters import (
     trim_disconnected_blobs,
-    find_trapped_regions,
+    find_trapped_clusters,
     pc_to_satn,
     fftmorphology,
     erode,
@@ -132,14 +132,12 @@ def drainage_dsi(
         im_size[mask] = r
         im_seq[mask] = i + 1
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
             conn='min',
             method='cluster',
-            min_size=0,
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
@@ -227,14 +225,12 @@ def drainage_dt_fft(
         im_seq[mask] = i + 1
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
             conn='min',
             method='cluster',
-            min_size=0,
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
@@ -317,14 +313,12 @@ def drainage_fft(
         im_seq[mask] = i + 1
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
             conn='min',
             method='cluster',
-            min_size=0,
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
@@ -423,14 +417,12 @@ def drainage_dt(
     #     im_size[residual] = -np.inf
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
             conn='min',
             method='cluster',
-            min_size=0,
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
@@ -669,12 +661,11 @@ def drainage(
     # Analyze trapping and adjust computed images accordingly
     trapped = None  # Initialize trapped to None in case outlets not given
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            method='cluster' if len(Ps) < 100 else 'queue',
-            min_size=min_size,
+            method='labels' if len(Ps) < 100 else 'queue',
         )
         trapped[im_seq == -1] = True
         im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf

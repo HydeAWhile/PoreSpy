@@ -1,7 +1,7 @@
 import inspect
 import numpy as np
 from porespy.filters import (
-    find_trapped_regions,
+    find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_blobs,
     fftmorphology,
@@ -129,14 +129,12 @@ def imbibition_dsi(
         im_size[mask] = r
         im_seq[mask] = i + 1
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
             conn='min',
-            method='cluster',
-            min_size=0,
+            method='labels',
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
@@ -235,14 +233,12 @@ def imbibition_dt_fft(
     #     im_size[residual] = np.inf
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
             conn='min',
-            method='cluster',
-            min_size=0,
+            method='labels',
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
@@ -343,14 +339,12 @@ def imbibition_dt(
     #     im_size[residual] = np.inf
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
             conn='min',
-            method='cluster',
-            min_size=0,
+            method='labels',
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
@@ -443,14 +437,12 @@ def imbibition_fft(
     #     im_size[residual] = np.inf
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
             conn='min',
-            method='cluster',
-            min_size=0,
+            method='labels',
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
@@ -614,13 +606,11 @@ def imbibition(
     if outlets is not None:
         if inlets is not None:
             outlets[inlets] = False  # Ensure outlets do not overlap inlets
-        trapped = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            return_mask=True,
-            method='cluster' if len(Ps) < 100 else 'queue',
-            min_size=min_size,
+            method='labels' if len(Ps) < 100 else 'queue',
         )
         im_pc[trapped] = -np.inf
         im_seq[trapped] = -1

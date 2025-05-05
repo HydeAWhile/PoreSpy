@@ -44,7 +44,7 @@ def find_small_clusters(
 
     Parameters
     ----------
-    im ndarray
+    im : ndarray
         The boolean image of the porous media with `True` indicating void.
     trapped : ndarray
         The boolean array of the trapped voxels.
@@ -72,17 +72,11 @@ def find_small_clusters(
         ============= ==============================================================
         Attribute     Description
         ============= ==============================================================
-        `im_trapped`  An updated mask of trapped voxels with the erroneously trapped
-                      voxels released (i.e. set to `False`).
+        `im_trapped`  An updated mask of trapped voxels with the small clusters of
+                      trapped voxels removed (i.e. set to `False`).
         `im_released` An image with `True` values indicating formerly trapped voxels
                       which were smaller than `min_size` so set to untrapped.
         ============= ==============================================================
-
-    Notes
-    -----
-    This function has to essentially guess which value to put into each un-trapped
-    voxel so the sequence values will not be totally correct. However, the fluid
-    configuration for a given saturation will be nearly identical.
 
     """
     cluster_size = region_size(trapped, conn=conn)
@@ -104,9 +98,38 @@ def fill_trapped_clusters(
     pc: npt.NDArray = None,
     min_size: int = 0,
     conn: Literal['min', 'max'] = 'min',
-    mode: Literal['drainage', 'imbibitin'] = 'drainage',
+    mode: Literal['drainage', 'imbibition'] = 'drainage',
 ):
     r"""
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the porous media with `True` indicating void.
+    trapped : ndarray
+        The boolean array of the trapped voxels.
+    seq : ndarray
+        The sequence map produced by a displacement algorithm. Regions labelled -1
+        are considered trapped, and regions labelled 0 are considered residual
+        invading phase.
+    size : ndarray
+       The size map produced by a displacement algorithm. Regions labelled -1
+       are considered trapped, and regions labelled 0 are considered solid.
+    pc : ndarray
+        The capillary pressure map produced by a displacement algorithm.
+    conn : str
+        Controls the shape of the structuring element used to find neighboring
+        voxels when looking for neighbor values to place into un-trapped voxels.
+        Options are:
+
+        ========= ==================================================================
+        Option    Description
+        ========= ==================================================================
+        'min'     This corresponds to a cross with 4 neighbors in 2D and 6
+                  neighbors in 3D.
+        'max'     This corresponds to a square or cube with 8 neighbors in 2D and
+                  26 neighbors in 3D.
+        ========= ==================================================================
     """
     se = strel[im.ndim][conn].copy()
     results = Results()
@@ -152,7 +175,7 @@ def find_trapped_clusters(
     seq: npt.ArrayLike,
     outlets: npt.ArrayLike,
     conn: Literal['min', 'max'] = 'min',
-    method: Literal['queue', 'cluster'] = 'cluster',
+    method: Literal['queue', 'labels'] = 'labels',
 ):
     r"""
     Find the trapped regions given an invasion sequence map and specified outlets
@@ -189,7 +212,7 @@ def find_trapped_clusters(
         ========= ==================================================================
         Option    Description
         ========= ==================================================================
-        'cluster' Uses `scipy.ndimage.label` to find all clusters of invading phase
+        'labels'  Uses `scipy.ndimage.label` to find all clusters of invading phase
                   connected to the outlet at each value of sequence found on the
                   outlet face. This method is faster if `ibop` was used for the
                   simulation.
@@ -206,20 +229,20 @@ def find_trapped_clusters(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_trapped_regions.html>`_
+    <https://porespy.org/examples/filters/reference/find_trapped_clusters.html>`_
     to view online example.
 
     """
     if method == 'queue':
         seq = np.copy(seq)  # Need a copy since the queue method updates 'in-place'
-        seq_temp = _find_trapped_regions_queue(
+        seq_temp = _find_trapped_clusters_queue(
             im=im,
             seq=seq,
             outlets=outlets,
             conn=conn,
         )
-    elif method == 'cluster':
-        seq_temp = _find_trapped_regions_cluster(
+    elif method == 'labels':
+        seq_temp = _find_trapped_clusters_labels(
             im=im,
             seq=seq,
             outlets=outlets,
@@ -228,10 +251,10 @@ def find_trapped_clusters(
     else:
         raise Exception(f'{method} is not a supported method')
 
-    return (seq_temp == -1)*imß
+    return (seq_temp == -1)*im
 
 
-def _find_trapped_regions_cluster(
+def _find_trapped_clusters_labels(
     im: npt.ArrayLike,
     seq: npt.ArrayLike,
     outlets: npt.ArrayLike,
@@ -281,7 +304,7 @@ def _find_trapped_regions_cluster(
     return seq
 
 
-def _find_trapped_regions_queue(
+def _find_trapped_clusters_queue(
     im: npt.NDArray,
     seq: npt.NDArray,
     outlets: npt.NDArray,

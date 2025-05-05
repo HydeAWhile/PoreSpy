@@ -31,7 +31,7 @@ image, but with altered values.
     filters.find_invalid_pores
     filters.find_peaks
     filters.find_surface_pores
-    filters.find_trapped_regions
+    filters.find_trapped_clusters
     filters.flood
     filters.flood_func
     filters.hold_peaks

@@ -15,7 +15,7 @@ from porespy.tools import (
 )
 from typing import Literal
 from porespy.filters import (
-    find_trapped_regions,
+    find_trapped_clusters,
     seq_to_satn,
 )
 
@@ -108,13 +108,11 @@ def qbip(
     # Deal with trapping if outlets were specified
     if outlets is not None:
         logger.info('Computing trapping and adjusting outputs')
-        sequence = find_trapped_regions(
+        sequence = find_trapped_clusters(
             im=im,
             seq=sequence,
             outlets=outlets,
-            return_mask=False,
             conn=conn,
-            min_size=min_size,
             method='queue',
         )
         trapped = (sequence == -1).squeeze()
@@ -404,16 +402,13 @@ def ibip(
     # Deal with trapping if outlets were specified
     if outlets is not None:
         logger.info('Computing trapping and adjusting outputs')
-        sequence = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=seq,
             outlets=outlets,
-            return_mask=False,
             conn=conn,
-            min_size=min_size,
             method='queue',
         )
-        trapped = (sequence == -1).squeeze()
         # pressure = pressure.astype(float).squeeze()
         # pressure[trapped] = np.inf
         seq[trapped] = -1
@@ -611,7 +606,7 @@ if __name__ == "__main__":
     # outlets[-1, :] = True
     # outlets = outlets*im
     # ps.tools.tic()
-    # trapped_new = ps.filters.find_trapped_regions(
+    # trapped_new = ps.filters.find_trapped_clusters(
     #     im=im,
     #     seq=ip.im_seq,
     #     outlets=outlets,
@@ -621,7 +616,7 @@ if __name__ == "__main__":
     # )
     # ps.tools.toc()
     # ps.tools.tic()
-    # trapped = ps.filters.find_trapped_regions(
+    # trapped = ps.filters.find_trapped_clusters(
     #     im=im,
     #     seq=ip.im_seq,
     #     outlets=outlets,
