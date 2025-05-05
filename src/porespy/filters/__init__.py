@@ -70,5 +70,5 @@ from ._nlmeans import *
 from ._size_seq_satn import *
 from ._snows import *
 from ._transforms import *
-from ._invasion import *
+from ._displacement import *
 from ._morphology import *

@@ -14,8 +14,6 @@ from porespy.tools import (
     get_tqdm,
     get_border,
     Results,
-    ps_round,
-    ps_rect,
 )
 from porespy.filters import (
     region_size,
@@ -29,15 +27,15 @@ strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(
 
 
 __all__ = [
-    "fill_trapped_voxels",
-    "find_trapped_regions",
+    "find_small_clusters",
+    "find_trapped_clusters",
 ]
 
 
-def fill_trapped_voxels(
-    seq: npt.NDArray,
+def find_small_clusters(
+    im: npt.NDArray,
     trapped: npt.NDArray = None,
-    max_size: int = 1,
+    min_size: int = 1,
     conn: str = 'min',
 ):
     r"""
@@ -46,15 +44,12 @@ def fill_trapped_voxels(
 
     Parameters
     ----------
-    seq : ndarray
-        The sequence map resulting from an invasion process where trapping has
-        been applied, such that trapped voxels are labelled -1.
-    trapped : ndarray, optional
-        The boolean array of the trapped voxels. If this is not available than all
-        voxels in `seq` with a value < 0 are used.
+    im ndarray
+        The boolean image of the porous media with `True` indicating void.
+    trapped : ndarray
+        The boolean array of the trapped voxels.
     min_size : int
-        The maximum size of the clusters which are to be filled. Clusters larger
-        than this size are left trapped.
+        The minimum size of the clusters which are to be filled.
     conn : str
         Controls the shape of the structuring element used to find neighboring
         voxels when looking for sequence values to place into un-trapped voxels.
@@ -74,51 +69,90 @@ def fill_trapped_voxels(
     results
         A dataclass-like object with the following images as attributes:
 
-        ========== ==================================================================
-        Attribute  Description
-        ========== ==================================================================
-        'seq'      The invasion sequence image with erroneously trapped voxels set
-                   back to untrapped, and given the sequence number of their
-                   nearby voxels.
-        'trapped'  An updated mask of trapped voxels with the erroneously trapped
-                   voxels removed (i.e. set to `False`).
-        ========== ==================================================================
+        ============= ==============================================================
+        Attribute     Description
+        ============= ==============================================================
+        `im_trapped`  An updated mask of trapped voxels with the erroneously trapped
+                      voxels released (i.e. set to `False`).
+        `im_released` An image with `True` values indicating formerly trapped voxels
+                      which were smaller than `min_size` so set to untrapped.
+        ============= ==============================================================
 
     Notes
     -----
-    This function has to essentially guess which sequence value to put into each
-    un-trapped voxel so the sequence values can differ between the output of
-    this function and the result returned by the various invasion algorithms where
-    the trapping is computed internally. However, the fluid configuration for a
-    given saturation will be nearly identical.
+    This function has to essentially guess which value to put into each un-trapped
+    voxel so the sequence values will not be totally correct. However, the fluid
+    configuration for a given saturation will be nearly identical.
 
     """
-    if trapped is None:
-        trapped = seq < 0
-
-    se = strel[seq.ndim][conn].copy()
-    size = region_size(trapped, conn=conn)
-    mask = (size <= max_size)*(size > 0)
+    cluster_size = region_size(trapped, conn=conn)
+    mask = (cluster_size <= min_size)*(cluster_size > 0)
     trapped[mask] = False
 
-    mx = spim.maximum_filter(seq*~trapped, footprint=se)
-    mx = flood_func(mx, np.amax, labels=spim.label(mask, structure=se)[0])
-    seq[mask] = mx[mask]
-
     results = Results()
-    results.im_seq = seq
     results.im_trapped = trapped
+    results.im_released = mask
+
     return results
 
 
-def find_trapped_regions(
+def fill_trapped_clusters(
+    im: npt.NDArray,
+    trapped: npt.NDArray,
+    seq: npt.NDArray = None,
+    size: npt.NDArray = None,
+    pc: npt.NDArray = None,
+    min_size: int = 0,
+    conn: Literal['min', 'max'] = 'min',
+    mode: Literal['drainage', 'imbibitin'] = 'drainage',
+):
+    r"""
+    """
+    se = strel[im.ndim][conn].copy()
+    results = Results()
+
+    if seq is not None:
+        seq[trapped] = -1
+        seq = make_contiguous(seq, mode='symmetric')
+    if size is not None:
+        size[trapped] = -1
+    if pc is not None:
+        pc[trapped] = np.inf if mode == 'drainage' else -np.inf
+
+    if min_size > 0:
+        trapped, released = find_small_clusters(
+            im=im,
+            trapped=trapped,
+            min_size=min_size,
+            conn=conn,
+        )
+        labels = spim.label(released, structure=se)[0]
+        if seq is not None:
+            mx = spim.maximum_filter(seq*~released, footprint=se)
+            mx = flood_func(mx, np.amax, labels=labels)
+            seq[released] = mx[released]
+            results.im_seq = seq
+        if size is not None:
+            mx = spim.maximum_filter(size*~released, footprint=se)
+            mx = flood_func(mx, np.amax, labels=labels)
+            size[released] = mx[released]
+            results.im_size = size
+        if pc is not None:
+            tmp = pc.copy()
+            tmp[np.isinf(tmp)] = 0
+            mx = spim.maximum_filter(tmp*~released, footprint=se)
+            mx = flood_func(mx, np.amax, labels=labels)
+            pc[released] = mx[released]
+            results.im_pc = pc
+    return results
+
+
+def find_trapped_clusters(
     im: npt.ArrayLike,
     seq: npt.ArrayLike,
     outlets: npt.ArrayLike,
-    return_mask: bool = True,
     conn: Literal['min', 'max'] = 'min',
     method: Literal['queue', 'cluster'] = 'cluster',
-    min_size: int = 0,
 ):
     r"""
     Find the trapped regions given an invasion sequence map and specified outlets
@@ -136,11 +170,6 @@ def find_trapped_regions(
     outlets : ndarray
         An image the same size as ``im`` with ``True`` indicating outlets
         and ``False`` elsewhere.
-    return_mask : bool
-        If ``True`` (default) then the returned image is a boolean mask
-        indicating which voxels are trapped.  If ``False``, then a copy of
-        ``seq`` is returned with the trapped voxels set to uninvaded (-1) and
-        the remaining invasion sequence values adjusted accordingly.
     conn : str
         Controls the shape of the structuring element used to determin if voxels
         are connected.  Options are:
@@ -169,21 +198,10 @@ def find_trapped_regions(
                   `qbip` was used for the simulation.
         ========= ==================================================================
 
-    min_size : int
-        Any clusters of trapped voxels smaller than this size will be set to *not
-        trapped*. This is useful to prevent small voxels along edges of the void
-        space from being set to trapped. These can appear to be trapped due to the
-        jagged nature of the digital image. The default is 0, meaning this
-        adjustment is not applied, but a value of 3 or 4 is recommended to activate
-        this adjustment.
-
     Returns
     -------
-    trapped : ND-image
-        An image, the same size as ``seq``.  If ``return_mask`` is ``True``,
-        then the image has ``True`` values indicating the trapped voxels.  If
-        ``return_mask`` is ``False``, then a copy of ``seq`` is returned with
-        trapped voxels set to -1.
+    trapped : ndarray
+        A boolean mask indicating which voxels were found to be trapped.
 
     Examples
     --------
@@ -210,14 +228,7 @@ def find_trapped_regions(
     else:
         raise Exception(f'{method} is not a supported method')
 
-    if min_size > 0:  # Fix pixels on solid surfaces
-        seq_temp, trapped = fill_trapped_voxels(seq_temp, max_size=min_size)
-    else:
-        trapped = (seq_temp == -1)*im
-    if return_mask:
-        return trapped
-    else:
-        return seq_temp
+    return (seq_temp == -1)*imß
 
 
 def _find_trapped_regions_cluster(
