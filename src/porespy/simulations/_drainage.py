@@ -673,7 +673,7 @@ def drainage(
             im=im,
             seq=im_seq,
             outlets=outlets,
-            method='cluster' if len(Ps) < 100 else 'scanning',
+            method='cluster' if len(Ps) < 100 else 'queue',
             min_size=min_size,
         )
         trapped[im_seq == -1] = True
