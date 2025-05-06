@@ -694,7 +694,6 @@ class FilterTest():
             seq=inv.im_seq,
             outlets=outlets,
             method='labels',
-            return_mask=False,
         )
         inv = ps.simulations.drainage(im, inlets=inlets)
         trp2 = ps.filters.find_trapped_clusters(
@@ -702,7 +701,6 @@ class FilterTest():
             seq=inv.im_seq,
             outlets=outlets,
             method='queue',
-            return_mask=False,
         )
 
         assert np.all(trp1 == trp2)

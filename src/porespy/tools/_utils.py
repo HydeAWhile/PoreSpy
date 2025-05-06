@@ -55,7 +55,7 @@ def get_edt():
     try:
         package = importlib.import_module("pyedt")
         return package.edt
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as e:
         package = importlib.import_module("edt")
         edt = package.edt
         edt = partial(edt, parallel=Settings().ncores)

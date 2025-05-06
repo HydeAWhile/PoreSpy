@@ -108,16 +108,18 @@ def qbip(
     # Deal with trapping if outlets were specified
     if outlets is not None:
         logger.info('Computing trapping and adjusting outputs')
-        sequence = find_trapped_clusters(
+        trapped = find_trapped_clusters(
             im=im,
             seq=sequence,
             outlets=outlets,
             conn=conn,
             method='queue',
         )
-        trapped = (sequence == -1).squeeze()
+        trapped = trapped.squeeze()
         pressure = pressure.astype(float).squeeze()
         pressure[trapped] = np.inf
+        sequence[trapped] = -1
+        sequence = make_contiguous(im=sequence, mode='symmetric')
         size = size.astype(float)
         size[trapped] = np.inf
 
@@ -412,6 +414,7 @@ def ibip(
         # pressure = pressure.astype(float).squeeze()
         # pressure[trapped] = np.inf
         seq[trapped] = -1
+        seq = make_contiguous(im=seq, mode='symmetric')
         sizes[trapped] = -1
 
     results = Results()
