@@ -262,8 +262,8 @@ class GeneratorTest():
         assert not np.all(im1 == im3)
 
     def test_blobs_w_divs(self):
-        im1 = ps.generators.blobs(shape=[101, 101], seed=0, divs=1, periodic=False,)
-        im2 = ps.generators.blobs(shape=[101, 101], seed=0, divs=2, periodic=False,)
+        im1 = ps.generators.blobs(shape=[101, 101], seed=0, parallel_kw={"divs": 1}, periodic=False,)
+        im2 = ps.generators.blobs(shape=[101, 101], seed=0, parallel_kw={"divs": 2}, periodic=False,)
         assert np.all(im1 == im2)
 
     def test_random_spheres_2d_contained(self):

@@ -28,3 +28,4 @@ from ._size_factors import *
 from ._getnet_orig import *
 from ._getnet_para import *
 from ._snow2 import *
+from ._magnet import *

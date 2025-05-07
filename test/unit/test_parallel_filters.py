@@ -22,41 +22,51 @@ class ParallelTest():
         im = ps.generators.blobs(shape=[200, 200], blobiness=2, periodic=False,)
         dt = edt(im)
         mx_serial = ps.filters.find_peaks(dt=dt)
-        mx_parallel_1 = ps.filters.find_peaks(dt=dt, divs=2)
+        parallel_kw = {"divs": 2}
+        mx_parallel_1 = ps.filters.find_peaks(dt=dt, parallel_kw=parallel_kw)
         assert np.all(mx_serial == mx_parallel_1)
 
     def test_find_peaks_3D(self):
         im = ps.generators.blobs(shape=[100, 100, 100], blobiness=2, periodic=False,)
         dt = edt(im)
         mx_serial = ps.filters.find_peaks(dt=dt)
-        mx_parallel_1 = ps.filters.find_peaks(dt=dt, divs=2)
+        parallel_kw = {"divs": 2}
+        mx_parallel_1 = ps.filters.find_peaks(dt=dt, parallel_kw=parallel_kw)
         assert np.all(mx_serial == mx_parallel_1)
 
     def test_porosimetry(self):
         im = ps.generators.blobs(shape=[100, 100, 100], blobiness=2, periodic=False,)
-        mio_serial = ps.filters.porosimetry(im, mode='mio', divs=1)
-        mio_parallel = ps.filters.porosimetry(im, mode='mio', divs=2)
+        parallel_kw = {"divs": 1}
+        mio_serial = ps.filters.porosimetry(im, mode='mio', parallel_kw=parallel_kw)
+        parallel_kw = {"divs": 2}
+        mio_parallel = ps.filters.porosimetry(im, mode='mio', parallel_kw=parallel_kw)
         assert np.all(mio_serial == mio_parallel)
 
     def test_local_thickness(self):
         im = ps.generators.blobs(shape=[100, 100, 100], blobiness=2, periodic=False,)
-        lt_serial = ps.filters.local_thickness(im, mode='mio', divs=1)
-        lt_parallel = ps.filters.local_thickness(im, mode='mio', divs=2)
+        parallel_kw = {"divs": 1}
+        lt_serial = ps.filters.local_thickness(im, mode='mio', parallel_kw=parallel_kw)
+        parallel_kw = {"divs": 2}
+        lt_parallel = ps.filters.local_thickness(im, mode='mio', parallel_kw=parallel_kw)
         assert np.all(lt_serial == lt_parallel)
 
     def test_blobs_3D(self):
         np.random.seed(0)
-        im1 = ps.generators.blobs(shape=[101, 101, 101], divs=1, periodic=False,)
+        parallel_kw = {"divs": 1}
+        im1 = ps.generators.blobs(shape=[101, 101, 101], parallel_kw=parallel_kw, periodic=False,)
         np.random.seed(0)
-        im2 = ps.generators.blobs(shape=[101, 101, 101], divs=2, periodic=False,)
+        parallel_kw = {"divs": 2}
+        im2 = ps.generators.blobs(shape=[101, 101, 101], parallel_kw=parallel_kw, periodic=False,)
         assert np.all(im1 == im2)
 
     def test_blobs_2D(self):
         np.random.seed(0)
         s = 100
-        im1 = ps.generators.blobs(shape=[s, s], divs=1, porosity=.5, periodic=False,)
+        parallel_kw = {"divs": 1}
+        im1 = ps.generators.blobs(shape=[s, s], parallel_kw=parallel_kw, porosity=.5, periodic=False,)
         np.random.seed(0)
-        im2 = ps.generators.blobs(shape=[s, s], divs=2, porosity=.5, periodic=False,)
+        parallel_kw = {"divs": 2}
+        im2 = ps.generators.blobs(shape=[s, s], parallel_kw=parallel_kw, porosity=.5, periodic=False,)
         assert np.sum(im1 != im2) < 5
 
 

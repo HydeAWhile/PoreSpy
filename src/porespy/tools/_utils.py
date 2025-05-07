@@ -6,6 +6,11 @@ import time
 import psutil
 import numpy as np
 from dataclasses import dataclass
+import warnings
+import numpy as np
+import psutil
+
+logger = logging.getLogger("porespy")
 from functools import partial
 
 
@@ -17,6 +22,7 @@ __all__ = [
     "tic",
     "toc",
     "get_edt",
+    "get_skel",
     "parse_shape",
 ]
 
@@ -48,6 +54,17 @@ def parse_shape(im_or_shape):
         s = np.shape(s)
     shape = np.array([i for i in s if i not in [0, np.inf, None]], dtype=int)
     return shape
+
+
+def get_skel():
+    package = importlib.import_module("skimage.morphology")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            func = package.skeletonize_3d
+        except (FutureWarning, AttributeError):
+            func = package.skeletonize
+    return func
 
 
 def get_edt():
@@ -192,6 +209,9 @@ class Settings:  # pragma: no cover
         "file": sys.stdout,
     }
     _loglevel = 40 if _is_ipython_notebook() else 30
+    # add parallel settings
+    divs = 2  # choose 2 as default
+    overlap = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -396,3 +416,7 @@ class Results:
                 lines.append("{0:<25s} {1}".format(item, self[item]))
         lines.append(header)
         return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    pass
