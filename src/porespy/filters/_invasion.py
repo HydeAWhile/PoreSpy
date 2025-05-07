@@ -12,14 +12,14 @@ from porespy.filters import flood, find_disconnected_voxels
 from porespy.tools import (
     make_contiguous,
     get_tqdm,
-    get_border,
     Results,
-    ps_round,
-    ps_rect,
 )
 from porespy.filters import (
     region_size,
     flood_func,
+)
+from porespy.generators import (
+    borders,
 )
 
 
@@ -233,7 +233,7 @@ def _find_trapped_regions_cluster(
         im = ~(seq == 0)
     seq = np.copy(seq)
     if outlets is None:
-        outlets = get_border(seq.shape, mode='faces')
+        outlets = borders(seq.shape, mode='faces')
     non_perc = find_disconnected_voxels(im, surface=True)
     se = strel[im.ndim][conn].copy()
     mask = seq < 0  # This is used again at the end of the function to fix seq

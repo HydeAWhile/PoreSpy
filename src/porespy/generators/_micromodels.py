@@ -4,7 +4,6 @@ import numpy as np
 import scipy.ndimage as spim
 import scipy.stats as spst
 from porespy.generators import (
-    borders,
     lattice_spheres,
     spheres_from_coords
 )
@@ -293,6 +292,7 @@ def cylindrical_pillars_mesh(
         to view online example.
 
     """
+    from porespy.generators import borders
     try:
         from nanomesh import Mesher2D
     except ModuleNotFoundError:
