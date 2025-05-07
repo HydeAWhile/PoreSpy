@@ -2,7 +2,7 @@ import numpy as np
 import porespy as ps
 import pytest
 import scipy.ndimage as spim
-from skimage.morphology import disk, ball
+from skimage.morphology import disk, ball, skeletonize
 from skimage.util import random_noise
 import matplotlib.pyplot as plt
 
@@ -514,7 +514,6 @@ class FilterTest():
                                     parallel_kw=parallel_kw)
 
     def test_prune_branches(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.random_spheres([100, 100, 100], r=4, seed=0)
         skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1)
@@ -522,7 +521,6 @@ class FilterTest():
         # assert skel1.sum() > skel2.sum()
 
     def test_prune_branches_n2(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.random_spheres(shape=[100, 100, 100], r=4, seed=0)
         skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1, iterations=1)
@@ -533,7 +531,6 @@ class FilterTest():
         assert skel3.sum() > skel4.sum()
 
     def test_apply_padded(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.blobs(
             shape=[100, 100], periodic=False,)
         skel1 = skeletonize(im)

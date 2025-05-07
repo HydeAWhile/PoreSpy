@@ -60,6 +60,10 @@ image, but with altered values.
     filters.trim_saddle_points
     filters.trim_saddle_points_legacy
     filters.trim_small_clusters
+    filters.find_junctions
+    filters.find_pore_bodies
+    filters.find_throat_skeleton
+    filters.spheres_to_network
 
 """
 
