@@ -5,13 +5,9 @@ import sys
 import time
 import psutil
 import numpy as np
+from functools import partial
 from dataclasses import dataclass
 import warnings
-import numpy as np
-import psutil
-
-logger = logging.getLogger("porespy")
-from functools import partial
 
 
 __all__ = [
