@@ -52,11 +52,7 @@ jobs:
 
       - name: Install PoreSpy and Python dependencies
         run: |
-          uv pip install -r pyproject.toml --system
-          uv pip install --system -e .[build]
-          pip install meson
-          pip install cibuildwheel
-          pip install build
+          uv sync --all-extras
 
       - name: Enable caching
         uses: astral-sh/setup-uv@v5
@@ -157,7 +153,7 @@ jobs:
 
       - name: Bump up version and create tag
         run: |
-          hatch version patch
+          uv run hatch version patch
           echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
 
       - name: Publish to TestPyPI
