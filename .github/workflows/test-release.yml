@@ -2,9 +2,9 @@ name: TestPyPI Release
 
 on:
   push:
-    branches: [ c_functions ]
+    branches: [c_functions]
   pull_request:
-    branches: [ c_functions ]
+    branches: [c_functions]
 
 jobs:
   build:
@@ -45,7 +45,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -115,7 +115,7 @@ jobs:
           CIBW_PLATFORM: ${{ matrix.platform }}
           CIBW_ARCHS: ${{ matrix.archs }}
           CIBW_ARCHS_LINUX: auto64
-          CIBW_SKIP: '*-musllinux_* pp*'
+          CIBW_SKIP: "*-musllinux_* pp*"
           CIBW_BUILD: cp310* cp311* cp312*
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macOS-version }}
           CIBW_BUILD_VERBOSITY: 1
@@ -154,7 +154,12 @@ jobs:
           pattern: cibw-*
           path: dist
           merge-multiple: true
-    
+
+      - name: Bump up version and create tag
+        run: |
+          hatch version patch
+          echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
+
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
