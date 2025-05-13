@@ -5,6 +5,8 @@ import math
 import platform
 import os
 
+__all__ = ["walk"]
+
 # Load C library functions
 def _load_c_walker_lib():
     base_dir = os.path.dirname(__file__)
