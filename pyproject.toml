@@ -48,7 +48,7 @@ readme = "README.md"
 requires-python = ">= 3.10"
 
 [project.optional-dependencies]
-build = ["hatch"]
+build = ["hatch", "meson", "cibuildwheel", "build", "ninja"]
 test = [
     "codecov",
     "coverage",
@@ -153,9 +153,9 @@ path = "src/porespy/__version__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/porespy"]
 artifacts = [
-  "src/porespy/beta/*.so",
-  "src/porespy/beta/*.dll",
-  "src/porespy/beta/*.dylib"
+    "src/porespy/beta/*.so",
+    "src/porespy/beta/*.dll",
+    "src/porespy/beta/*.dylib",
 ]
 
 [tool.hatch.build.targets.wheel.hooks.custom]
@@ -290,6 +290,4 @@ docstring-code-line-length = "dynamic"
 porespy = { workspace = true }
 
 [dependency-groups]
-dev = [
-    "porespy",
-]
+dev = ["porespy"]
