@@ -613,5 +613,5 @@ def create_model():
     '''
     from tensorflow.keras.optimizers import Adam
     model = _resnet3d()
-    model.compile(loss='mse', optimizer=Adam(lr=1e-4), metrics=['mse'])
+    model.compile(loss='mse', optimizer=Adam(learning_rate=1e-4), metrics=['mse'])
     return model
