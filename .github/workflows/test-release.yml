@@ -55,18 +55,6 @@ jobs:
         with:
           enable-cache: true
 
-      # - name: Bump up version and create tag
-      #   run: |
-      #     hatch version ${{ github.event.inputs.version }}
-      #     echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
-
-      # - name: Commit version bump + push tag
-      #   uses: stefanzweifel/git-auto-commit-action@v5
-      #   with:
-      #     commit_message: Bump version to ${{ env.VERSION }}
-      #     commit_author: GitHub Actions <actions@github.com>
-      #     tagging_message: ${{ env.VERSION }}
-
       - name: Install Ninja on Windows
         if: runner.os == 'Windows'
         run: choco install ninja -y
@@ -82,7 +70,7 @@ jobs:
       - name: Bump up version and create tag
         run: |
           uv run hatch version patch
-          echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
+          echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
       - name: Set up build directory and compile
         run: |
