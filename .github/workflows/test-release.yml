@@ -79,6 +79,11 @@ jobs:
       #     rm -f src/porespy/beta/*.dll
       #     rm -rf src/porespy_c/build
 
+      - name: Bump up version and create tag
+        run: |
+          uv run hatch version patch
+          echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
+
       - name: Set up build directory and compile
         run: |
           cd src/porespy_c
@@ -146,18 +151,6 @@ jobs:
           pattern: cibw-*
           path: dist
           merge-multiple: true
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Install PoreSpy and Python dependencies
-        run: |
-          uv sync --all-extras
-
-      - name: Bump up version and create tag
-        run: |
-          uv run hatch version patch
-          echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
 
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
