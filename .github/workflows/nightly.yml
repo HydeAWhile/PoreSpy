@@ -6,6 +6,11 @@ on:
     - cron: "0 5 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true        
+
+   
 jobs:
   test:
     runs-on: ${{ matrix.os }}

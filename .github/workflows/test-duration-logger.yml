@@ -2,6 +2,10 @@ name: Test Duration Logger
 
 on: [workflow_dispatch]
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true        
+
 jobs:
   build:
 

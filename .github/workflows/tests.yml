@@ -6,63 +6,67 @@ on:
     branches:
       - release
 
-# jobs:
-#   build:
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true        
 
-#     runs-on: ${{ matrix.os }}
-#     defaults:
-#       run:
-#         shell: bash
+jobs:
+  build:
 
-#     strategy:
-#       fail-fast: false
-#       max-parallel: 12
-#       matrix:
-#         python-version: ['3.10', '3.11', '3.12']
-#         os: [ubuntu-latest, macos-latest, windows-latest]
-#         include:
-#         - os: ubuntu-latest
-#           path: ~/.cache/pip
-#         - os: macos-latest
-#           path: ~/Library/Caches/pip
-#         - os: windows-latest
-#           path: ~\AppData\Local\pip\Cache
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
 
-#     steps:
-#       - name: Cache pip
-#         uses: actions/cache@v4
-#         with:
-#           path: ${{ matrix.path }}
-#           key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
-#           restore-keys: |
-#             ${{ runner.os }}-pip-
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+        - os: ubuntu-latest
+          path: ~/.cache/pip
+        - os: macos-latest
+          path: ~/Library/Caches/pip
+        - os: windows-latest
+          path: ~\AppData\Local\pip\Cache
 
-#       - uses: actions/checkout@v4
+    steps:
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.path }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-#       - name: Set up Python ${{ matrix.python-version }}
-#         uses: actions/setup-python@v5
-#         with:
-#           python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v4
 
-#       - name: Install dependencies (pip) (macOS)
-#         if: matrix.os == 'macos-latest'
-#         run: |
-#           pip install -e .[test,extras-macos]
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-#       - name: Install dependencies (pip) (Windows, Linux)
-#         if: matrix.os != 'macos-latest'
-#         run: |
-#           pip install -e .[test,extras]
+      - name: Install dependencies (pip) (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          pip install -e .[test,extras-macos]
 
-#       - name: Running tests
-#         run:
-#           pytest --cov=. --cov-report=xml
+      - name: Install dependencies (pip) (Windows, Linux)
+        if: matrix.os != 'macos-latest'
+        run: |
+          pip install -e .[test,extras]
 
-#       - name: Upload coverage to Codecov
-#         if: (matrix.python-version == 3.12) && (matrix.os == 'ubuntu-latest')
-#         uses: codecov/codecov-action@v4
-#         with:
-#           token: ${{ secrets.CODECOV_TOKEN }}
-#           file: ./coverage.xml
-#           flags: unittests
-#           name: codecov-umbrella
+      - name: Running tests
+        run:
+          pytest --cov=. --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        if: (matrix.python-version == 3.12) && (matrix.os == 'ubuntu-latest')
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella

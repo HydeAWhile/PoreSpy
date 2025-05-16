@@ -1,12 +1,19 @@
 name: Deploy to TestPyPI
 
 on:
+  pull_request:
+    branches:
+      - c_functions
   workflow_dispatch:
     inputs:
       version:
         description: "Version (major/minor/patch/alpha/beta/release)"
         required: true
         default: "patch"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true        
 
 jobs:
   build:
@@ -45,26 +52,31 @@ jobs:
 
       - name: Bump up version and create tag
         run: |
-          hatch version ${{ github.event.inputs.version }}
-          echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
+          uv run hatch version ${{ github.event.inputs.version }}
+          echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
-      - name: Set up build directory and compile
+      - name: Compile C extensions
         run: |
-          cd src/porespy_c
-          uv run meson setup build --buildtype=plain --vsenv
-          uv run meson compile -C build
+          chmod +x scripts/build.sh
+          ./scripts/build.sh
 
-      - name: Move shared library into Python package
-        shell: bash
-        run: |
-          cd src/porespy_c
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            mv build/libwalker.so ../porespy/beta/
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            mv build/libwalker.dylib ../porespy/beta/
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            mv build/walker.dll ../porespy/beta/
-          fi
+      # - name: Set up build directory and compile
+      #   run: |
+      #     cd src/porespy_c
+      #     uv run meson setup build --buildtype=plain --vsenv
+      #     uv run meson compile -C build
+
+      # - name: Move shared library into Python package
+      #   shell: bash
+      #   run: |
+      #     cd src/porespy_c
+      #     if [ "$RUNNER_OS" == "Linux" ]; then
+      #       mv build/libwalker.so ../porespy/beta/
+      #     elif [ "$RUNNER_OS" == "macOS" ]; then
+      #       mv build/libwalker.dylib ../porespy/beta/
+      #     elif [ "$RUNNER_OS" == "Windows" ]; then
+      #       mv build/walker.dll ../porespy/beta/
+      #     fi
 
       - name: ls
         shell: bash
