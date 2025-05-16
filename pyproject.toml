@@ -47,7 +47,7 @@ readme = "README.md"
 requires-python = ">=3.10,<3.13"
 
 [project.optional-dependencies]
-build = ["hatch", "meson", "cibuildwheel", "build", "ninja", "pip",]
+build = ["hatch", "meson", "cibuildwheel", "build", "ninja", "pip"]
 test = [
     "codecov",
     "coverage",
@@ -104,22 +104,12 @@ Documentation = "https://porespy.org"
 requires = ["hatchling", "meson", "ninja"]
 build-backend = "hatchling.build"
 
-# [build-system]
-# requires = ["meson-python>=0.13.0", "wheel", "ninja>=1.11.0", "numpy"]
-# build-backend = "mesonpy"
-
-# [tool.meson.options]
-# buildtype = "release"
-# optimization = "2"
-# warning_level = "3"
-# c_std = "c11"
-# b_lto = "false"
-# b_pie = "true"
-
 [tool.hatch.metadata]
 allow-direct-references = true
 include = [
-  "src/porespy/beta/walker.so"
+    "src/porespy/beta/walker.so",
+    "src/porespy/beta/walker.dll",
+    "src/porespy/beta/walker.dylib",
 ]
 
 [tool.hatch.version]
@@ -152,7 +142,6 @@ python_classes = "*Test"
 python_functions = "test_*"
 testpaths = ["test", "examples"]
 norecursedirs = [".git", ".github", ".ipynb_checkpoints", "build", "dist"]
-
 
 [tool.coverage.run]
 source = ["src/porespy"]
@@ -232,7 +221,6 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "_gdd.py" = ["ALL"]
 "test/**" = ["F841"]
 "test_snow2.py" = ["E241"]
-
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
