@@ -23,18 +23,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@v6
         with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
+          cache-dependency-glob: "**/pyproject.toml"
+          cache-suffix: "uv-${{ matrix.python-version }}-${{ matrix.operating-system }}"
 
-      - name: Install uv for faster builds
+      - name: Install PoreSpy
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-
-      - name: Install dependencies
-        run: |
-          uv pip install --system -e .[test,extras]
+          uv sync --extra test --extra extras --extra build
+          uv build
 
       - name: Install ffmpeg
         uses: FedericoCarboni/setup-ffmpeg@v3
@@ -42,7 +43,7 @@ jobs:
       - name: Run examples
         # Make sure to pass max-parallel to --splits
         run: |
-          pytest \
+          uv run pytest \
             -p no:python \
             --nbval-lax \
             --splits ${{ strategy.max-parallel}} \
