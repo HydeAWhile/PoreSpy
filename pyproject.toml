@@ -16,7 +16,6 @@ keywords = [
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -102,11 +101,26 @@ Repository = "https://github.com/PMEAL/porespy"
 Documentation = "https://porespy.org"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "meson", "ninja"]
 build-backend = "hatchling.build"
+
+# [build-system]
+# requires = ["meson-python>=0.13.0", "wheel", "ninja>=1.11.0", "numpy"]
+# build-backend = "mesonpy"
+
+# [tool.meson.options]
+# buildtype = "release"
+# optimization = "2"
+# warning_level = "3"
+# c_std = "c11"
+# b_lto = "false"
+# b_pie = "true"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+include = [
+  "src/porespy/beta/walker.so"
+]
 
 [tool.hatch.version]
 path = "src/porespy/__version__.py"
@@ -119,8 +133,8 @@ artifacts = [
     "src/porespy/beta/*.dylib",
 ]
 
-# [tool.hatch.build.targets.wheel.hooks.custom]
-# path = "hatch_build.py"
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

@@ -1,18 +1,30 @@
-project('walker', 'c',
-  default_options : [
-    'warning_level=3',
-    'optimization=2',
-    'b_lto=false',  # optional, just to be explicit
-    'b_pie=true',   # enables -fPIC where needed
-    'c_std=c11'     # optional, if you want a specific C standard
-  ]
-)
+# cc = meson.get_compiler('c')
+# math_dep = cc.find_library('m', required : false)
+# 
+# add_project_arguments('-fvisibility=hidden', language : 'c')
+# 
+# sources = files('walker.c')
+# 
+# lib = shared_library(meson.project_name() + '_beta', sources, dependencies : math_dep,
+#                      install : true,
+#                      install_dir : join_paths(meson.project_source_root(), 'src/porespy/beta'))
+# 
 
 cc = meson.get_compiler('c')
-math_dep = cc.find_library('m', required : false)
+libm = cc.find_library('m', required: true)
 
-add_project_arguments('-fvisibility=hidden', language : 'c')
+walker_lib = shared_library(
+  'walker',
+  'walker.c',
+  install: false,
+  build_by_default: true,
+  dependencies: [libm]
+)
 
-sources = files('walker.c')
-
-library(meson.project_name(), sources, dependencies : math_dep)
+copy_walker = custom_target(
+  'copy_walker_so',
+  output: 'walker.so',
+  command: ['cp', walker_lib.full_path(), meson.current_source_dir()],
+  depends: walker_lib,
+  build_by_default: true
+)
