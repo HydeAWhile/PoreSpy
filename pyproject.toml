@@ -106,9 +106,9 @@ build-backend = "hatchling.build"
 [tool.hatch.metadata]
 allow-direct-references = true
 include = [
-    "src/porespy/beta/walker.so",
+    "src/porespy/beta/libwalker.so",
     "src/porespy/beta/walker.dll",
-    "src/porespy/beta/walker.dylib",
+    "src/porespy/beta/libwalker.dylib",
 ]
 
 [tool.hatch.version]
