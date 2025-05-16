@@ -6,7 +6,7 @@ import porespy as ps
 edt = ps.tools.get_edt()
 
 
-def test_drainage_from_top():
+def test_drainage_from_top(plot=False):
     im = ps.generators.blobs(shape=[300, 300], porosity=0.75, blobiness=1.5, seed=0)
     inlets = np.zeros_like(im)
     inlets[-1, :] = True
@@ -25,7 +25,7 @@ def test_drainage_from_top():
     delta_rho = -1000
     g = 9.81
     bg = 'grey'
-    plot = False
+
     pc = ps.filters.capillary_transform(
         im=im,
         dt=dt,

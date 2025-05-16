@@ -591,43 +591,21 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from copy import copy
     from porespy.simulations import drainage
+
     ps.settings.tqdm['disable'] = False
     ps.settings.tqdm['leave'] = True
 
     # %%
-    im = ~ps.generators.random_spheres([100, 100, 100], r=10, seed=0, clearance=10)
+    im = ~ps.generators.random_spheres([60, 60], r=5, seed=0, clearance=4)
 
     inlets = np.zeros_like(im)
     inlets[0, ...] = True
     inlets = inlets*im
     pc = ps.filters.capillary_transform(im, voxel_size=1e-5)
+
     drn = drainage(im, pc=pc, inlets=inlets)
     inv1 = injection(im, pc=pc, inlets=inlets, return_sizes=True, method='qbip', conn='min')
     inv2 = injection(im, inlets=inlets, return_sizes=True, method='ibip', conn='min')
-
-    # outlets = np.zeros_like(im)
-    # outlets[-1, :] = True
-    # outlets = outlets*im
-    # ps.tools.tic()
-    # trapped_new = ps.filters.find_trapped_clusters(
-    #     im=im,
-    #     seq=ip.im_seq,
-    #     outlets=outlets,
-    #     return_mask=False,
-    #     method='queue',
-    #     min_size=5,
-    # )
-    # ps.tools.toc()
-    # ps.tools.tic()
-    # trapped = ps.filters.find_trapped_clusters(
-    #     im=im,
-    #     seq=ip.im_seq,
-    #     outlets=outlets,
-    #     return_mask=False,
-    #     method='cluster',
-    #     min_size=5,
-    # )
-    # ps.tools.toc()
 
     # %%
     drn_data = ps.metrics.pc_map_to_pc_curve(im=im, pc=drn.im_pc, fix_ends=False, mode='drainage')
@@ -640,37 +618,3 @@ if __name__ == "__main__":
     ax.step(np.log10(drn_data.pc), drn_data.snwp, where='post', linewidth=.5)
     ax.step(np.log10(inj_data.pc), inj_data.snwp, where='post', linewidth=1)
     ax.step(np.log10(ibip_data.pc), ibip_data.snwp, where='post', linewidth=.5)
-
-    # %%
-    if im.ndim == 2:
-        cm = copy(plt.cm.turbo)
-        cm.set_under('grey')
-        fig, ax = plt.subplots(1, 3)
-        ax[0].imshow(
-            ip.im_seq/im,
-            origin='lower',
-            interpolation='none',
-            vmin=0.0001,
-            cmap=cm,
-        )
-        ax[1].imshow(
-            trapped/im,
-            origin='lower',
-            interpolation='none',
-            vmin=0.0001,
-            cmap=cm,
-        )
-        ax[2].imshow(
-            trapped_new/im,
-            origin='lower',
-            interpolation='none',
-            vmin=0.0001,
-            cmap=cm,
-        )
-
-        ip2 = ps.simulations.injection(
-            im=im,
-            inlets=inlets,
-            outlets=outlets,
-            method='ibip',
-        )
