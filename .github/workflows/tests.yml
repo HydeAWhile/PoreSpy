@@ -35,12 +35,12 @@ jobs:
       - name: Install dependencies (pip) (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          uv sync --extra test --extra extras-macos
+          uv sync --extra test --extra extras-macos --extra build
 
       - name: Install dependencies (pip) (Windows, Linux)
         if: matrix.os != 'macos-latest'
         run: |
-          uv sync --extra test --extra extras
+          uv sync --extra test --extra extras --extra build
 
       - name: Running tests
         run: uv run pytest --cov=. --cov-report=xml
