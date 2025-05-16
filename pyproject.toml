@@ -48,7 +48,7 @@ readme = "README.md"
 requires-python = ">=3.10,<3.13"
 
 [project.optional-dependencies]
-build = ["hatch", "meson", "cibuildwheel", "build", "ninja"]
+build = ["hatch", "meson", "cibuildwheel", "build", "ninja", "pip",]
 test = [
     "codecov",
     "coverage",
@@ -105,45 +105,6 @@ Documentation = "https://porespy.org"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.rye]
-managed = true
-dev-dependencies = [
-    # build
-    "hatch",
-    # test
-    "codecov",
-    "coverage",
-    "nbval",
-    "pytest",
-    "pytest-cache",
-    "pytest-cov",
-    "pytest-custom-exit-code",
-    "pytest-split",
-    # extras
-    "imageio",
-    "nanomesh",
-    "numpy-stl",
-    "pyevtk",
-    "scikit-fmm",
-    "scikit-learn",
-    "tensorflow",
-    "trimesh",
-    # docs
-    "mock",
-    "myst-nb",
-    "pandoc",
-    "pydata-sphinx-theme==0.9",
-    "sphinx",
-    "sphinx-copybutton",
-    "sphinx-design",
-    # interactive
-    "ipython",
-    "ipykernel",
-    "ipywidgets",
-    "jupyter",
-    "jupyterlab_widgets",
-]
-
 [tool.hatch.metadata]
 allow-direct-references = true
 
@@ -159,7 +120,7 @@ artifacts = [
 ]
 
 [tool.hatch.build.targets.wheel.hooks.custom]
-path = "scripts/hatch_build.py"
+path = "hatch_build.py"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -285,9 +246,3 @@ docstring-code-format = true
 # This only has an effect when the `docstring-code-format` setting is
 # enabled.
 docstring-code-line-length = "dynamic"
-
-[tool.uv.sources]
-porespy = { workspace = true }
-
-[dependency-groups]
-dev = ["porespy"]
