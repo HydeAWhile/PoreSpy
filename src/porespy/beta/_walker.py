@@ -15,7 +15,7 @@ def _load_c_walker_lib():
 
     system = platform.system()
     if system == "Windows":
-        lib_name = "walker.dll"
+        lib_name = "libwalker.dll"
     elif system == "Darwin":
         lib_name = "libwalker.dylib"
     elif system == "Linux":

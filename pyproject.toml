@@ -107,7 +107,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 include = [
     "src/porespy/beta/libwalker.so",
-    "src/porespy/beta/walker.dll",
+    "src/porespy/beta/libwalker.dll",
     "src/porespy/beta/libwalker.dylib",
 ]
 
