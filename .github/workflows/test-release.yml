@@ -1,10 +1,12 @@
-name: TestPyPI Release
+name: Deploy to TestPyPI
 
 on:
-  push:
-    branches: [c_functions]
-  pull_request:
-    branches: [c_functions]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (major/minor/patch/alpha/beta/release)"
+        required: true
+        default: "patch"
 
 jobs:
   build:
@@ -12,25 +14,15 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
-        # python-version: ['3.10', '3.11', '3.12']
-        # os: [windows, macos-13-intel, macos-14-arm]
-        # os: [linux-intel, linux-arm, windows, macos-13-intel, macos-14-arm]
-        os: [linux-intel, windows, macos-14-arm]
+        os: [linux, windows, macos-14-arm]
         include:
           - archs: auto
             platform: auto
-          - os: linux-intel
+          - os: linux
             runs-on: ubuntu-latest
-          # - os: linux-arm
-          #   runs-on: ubuntu-24.04-arm
           - os: windows
             runs-on: windows-latest
-          # - os: macos-13-intel
-          #   # macos-13 was the last x86_64 runner
-          #   runs-on: macos-13
-          #   macOS-version: 13.0
           - os: macos-14-arm
-            # macos-14+ (including latest) are ARM64 runners
             runs-on: macos-latest
             macOS-version: 14.0
 
@@ -38,39 +30,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Install PoreSpy and Python dependencies
-        run: |
-          uv sync --all-extras
-
-      - name: Enable caching
+      - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+
+      - name: Install PoreSpy
+        run: |
+          uv sync --all-extras
 
       - name: Install Ninja on Windows
         if: runner.os == 'Windows'
         run: choco install ninja -y
 
-      # - name: Clean up any existing build artifacts
-      #   shell: bash
-      #   run: |
-      #     rm -f src/porespy/beta/*.so
-      #     rm -f src/porespy/beta/*.dylib
-      #     rm -f src/porespy/beta/*.dll
-      #     rm -rf src/porespy_c/build
-
       - name: Bump up version and create tag
         run: |
-          uv run hatch version patch
-          echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
+          hatch version ${{ github.event.inputs.version }}
+          echo "VERSION=v$(hatch version)" >> $GITHUB_ENV
 
       - name: Set up build directory and compile
         run: |
@@ -104,18 +80,6 @@ jobs:
           CIBW_BUILD: cp310* cp311* cp312*
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macOS-version }}
           CIBW_BUILD_VERBOSITY: 1
-          # CIBW_BEFORE_BUILD: "rm -f src/porespy/beta/*.so src/porespy/beta/*.dylib src/porespy/beta/*.dll"
-          # macOS specific configurations
-          # CIBW_ARCHS_MACOS: "arm64 x86_64"
-          # CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ matrix.macOS-version }}"
-          # Linux specific configurations
-          # CIBW_REPAIR_WHEEL_COMMAND_LINUX: "auditwheel repair --plat manylinux2014_x86_64 -w {dest_dir} {wheel}"
-          # macOS specific configurations
-          # CIBW_REPAIR_WHEEL_COMMAND_MACOS: "delocate-wheel --require-archs arm64 --require-archs x86_64 -w {dest_dir} {wheel}"
-
-      # - name: ls
-      #   shell: bash
-      #   run: ls -lR wheelhouse
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
