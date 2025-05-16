@@ -66,6 +66,7 @@ extras = [
     "scikit-fmm",
     "scikit-learn",
     "tensorflow",
+    "tensorflow-io-gcs-filesystem==0.31.0",
     "trimesh",
 ]
 extras-macos = [
@@ -75,6 +76,7 @@ extras-macos = [
     "scikit-fmm",
     "scikit-learn",
     "tensorflow",
+    "tensorflow-io-gcs-filesystem==0.31.0",
     "trimesh",
 ]
 docs = [
