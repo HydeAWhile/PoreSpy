@@ -1,9 +1,10 @@
 import ctypes as c
-import scipy as sp
-import numpy as np
 import math
-import platform
 import os
+import platform
+
+import numpy as np
+import scipy as sp
 
 __all__ = ["walk"]
 
