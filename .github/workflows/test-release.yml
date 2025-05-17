@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version (major/minor/patch/alpha/beta/release)"
+        description: "Version (major/minor/patch/dev/alpha/beta/release)"
         required: true
         default: "patch"
 
@@ -106,17 +106,17 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # - name: Publish to TestPyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     repository-url: https://test.pypi.org/legacy/
-      #     user: __token__
-      #     password: ${{ secrets.TESTPYPI_TOKEN }}
-      #     verbose: true
-
-      - name: Publish to PyPI
+      - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          repository-url: https://test.pypi.org/legacy/
           user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
+          password: ${{ secrets.TESTPYPI_TOKEN }}
           verbose: true
+
+      # - name: Publish to PyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     user: __token__
+      #     password: ${{ secrets.PYPI_TOKEN }}
+      #     verbose: true
