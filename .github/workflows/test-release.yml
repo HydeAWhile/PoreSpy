@@ -45,7 +45,7 @@ jobs:
 
       - name: Install PoreSpy and build C shared libraries
         run: |
-          uv sync --extra extras --extras build --no-cache --force-reinstall
+          uv sync --extra extras --extra build --no-cache --force-reinstall
           uv build
 
       - name: Install Ninja on Windows
