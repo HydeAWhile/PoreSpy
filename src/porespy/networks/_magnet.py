@@ -1,4 +1,3 @@
-import skimage as ski
 import dask.array as da
 import scipy.ndimage as spim
 import scipy.signal as spsg
@@ -29,7 +28,6 @@ from porespy.tools import (
 from porespy.generators import borders
 from skimage.morphology import square, cube
 from scipy.ndimage import maximum_position
-from skfmm import distance
 from porespy import settings
 from numba import jit
 
@@ -394,6 +392,11 @@ def find_throat_junctions(im,
                         found junction locations.
         =============== =============================================================
     """
+    try:
+        from skfmm import distance
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError('scikit-fmm must be install to use this function')
+
     # Parse input args
     if dt is None:
         dt = edt(im, parallel=16)
