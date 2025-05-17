@@ -33,6 +33,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.PAT }}
 
       - name: Set up uv
         id: setup-uv
@@ -43,19 +48,26 @@ jobs:
           cache-dependency-glob: "**/pyproject.toml"
           cache-suffix: "uv-${{ matrix.os }}-${{ matrix.archs }}"
 
+      - name: Install Ninja on Windows
+        if: runner.os == 'Windows'
+        run: choco install ninja -y
+
       - name: Install PoreSpy and build C shared libraries
         run: |
           uv sync --extra extras --extra build --no-cache --force-reinstall
           uv build
 
-      - name: Install Ninja on Windows
-        if: runner.os == 'Windows'
-        run: choco install ninja -y
-
-      - name: Bump up version and create tag
+      - name: Bump up version, and create tag
         run: |
           uv run hatch version ${{ github.event.inputs.version }}
           echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
+
+      - name: Commit version bump + push tag
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Bump version to ${{ env.VERSION }}
+          commit_author: GitHub Actions <actions@github.com>
+          tagging_message: ${{ env.VERSION }}
 
       - name: ls
         shell: bash
@@ -79,7 +91,6 @@ jobs:
           path: ./wheelhouse/*.whl
 
   publish:
-    # if: startsWith(github.event.head_commit.message, '[Release:]')
     name: Publish to TestPyPI
     runs-on: ubuntu-latest
     needs: build
@@ -95,10 +106,17 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Publish to TestPyPI
+      # - name: Publish to TestPyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     repository-url: https://test.pypi.org/legacy/
+      #     user: __token__
+      #     password: ${{ secrets.TESTPYPI_TOKEN }}
+      #     verbose: true
+
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://test.pypi.org/legacy/
           user: __token__
-          password: ${{ secrets.TESTPYPI_TOKEN }}
+          password: ${{ secrets.PYPI_TOKEN }}
           verbose: true
