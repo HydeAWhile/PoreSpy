@@ -57,21 +57,17 @@ jobs:
           uv sync --extra extras --extra build --no-cache --force-reinstall
           uv build
 
-      - name: Bump up version, and create tag
+      - name: Bump up version
         run: |
           uv run hatch version ${{ github.event.inputs.version }}
           echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
-      - name: Commit version bump + push tag
+      - name: Commit version bump, create and push tag
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: Bump version to ${{ env.VERSION }}
           commit_author: GitHub Actions <actions@github.com>
           tagging_message: ${{ env.VERSION }}
-
-      - name: ls
-        shell: bash
-        run: ls -lR src/porespy/beta
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.23.2
