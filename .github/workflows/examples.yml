@@ -4,7 +4,6 @@ on: pull_request
 
 jobs:
   build:
-
     runs-on: ${{ matrix.operating-system }}
     defaults:
       run:
@@ -14,7 +13,7 @@ jobs:
       fail-fast: false
       max-parallel: 5
       matrix:
-        python-version: ['3.12']
+        python-version: ["3.12"]
         operating-system: [ubuntu-latest]
         # Next line should be [1, 2, ..., max-parallel)
         test_group: [1, 2, 3, 4, 5]
@@ -37,8 +36,8 @@ jobs:
           uv sync --extra test --extra extras --extra build
           uv build
 
-      - name: Install ffmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v3
+      - name: Setup FFmpeg
+        uses: AnimMouse/setup-ffmpeg@v1
 
       - name: Run examples
         # Make sure to pass max-parallel to --splits
