@@ -62,13 +62,6 @@ jobs:
           uv run hatch version ${{ github.event.inputs.version }}
           echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
-      - name: Commit version bump, create and push tag
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Bump version to ${{ env.VERSION }}
-          commit_author: GitHub Actions <actions@github.com>
-          tagging_message: ${{ env.VERSION }}
-
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.23.2
         env:
@@ -86,10 +79,48 @@ jobs:
           name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
+  version:
+    name: Bump version and create tag
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.PAT }}
+
+      - name: Set up uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.10"
+          cache-dependency-glob: "**/pyproject.toml"
+
+      - name: Install build dependencies
+        run: |
+          uv sync --extra build
+
+      - name: Bump up version
+        run: |
+          uv run hatch version ${{ github.event.inputs.version }}
+          echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
+
+      - name: Commit version bump, create and push tag
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Bump version to ${{ env.VERSION }}
+          commit_author: GitHub Actions <actions@github.com>
+          tagging_message: ${{ env.VERSION }}
+
   publish:
     name: Publish to TestPyPI
     runs-on: ubuntu-latest
-    needs: build
+    needs: version
     permissions:
       id-token: write
 
