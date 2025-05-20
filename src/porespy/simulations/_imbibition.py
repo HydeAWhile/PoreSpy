@@ -611,12 +611,15 @@ def imbibition(
             seq=im_seq,
             outlets=outlets,
             method='labels' if len(Ps) < 100 else 'queue',
+            conn=conn,
         )
         im_pc[trapped] = -np.inf
         im_seq[trapped] = -1
+
     if residual is not None:
         im_pc[residual] = np.inf
         im_seq[residual] = 0
+
     satn = seq_to_satn(im=im, seq=im_seq, mode='imbibition')
     # Collect data in a Results object
     results = Results()
