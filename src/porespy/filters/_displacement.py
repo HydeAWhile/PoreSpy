@@ -263,11 +263,7 @@ def _find_trapped_clusters_labels(
     r"""
     This version is meant for IBOP (i.e. drainage or MIO) simulations
     """
-    if im is None:
-        im = ~(seq == 0)
     seq = np.copy(seq)
-    if outlets is None:
-        outlets = get_border(seq.shape, mode='faces')
     non_perc = find_disconnected_voxels(im, surface=True)
     se = strel[im.ndim][conn].copy()
     mask = seq < 0  # This is used again at the end of the function to fix seq
@@ -277,7 +273,6 @@ def _find_trapped_clusters_labels(
         tmp = seq*mask_dil
         new_seq = flood(im=tmp, labels=spim.label(mask_dil)[0], mode='maximum')
         seq = seq*~mask + new_seq*mask
-    # TODO: Convert outlets to indices instead of mask to save time (maybe?)
     outlets = np.where(outlets)
     # Remove all trivially trapped regions (i.e. invaded after last outlet)
     trapped = np.zeros_like(seq, dtype=bool)
