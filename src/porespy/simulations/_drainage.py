@@ -605,46 +605,34 @@ def drainage(
             smooth=True,
             overwrite=False,
         )
-        nwp_mask[seeds] = True  # Add already found seeds to nwp_mask
+
         # Deal with impact of residual, if present
         if residual is not None:
-            if outlets is not None:
-                seq_temp = spim.label(~(nwp_mask + residual + ~im))[0]
-                trapped_temp = find_trapped_clusters(
-                    im=im,
-                    seq=seq_temp,
-                    outlets=outlets,
-                    method='labels',
-                    conn=conn,
-                )
-                im_seq[trapped_temp] = -1
-                nwp_mask[im_seq == -1] = False
-                nwp_mask = trim_disconnected_blobs(
-                    nwp_mask,
-                    inlets,
-                    conn=conn,
-                )
-            # Find invadable locations connected to surviving residual
-            if np.any(nwp_mask):
-                connected_nwp = trim_disconnected_blobs(
-                    residual, nwp_mask, conn=conn)*(~nwp_mask)
-                if np.any(connected_nwp):
+            # Find residual connected to current invasion front
+            inv_temp = (nwp_mask > 0)
+            if np.any(inv_temp):
+                # Find invadable pixels connected to surviving residual
+                temp = trim_disconnected_blobs(
+                    residual, inv_temp, conn=conn)*~inv_temp
+                if np.any(temp):
                     # Trim invadable pixels not connected to residual
-                    invadable = trim_disconnected_blobs(
-                        invadable, connected_nwp, conn=conn)
-                    if np.any(invadable):
-                        coords = np.where(invadable)  # Find coordinates of new locs
-                        radii = dt[coords].astype(int)  # Find the sphere sizes
-                        # Insert spheres of given radii at new locations
-                        nwp_mask = _insert_disks_at_points_parallel(
-                            im=nwp_mask,
-                            coords=np.vstack(coords),
-                            radii=radii.astype(int),
-                            v=True,
-                            smooth=True,
-                            overwrite=False,
-                        )
-        # Insert values into invaded locations
+                    new_seeds = trim_disconnected_blobs(invadable, temp, conn=conn)
+                    # Find (i, j, k) coordinates of new locations
+                    coords = np.where(new_seeds)
+                    # Add new locations to list of invaded locations
+                    seeds += new_seeds
+                    # Extract the local size of sphere to insert at each new location
+                    radii = dt[coords].astype(int)
+                    # Insert spheres of given radii at new locations
+                    nwp_mask = _insert_disks_at_points_parallel(
+                        im=nwp_mask,
+                        coords=np.vstack(coords),
+                        radii=radii.astype(int),
+                        v=True,
+                        smooth=True,
+                        overwrite=False,
+                    )
+
         mask = nwp_mask * (im_seq == 0) * im
         if np.any(mask):
             im_seq[mask] = step + 1
@@ -655,7 +643,7 @@ def drainage(
         seeds += invadable
 
     # Set uninvaded voxels to inf
-    im_pc[(im_pc == 0)*im] = np.inf
+    im_pc[(im_seq == 0)*im] = np.inf
 
     # Add residual is given
     if residual is not None:
