@@ -64,11 +64,10 @@ def get_skel():
 
 
 def get_edt():
-    import importlib
     try:
         package = importlib.import_module("pyedt")
         return package.edt
-    except ModuleNotFoundError as e:
+    except ModuleNotFoundError:
         package = importlib.import_module("edt")
         edt = package.edt
         edt = partial(edt, parallel=Settings().ncores)
@@ -204,7 +203,7 @@ class Settings:  # pragma: no cover
         "leave": False,
         "file": sys.stdout,
     }
-    _loglevel = 40 if _is_ipython_notebook() else 30
+    _loglevel = 40
     # add parallel settings
     divs = 2  # choose 2 as default
     overlap = None
