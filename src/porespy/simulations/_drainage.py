@@ -469,14 +469,18 @@ def drainage(
         A boolean image with ``True`` values indicating the outlet locations.
         If this is provided then trapped voxels of wetting phase are found and
         all the output images are adjusted accordingly. Note that trapping can
-        be assessed during postprocessing as well.
+        be assessed as a postprocessing step as well, so if this is not provided
+        trapping can still be considered.
     residual : ndarray, optional
         A boolean array indicating the locations of any residual invading
         phase. This is added to the intermediate image prior to trimming
         disconnected clusters, so will create connections to some clusters
         that would otherwise be removed. The residual phase is indicated
-        in the final image by ``-np.inf`` values, since these are invaded at
-        all applied capillary pressures.
+        in the capillary pressure map by ``-np.inf`` values, since these voxels
+        are invaded at all applied capillary pressures. Note that the presence of
+        residual non-wetting phase makes it impossible to correctly deal with
+        trapping, so if both `residual` and `outlets` are given then an error is
+        raised.
     steps : int or array_like (default = 25)
         The range of pressures to apply. If an integer is given then the given
         number of steps will be created between the lowest and highest values in
@@ -548,6 +552,9 @@ def drainage(
     <https://porespy.org/examples/simulations/reference/drainage.html>`_
     to view online example.
     """
+    if (residual is not None) and (outlets is not None):
+        raise Exception("Trapping cannot be properly assessed if residual present")
+
     im = np.array(im, dtype=bool)
 
     if dt is None:
@@ -608,22 +615,15 @@ def drainage(
 
         # Deal with impact of residual, if present
         if residual is not None:
-            # Find residual connected to current invasion front
-            inv_temp = (nwp_mask > 0)
-            if np.any(inv_temp):
+            if np.any(nwp_mask):
                 # Find invadable pixels connected to surviving residual
                 temp = trim_disconnected_blobs(
-                    residual, inv_temp, conn=conn)*~inv_temp
+                    residual, nwp_mask, conn=conn)*~nwp_mask
                 if np.any(temp):
                     # Trim invadable pixels not connected to residual
-                    new_seeds = trim_disconnected_blobs(invadable, temp, conn=conn)
-                    # Find (i, j, k) coordinates of new locations
-                    coords = np.where(new_seeds)
-                    # Add new locations to list of invaded locations
-                    seeds += new_seeds
-                    # Extract the local size of sphere to insert at each new location
+                    invadable = trim_disconnected_blobs(invadable, temp, conn=conn)
+                    coords = np.where(invadable)
                     radii = dt[coords].astype(int)
-                    # Insert spheres of given radii at new locations
                     nwp_mask = _insert_disks_at_points_parallel(
                         im=nwp_mask,
                         coords=np.vstack(coords),
@@ -632,7 +632,6 @@ def drainage(
                         smooth=True,
                         overwrite=False,
                     )
-
         mask = nwp_mask * (im_seq == 0) * im
         if np.any(mask):
             im_seq[mask] = step + 1
@@ -749,14 +748,6 @@ if __name__ == "__main__":
         residual=residual,
         steps=30,
     )
-    drn4 = ps.simulations.drainage(
-        im=im,
-        pc=pc,
-        inlets=inlets,
-        outlets=outlets,
-        residual=residual,
-        steps=30,
-    )
     drn5 = ps.simulations.drainage(
         im=im,
         pc=pc,
@@ -781,7 +772,7 @@ if __name__ == "__main__":
             drn3.im_seq/im, origin='lower', cmap=cm, vmin=0)
 
         ax['(d)'].imshow(
-            drn4.im_seq/im, origin='lower', cmap=cm, vmin=0)
+            drn5.im_seq/im, origin='lower', cmap=cm, vmin=0)
 
         pc, s = ps.metrics.pc_map_to_pc_curve(
             pc=drn1.im_pc, seq=drn1.im_seq, im=im, mode='drainage')
@@ -796,7 +787,7 @@ if __name__ == "__main__":
         ax['(e)'].plot(np.log10(pc), s, 'g-^', label='drainage w residual')
 
         pc, s = ps.metrics.pc_map_to_pc_curve(
-            pc=drn4.im_pc, seq=drn4.im_seq, im=im, mode='drainage')
-        ax['(e)'].plot(np.log10(pc), s, 'm-*', label='drainage w residual+trapping')
+            pc=drn5.im_pc, seq=drn5.im_seq, im=im, mode='drainage')
+        ax['(e)'].plot(np.log10(pc), s, 'm-*', label='local thickness')
 
         ax['(e)'].legend()
