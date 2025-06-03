@@ -1355,7 +1355,7 @@ def bond_number(
     voxel_size: float,
     source: str = 'lt',
     method: str = 'median',
-    mask: bool = False,
+    mask_source: bool = False,
 ):
     r"""
     Computes the Bond number for an image
@@ -1400,11 +1400,12 @@ def bond_number(
         pmean          The power mean of the values (using `scipy.stats.pmean`)
         ============== =============================================================
 
-    mask : bool
+    mask_source : bool
         If `True` then the distance values in `source` are masked by the skeleton
-        before computing the average value using the specified `method`.
+        before computing the average value using the specified `method`. This
+        requires computing the skeleton which can take a few moments.
     """
-    if mask is True:
+    if mask_source is True:
         mask = skeletonize(im)
     else:
         mask = im
