@@ -80,7 +80,7 @@ def tilde(im):
     return inv
 
 
-def get_slices_random(im, n=1000):
+def get_slices_random(im, n=1000, lims=[10, 100]):
     r"""
     Generates a list of `slice` objects which can be used to obtain cubic subdomains
     of random size and location from the image
@@ -91,6 +91,8 @@ def get_slices_random(im, n=1000):
         The image of the porous material
     n : int
         The number of random subdomains to be generated
+    lims : list
+        The minimum and maximum size for the subdomains to be generated
 
     Returns
     -------
@@ -98,20 +100,26 @@ def get_slices_random(im, n=1000):
         A list containing `slice` objects which can be iterated over
         to access the image slices.
     """
-    im_temp = np.zeros_like(im)
-    crds = np.array(np.random.rand(n, im.ndim) * im.shape, dtype=int)
-    pads = np.array(np.random.rand(n) * np.amin(im.shape) / 2 + 10, dtype=int)
-    im_temp[tuple(crds.T)] = True
-    labels, N = spim.label(input=im_temp)
-    slices = spim.find_objects(input=labels)
+
+    ndim = im.ndim
+    shape = im.shape
+    min_size, max_size = lims
+    max_size = min(max_size, *shape)
+
+    new_slices = []
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
-    new_slices = []
-    for i in tqdm(np.arange(0, N), desc=desc, **settings.tqdm):
-        s = slices[i]
-        p = pads[i]
-        new_s = extend_slice(s, shape=im.shape, pad=p)
-        new_slices.append(new_s)
+
+    for _ in tqdm(range(n), desc=desc, **settings.tqdm):
+        side_len = np.random.randint(min_size, max_size + 1)
+
+        # the only start points that are valid for the given side length range from
+        # 0 to the image boundary minus the side length
+        starts = [np.random.randint(0, shape[dim] - side_len + 1) for dim in range(ndim)]
+
+        # create the slice objects for all dimensions
+        s = tuple(slice(start, start + side_len) for start in starts)
+        new_slices.append(s)
 
     return new_slices
 
