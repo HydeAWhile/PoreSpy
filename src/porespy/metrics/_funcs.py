@@ -1356,7 +1356,7 @@ def bond_number(
     source: str = 'lt',
     method: str = 'median',
     mask_source: bool = False,
-    use_diameter: bool = True,
+    use_diameter: bool = False,
 ):
     r"""
     Computes the Bond number for an image
@@ -1404,8 +1404,8 @@ def bond_number(
         If `True` then the distance values in `source` are masked by the skeleton
         before computing the average value using the specified `method`. This
         requires computing the skeleton which can take a few moments.
-    use_diameter : bool (default is `True`)
-        If `True` then the characteristic size obtaine from `source` is multiplied by 
+    use_diameter : bool (default is `False`)
+        If `True` then the characteristic size obtaine from `source` is multiplied by
         2 to convert radius to diameter.
     """
     if mask_source is True:
