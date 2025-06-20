@@ -37,12 +37,13 @@ dependencies = [
     "scikit-image<0.25.0",
     "scipy",
     "tqdm",
-    "pywavelets",
     "setuptools",
     "trimesh>=4.5.3",
     "pyevtk>=1.6.0",
     "matplotlib-inline>=0.1.7",
     "numpy-stl>=3.2.0",
+    "imageio>=2.37.0",
+    "nanomesh>=0.9.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"
@@ -60,20 +61,13 @@ test = [
     "pytest-split",
 ]
 extras = [
-    "imageio",
-    "nanomesh",
-    "numpy-stl",
     "pyevtk",
-    "scikit-fmm",
     "scikit-learn",
     "tensorflow",
     "trimesh",
 ]
 extras-macos = [
-    "imageio",
-    "numpy-stl",
     "pyevtk",
-    "scikit-fmm",
     "scikit-learn",
     "tensorflow",
     "trimesh",
