@@ -552,7 +552,7 @@ def imbibition(
         mask = np.isfinite(pc)*im
         Ps = np.logspace(
             np.log10(pc[mask].max()),
-            np.log10(pc[mask].min())*0.99,
+            np.log10(pc[mask].min()*0.99),
             steps,
         )
     elif steps is None:
@@ -563,7 +563,6 @@ def imbibition(
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
-    im_size = np.zeros_like(im, dtype=int)
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
@@ -600,7 +599,7 @@ def imbibition(
         if np.any(mask):
             im_seq[mask] = step
             im_pc[mask] = P
-            # im_size[mask] = np.amin(radii)
+    im_seq = make_contiguous(im_seq)
 
     trapped = None  # Initialize trapped to None in case outlets not given
     if outlets is not None:
