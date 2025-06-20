@@ -530,8 +530,7 @@ def marching_map(path, start):
     try:
         import skfmm
     except ModuleNotFoundError:
-        raise ModuleNotFoundError('scikit-fmm must be install to use this ' +
-                                  'function')
+        raise Exception('scikit-fmm must be install to use this function')
     phi = start*2.0 - 1.0
     speed = path*1.0
     t = skfmm.travel_time(phi, speed)
