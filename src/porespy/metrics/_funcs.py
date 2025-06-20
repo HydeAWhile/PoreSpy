@@ -5,15 +5,16 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
-from skimage.morphology import skeletonize
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
+from skimage.morphology import skeletonize, ball, disk, square, cube
 from porespy import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
     fill_closed_pores,
+    find_invalid_pores,
 )
 from porespy.tools import (
     Results,
@@ -21,7 +22,8 @@ from porespy.tools import (
     extend_slice,
     get_tqdm,
     get_slices_slabs,
-    get_edt
+    get_edt,
+    ps_round,
 )
 
 
@@ -34,6 +36,7 @@ __all__ = [
     "pore_size_distribution",
     "radial_density_distribution",
     "porosity",
+    "porosity_threshold",
     "porosity_profile",
     "satn_profile",
     "two_point_correlation",
@@ -47,6 +50,108 @@ __all__ = [
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
+
+
+def porosity_threshold(im, axis=0, method='repeated', conn='min'):
+    r"""
+    Find the porosity of the image at the percolation threshold
+
+    Parameters
+    ----------
+    im : ndarray
+        Image of the void space
+    axis : int
+        The axis along which percolation is checked
+    method : str
+        The method to use when eroding void space to find percolating threshold.
+        Options are:
+
+        =========== ================================================================
+        Method      Description
+        =========== ================================================================
+        repeated    Erodes void space repeatedly using a round structuring element
+                    of radius 1.
+        increasing  Erodes void space using round structuring elements of increasing
+                    radius, starting with 1.
+        =========== ================================================================
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    results
+        A results object with the following attributes:
+
+        ================ ===========================================================
+        Attribute        Description
+        ================ ===========================================================
+        eps_orig         The total porosity of the original image, including closed
+                         and surface pores
+        eps_orig_perc    The percolating porosity of the original image (i.e. with
+                         closed and surface pores filled)
+        eps_thresh       The porosity of the image after eroding the void space
+                         results in no percolating paths
+        eps_thresh_perc  The percolating porosity of the eroded image (with closed
+                         and surface pores filled). Note that technically NO voids
+                         are percolating at the threshold, so this result uses
+                         the percolating voids from the previous step as a mask
+                         when counting the void volume of  percolating voids at the
+                         threshold.
+        ================ ===========================================================
+    """
+    im = np.swapaxes(im, 0, axis) == 1
+    im2 = np.swapaxes(im, 0, axis) == 1
+    inlets = np.zeros_like(im)
+    inlets[0, ...] = True
+    inlets *= im
+    outlets = np.zeros_like(im)
+    outlets[-1, ...] = True
+    outlets *= im
+
+    Vbulk = np.sum(im >= 0, dtype=np.int64)
+    invalid = find_invalid_pores(im, conn=conn)
+    invalid[~im] = -1
+    valid = invalid == 0
+    eps_orig = np.sum(im > 0, dtype=np.int64)/Vbulk
+    eps_orig_perc = np.sum(invalid[im] == 0, dtype=np.int64)/Vbulk
+
+    R = 1
+    while True:
+        # Erode void space
+        if method.startswith('repeat'):
+            se = ps_round(r=R, ndim=im2.ndim, smooth=False)
+            im2 = spim.binary_erosion(im2, structure=se, border_value=True)
+        elif method.startswith('increasing'):
+            se = ps_round(r=R, ndim=im2.ndim, smooth=False)
+            R = R + 1
+            im2 = spim.binary_erosion(im, structure=se, border_value=True)
+        # Find labels present on inlet and outlet faces
+        labels, N = spim.label(im2, structure=strel[im.ndim][conn])
+        a = np.unique(labels[inlets])
+        a = a[a > 0]
+        b = np.unique(labels[outlets])
+        b = b[b > 0]
+        if not np.any(np.isin(a, b)):
+            Vpore = im2 > 0  # Pore volume at current iteration
+            eps_thresh = np.sum(Vpore, dtype=np.int64)/Vbulk
+            eps_thresh_perc = np.sum(Vpore*valid, dtype=np.int64)/Vbulk
+            break
+        # Find currently percolating void space to use as a mask
+        invalid = find_invalid_pores(im2, conn=conn)
+        invalid[~im] = -1
+        valid = invalid == 0
+
+    from porespy.tools import Results
+    r = Results()
+    r.eps_orig = eps_orig
+    r.eps_orig_perc = eps_orig_perc
+    r.eps_thresh = eps_thresh
+    r.eps_thresh_perc = eps_thresh_perc
+    return r
 
 
 def boxcount(im, bins=10):
