@@ -125,7 +125,7 @@ def qbip(
                 trapped=trapped,
                 min_size=min_size,
                 conn=conn,
-            )
+            ).im_trapped
         pressure = pressure.astype(float).squeeze()
         pressure[trapped] = np.inf
         sequence[trapped] = -1
@@ -427,7 +427,7 @@ def ibip(
                 trapped=trapped,
                 min_size=min_size,
                 conn=conn,
-            )
+            ).im_trapped
         seq[trapped] = -1
         seq = make_contiguous(im=seq, mode='symmetric')
         sizes[trapped] = -1

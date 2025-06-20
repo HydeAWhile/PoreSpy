@@ -619,7 +619,7 @@ def imbibition(
                 trapped=trapped,
                 min_size=min_size,
                 conn=conn,
-            )
+            ).im_trapped
         im_pc[trapped] = -np.inf
         im_seq[trapped] = -1
 

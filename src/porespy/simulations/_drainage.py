@@ -666,7 +666,7 @@ def drainage(
                 trapped=trapped,
                 min_size=min_size,
                 conn=conn,
-            )
+            ).im_trapped
         trapped[im_seq == -1] = True
         im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf
         if residual is not None:  # Re-add residual to inv
