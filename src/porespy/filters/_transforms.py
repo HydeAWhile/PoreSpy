@@ -64,8 +64,8 @@ def capillary_transform(
     recommended to use SI for everything.
 
     """
-    if theta < 90:
-        raise Exception('The contact angle is measured through the non-wetting phase')
+    if np.any(theta < 90) or np.any(theta > 180):
+        raise Exception('The contact angle must be between 90 and 180')
     delta_rho = rho_nwp - rho_wp
     if dt is None:
         dt = edt(im)
