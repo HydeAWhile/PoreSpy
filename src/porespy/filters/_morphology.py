@@ -1,12 +1,8 @@
-import numpy as np
 from scipy.signal import fftconvolve
 from porespy.tools import (
     ps_round,
     get_edt
 )
-
-
-edt = get_edt()
 
 
 __all__ = [
@@ -15,11 +11,49 @@ __all__ = [
 ]
 
 
+edt = get_edt()
+
+
 def erode(im, r, dt=None, method='dt', smooth=True):
+    r"""
+    Perform erosion with a round structuring element
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean image with the foreground (to be eroded) indicated by `True`
+    r : int
+        The radius of the round structuring element to use
+    dt : ndarray
+        The distance transform of the foreground. If not provided it will be
+        computed. This argument is only relevant if `method='dt'`.
+    smooth : boolean
+        If `True` (default) the single voxel protrusion on the face of the
+        structuring element are removed.
+    method : str
+        Controls which method is used. Options are:
+
+        ========= =============================================================
+        method    Description
+        ========= =============================================================
+        `'dt'`    Uses a distance transform to find all voxels within `r` of
+                  the background, then removes them to affect an erosion
+        `'conv'`  Using a FFT based convolution to find all voxels within `r`
+                  of the background (voxels with a value smaller than the sum
+                  of the sturcturing element), then removes them to affect an
+                  erosion.
+        ========= =============================================================
+
+    Returns
+    -------
+    erosion : ndarray
+        An image the same size as `im` with the foreground eroded by the specified
+        amount.
+    """
     from porespy import settings
-    if dt is None:
-        dt = edt(im, parallel=settings.ncores)
     if method == 'dt':
+        if dt is None:
+            dt = edt(im, parallel=settings.ncores)
         ero = dt >= r if smooth else dt > r
     elif method.startswith('conv'):
         se = ps_round(r=r, ndim=im.ndim, smooth=smooth)
@@ -28,6 +62,37 @@ def erode(im, r, dt=None, method='dt', smooth=True):
 
 
 def dilate(im, r, method='dt', smooth=True):
+    r"""
+    Perform dilation with a round structuring element
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean image with the foreground (to be dilated) indicated by `True`
+    r : int
+        The radius of the round structuring element to use
+    smooth : boolean
+        If `True` (default) the single voxel protrusion on the face of the
+        structuring element are removed.
+    method : str
+        Controls which method is used. Options are:
+
+        ========= =============================================================
+        method    Description
+        ========= =============================================================
+        `'dt'`    Uses a distance transform to find all voxels within `r` of
+                  the foreground, then adds them to affect a dilation
+        `'conv'`  Using a FFT based convolution to find all voxels within `r`
+                  of the foreground (voxels with a value larger than 0), then adds
+                  them to affect a dilation.
+        ========= =============================================================
+
+    Returns
+    -------
+    dilation : ndarray
+        An image the same size as `im` with the foreground eroded by the specified
+        amount.
+    """
     from porespy import settings
     im = im == 1
     if method == 'dt':

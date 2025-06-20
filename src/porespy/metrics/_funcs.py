@@ -1018,7 +1018,7 @@ def pc_map_to_pc_curve(
         when computing the saturation.
     seq : ndarray, optional
         A numpy array with each voxel containing the sequence at which it was
-        invaded. This is required when analyzing results from invasion percolation
+        invaded. This is required when analyzing results from injection simulations
         since the pressures in `pc` do not correspond to the sequence in which
         they were filled.
     mode : str
@@ -1277,7 +1277,8 @@ def bond_number(
     voxel_size: float,
     source: str = 'lt',
     method: str = 'median',
-    mask: bool = False,
+    mask_source: bool = False,
+    use_diameter: bool = False,
 ):
     r"""
     Computes the Bond number for an image
@@ -1286,7 +1287,6 @@ def bond_number(
     ----------
     im : ndarray
         The image of the domain with `True` values indicating the phase of interest
-        space
     delta_rho : float
         The difference in the density of the non-wetting and wetting phase
     g : float
@@ -1322,11 +1322,15 @@ def bond_number(
         pmean          The power mean of the values (using `scipy.stats.pmean`)
         ============== =============================================================
 
-    mask : bool
+    mask_source : bool (default is `False`)
         If `True` then the distance values in `source` are masked by the skeleton
-        before computing the average value using the specified `method`.
+        before computing the average value using the specified `method`. This
+        requires computing the skeleton which can take a few moments.
+    use_diameter : bool (default is `False`)
+        If `True` then the characteristic size obtaine from `source` is multiplied by
+        2 to convert radius to diameter.
     """
-    if mask is True:
+    if mask_source is True:
         mask = skeletonize(im)
     else:
         mask = im
@@ -1347,5 +1351,7 @@ def bond_number(
     else:
         raise Exception(f"Unrecognized method {method}")
     R = f(dvals[mask])
+    if use_diameter:
+        R = 2*R
     Bo = abs(delta_rho*g*(R*voxel_size)**2/sigma)
     return Bo

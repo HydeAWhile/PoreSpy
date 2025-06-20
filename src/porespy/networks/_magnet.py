@@ -193,30 +193,30 @@ def skeleton(im, surface=False, parallel_kw=None):
          Dictionary containing the settings for parallelization by chunking. If
          `None` is provided, parallelization does not occur. The default is
          `None`.
-         
+
          The optional settings include `divs` (scalar or list of scalars,
          default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
          and `cores` (scalar, default is all available cores).
-         
+
          `divs` is the number of times to divide the image for parallel
          processing. If `1` then parallel processing does not occur. `2` is
          equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
          respective axis will be divided by its corresponding number in the
          list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
          and 4 respectively.
-         
+
          `overlap` is the amount of overlap to include when dividing up the
          image. This value will almost always be the size (i.e. raduis) of the
          structuring element. If not specified then the amount of overlap
          is inferred from the size of the structuring element, in which
          case the `strel_arg` must be specified.
-         
+
          `cores` is the number of cores that will be used to parallel process
          all domains. If ``None`` then all cores will be used but user can
          specify any integer values to control the memory usage. Setting value
          to 1 will effectively process the chunks in serial to minimize memory
          usage.
-    
+
 
     Returns
     -------
@@ -251,24 +251,24 @@ def skeleton_parallel(im, parallel_kw={}):
     parallel_kw : dict
         Dictionary containing the settings for parallelization by chunking. If
         not provided, the defaults in `ps.settings` are used!
-        
+
         The optional settings include `divs` (scalar or list of scalars,
         default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
         and `cores` (scalar, default is all available cores).
-        
+
         `divs` is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
         respective axis will be divided by its corresponding number in the
         list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
         and 4 respectively.
-        
+
         `overlap` is the amount of overlap to include when dividing up the
         image. This value will almost always be the size (i.e. raduis) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
         case the `strel_arg` must be specified.
-        
+
         `cores` is the number of cores that will be used to parallel process
         all domains. If ``None`` then all cores will be used but user can
         specify any integer values to control the memory usage. Setting value
@@ -392,11 +392,6 @@ def find_throat_junctions(im,
                         found junction locations.
         =============== =============================================================
     """
-    try:
-        from skfmm import distance
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError('scikit-fmm must be install to use this function')
-
     # Parse input args
     if dt is None:
         dt = edt(im, parallel=16)
@@ -428,6 +423,10 @@ def find_throat_junctions(im,
         # set new_juncs equal to mx
         new_juncs = mx
     if mode == "fast marching":
+        try:
+            from skfmm import distance
+        except ModuleNotFoundError:
+            raise Exception("scikit-fmm must be installed for this option")
         new_juncs = np.zeros_like(juncs, dtype=bool)
         slices = spim.find_objects(throats)
         for i, s in enumerate(tqdm(slices)):
@@ -540,7 +539,7 @@ def juncs_to_pore_centers(juncs, dt):
     x = [pos[0] for pos in max_coords]
     y = [pos[1] for pos in max_coords]
     # Set the pixels at the maximum coordinates to the cluster labels
-    if juncs.ndim==2:
+    if juncs.ndim == 2:
         reduced_juncs[x, y] = juncs[x, y]
     else:
         z = [pos[2] for pos in max_coords]
@@ -645,8 +644,8 @@ def junctions_to_network(sk, juncs, throats, dt, throat_area, voxel_size=1):
         if throat_area is not None:
             sub_area = throat_area[ss]
             A = np.min(sub_area[sub_area != 0])  # use min throat area
-            t_area[throat] =  A  # assume circle
-            t_equ_diameter[throat] =  2*np.sqrt(A/np.pi)  # assume circle
+            t_area[throat] = A  # assume circle
+            t_equ_diameter[throat] = 2*np.sqrt(A/np.pi)  # assume circle
         # throat length
         t_length[throat] = len(throat_dt[throat_dt != 0])
     # find pore coords
@@ -989,7 +988,7 @@ def _cartesian_to_spherical(n):
     x = n[:, 0]
     y = n[:, 1]
     theta = np.arctan2(y, x)  # arctan2 is from 0 to pi
-    theta[theta<0] += 2*np.pi  # make range from 0 to 2*pi
+    theta[theta < 0] += 2*np.pi  # make range from 0 to 2*pi
     if n.shape[1] == 3:
         z = n[:, 2]
         r = np.sqrt(x**2 + y**2 + z**2)
@@ -1308,7 +1307,7 @@ def get_throat_area(im,
         coord1 = path[-1, n*n_walkers:(n+1)*n_walkers, 1:4]
         coord2 = path[0, n*n_walkers:(n+1)*n_walkers, 1:4]
         r = np.sum((coord1 - coord2)**2, axis=1)**(1/2)
-        if im.ndim==2:
+        if im.ndim == 2:
             area = r[0] + r[1]  # cross-section length is area in 2D
             x, y, z = coord2[0].astype(int)
             throat_area[x, y] = area * voxel_size

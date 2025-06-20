@@ -636,7 +636,7 @@ class FilterTest():
         hits = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 16, 17, 19, 31, 32, 37]
         assert np.all(hits == np.unique(s)[1:])
 
-    def test_find_trapped_regions_return_mask_side_outlet(self):
+    def test_find_trapped_clusters_side_outlet(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.6, seed=7, periodic=False,)
         inlets = np.zeros_like(im)
@@ -644,24 +644,22 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[:, -1] = True
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp1 = ps.filters.find_trapped_regions(
+        trp1 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
-            method='cluster',
-            return_mask=True,
+            method='labels',
             )
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp2 = ps.filters.find_trapped_regions(
+        trp2 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
             method='queue',
-            return_mask=True,
         )
         assert np.all(trp1 == trp2)
 
-    def test_find_trapped_regions_return_mask_top_outlet(self):
+    def test_find_trapped_clusters_return_mask_top_outlet(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.6, seed=7, periodic=False,)
         inlets = np.zeros_like(im)
@@ -669,20 +667,18 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[-1, :] = True
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp1 = ps.filters.find_trapped_regions(
+        trp1 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
-            method='cluster',
-            return_mask=True,
+            method='labels',
             )
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp2 = ps.filters.find_trapped_regions(
+        trp2 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
             method='queue',
-            return_mask=True,
         )
         assert np.all(trp1 == trp2)
 
@@ -694,20 +690,18 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[-1, :] = True
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp1 = ps.filters.find_trapped_regions(
+        trp1 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
-            method='cluster',
-            return_mask=False,
+            method='labels',
         )
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp2 = ps.filters.find_trapped_regions(
+        trp2 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
             method='queue',
-            return_mask=False,
         )
 
         assert np.all(trp1 == trp2)

@@ -15,19 +15,6 @@ from porespy.tools import (
     pad,
     get_edt,
 )
-try:
-    from pyedt import jit_edt_cpu
-except ImportError as e:
-    print(e)
-
-
-IDLE = np.uint32(0)
-ASSIGNED = np.uint32(1)
-DONE = np.uint32(2)
-FINISHED = np.uint32(3)
-
-FLOAT_TYPE = numba.types.float64[:]
-INT_TYPE = numba.types.int64[:]
 
 
 __all__ = [
@@ -36,8 +23,25 @@ __all__ = [
 ]
 
 
-edt = get_edt()
 logger = logging.getLogger(__name__)
+edt = get_edt()
+
+
+# edt_import_status is caught here during the import of porespy, but if an
+# error occurs it is raised inside the function that actually uses it
+try:
+    from pyedt import jit_edt_cpu
+    edt_import_status = None
+except ModuleNotFoundError as e:
+    edt_import_status = e
+
+
+IDLE = np.uint32(0)
+ASSIGNED = np.uint32(1)
+DONE = np.uint32(2)
+FINISHED = np.uint32(3)
+FLOAT_TYPE = numba.types.float64[:]
+INT_TYPE = numba.types.int64[:]
 
 
 @njit
@@ -194,6 +198,9 @@ def regions_to_network_parallel(
     to view online example.
 
     """
+    if edt_import_status is not None:
+        raise edt_import_status
+
     logger.trace('Extracting pore/throat information')
     template_areas, template_volumes = create_mc_template_list(spacing=voxel_size)
     vertex_index_array = np.array([2**i for i in range(8)])

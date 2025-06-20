@@ -26,7 +26,7 @@ class SimulationsTest():
 
     def test_drainage_with_gravity(self):
         im = ps.generators.blobs(
-            shape=[100, 100, 100],
+            shape=[200, 200],
             porosity=0.7066,
             seed=0,
             periodic=False,
@@ -44,7 +44,8 @@ class SimulationsTest():
         )
         np.testing.assert_approx_equal(pc[im].max(), 0.144)
         # With inaccessible regions, resulting in inf in some voxels (uninvaded)
-        drn = ps.simulations.drainage(pc=pc, im=im)
+        inlets = ps.generators.faces(im.shape, inlet=0)
+        drn = ps.simulations.drainage(pc=pc, im=im, inlets=inlets)
         np.testing.assert_approx_equal(drn.im_pc.max(), np.inf)
 
         # After filling inaccessible voxels
@@ -60,7 +61,7 @@ class SimulationsTest():
             voxel_size=1e0,
             g=0,
         )
-        drn2 = ps.simulations.drainage(pc=pc2*im2, im=im2)
+        drn2 = ps.simulations.drainage(pc=pc2*im2, im=im2, inlets=inlets)
         np.testing.assert_approx_equal(drn2.im_pc[im2].max(), 0.14399999380111694)
 
         pc3 = ps.filters.capillary_transform(
