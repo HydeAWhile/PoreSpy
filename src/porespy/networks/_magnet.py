@@ -392,11 +392,6 @@ def find_throat_junctions(im,
                         found junction locations.
         =============== =============================================================
     """
-    try:
-        from skfmm import distance
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError('scikit-fmm must be install to use this function')
-
     # Parse input args
     if dt is None:
         dt = edt(im, parallel=16)
