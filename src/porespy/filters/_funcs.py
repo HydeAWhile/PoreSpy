@@ -644,7 +644,7 @@ def local_thickness(
     im: npt.NDArray,
     sizes: int = 25,
     mode: Literal['hybrid', 'dt', 'mio'] = "hybrid",
-    divs: int = 1,
+    parallel_kw: dict = {"divs": 1}
 ):
     r"""
     For each voxel, this function calculates the radius of the largest
@@ -688,6 +688,25 @@ def local_thickness(
         then parallel processing does not occur.  `2` is equivalent to
         `[2, 2, 2]` for a 3D image.  The number of cores used is specified in
         `porespy.settings.ncores` and defaults to all cores.
+        
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include divs (scalar or list of scalars,
+        default = 1), overlap (scalar or list of scalars, unused in this func),
+        and cores (scalar, default is all available cores).
+        
+        Divs is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image.
+        
+        Overlap is the amount of overlap to apply between chunks. In this
+        function, the overlap is controlled by the distance transform and
+        cannot be altered in any way.
+        
+        Cores is the number of cores that will be used to parallel process all
+        domains. If ``None`` then all cores will be used but user can specify
+        any integer values to control the memory usage. Setting value to 1 will
+        effectively process the chunks in serial to minimize memory usage.
 
     Returns
     -------
@@ -722,7 +741,7 @@ def local_thickness(
 
     """
     im_new = porosimetry(im=im, sizes=sizes, access_limited=False, mode=mode,
-                         divs=divs)
+                         parallel_kw=parallel_kw)
     return im_new
 
 
@@ -790,7 +809,7 @@ def porosimetry(
     inlets=None,
     access_limited: bool = True,
     mode: Literal['hybrid', 'dt', 'mio'] = 'hybrid',
-    divs: int = 1,
+    parallel_kw: dict = {"divs": 1}
 ):
     r"""
     Performs a porosimetry simulution on an image.
@@ -846,6 +865,25 @@ def porosimetry(
         equivalent to `[2, 2, 2]` for a 3D image.  The number of cores
         used is specified in `porespy.settings.ncores` and defaults to
         all cores.
+    
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include divs (scalar or list of scalars,
+        default = 1), overlap (scalar or list of scalars, unused in this func),
+        and cores (scalar, default is all available cores).
+        
+        Divs is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image.
+        
+        Overlap is the amount of overlap to apply between chunks. In this
+        function, the overlap is controlled by the distance transform and
+        cannot be altered in any way.
+        
+        Cores is the number of cores that will be used to parallel process all
+        domains. If ``None`` then all cores will be used but user can specify
+        any integer values to control the memory usage. Setting value to 1 will
+        effectively process the chunks in serial to minimize memory usage.
 
     Returns
     -------
@@ -877,6 +915,9 @@ def porosimetry(
     to view online example.
 
     """
+    # parse out divs, cores from parallel_kw, get from settings
+    divs = parallel_kw.get("divs", settings.divs)
+    cores = parallel_kw.get("cores", settings.ncores)
     from porespy.filters import fftmorphology
     from porespy.generators import borders
     im = np.squeeze(im)
@@ -913,19 +954,19 @@ def porosimetry(
         desc = inspect.currentframe().f_code.co_name  # Get current func name
         for r in tqdm(sizes, desc=desc, **settings.tqdm):
             if parallel:
+                parallel_kw["overlap"] = int(r) + 1
                 imtemp = chunked_func(func=fftmorphology,
                                       im=impad, strel=strel(r),
-                                      overlap=int(r) + 1, mode='erosion',
-                                      cores=settings.ncores, divs=divs)
+                                      mode='erosion', parallel_kw=parallel_kw)
             else:
                 imtemp = fftmorphology(im=impad, strel=strel(r), mode='erosion')
             if access_limited:
                 imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if parallel:
+                parallel_kw["overlap"] = int(r) + 1
                 imtemp = chunked_func(func=fftmorphology,
                                       im=imtemp, strel=strel(r),
-                                      overlap=int(r) + 1, mode='dilation',
-                                      cores=settings.ncores, divs=divs)
+                                      mode='dilation', parallel_kw=parallel_kw)
             else:
                 imtemp = fftmorphology(im=imtemp, strel=strel(r), mode='dilation')
             if np.any(imtemp):
@@ -940,10 +981,11 @@ def porosimetry(
                 imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if np.any(imtemp):
                 if parallel:
+                    parallel_kw["overlap"] = int(r) + 1
                     imtemp = chunked_func(func=lambda x: edt(x),
                                           data=~imtemp, im_arg='data',
-                                          overlap=int(r) + 1, parallel=0,
-                                          cores=settings.ncores, divs=divs) < r
+                                          parallel=0,
+                                          parallel_kw=parallel_kw) < r
                 else:
                     imtemp = edt(~imtemp) < r
                 imresults[(imresults == 0) * imtemp] = r
@@ -956,10 +998,10 @@ def porosimetry(
                 imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
             if np.any(imtemp):
                 if parallel:
+                    parallel_kw["overlap"] = int(r) + 1
                     imtemp = chunked_func(func=fftmorphology, mode='dilation',
                                           im=imtemp, strel=strel(r),
-                                          overlap=int(r) + 1,
-                                          cores=settings.ncores, divs=divs)
+                                          parallel_kw=parallel_kw)
                 else:
                     imtemp = fftmorphology(imtemp, strel(r),
                                            mode="dilation")
@@ -1158,9 +1200,7 @@ def prune_branches(
 
 def chunked_func(
     func,
-    overlap: int = None,
-    divs: int = 2,
-    cores: int = None,
+    parallel_kw = {"divs": 2, "overlap": None, "cores": None},
     im_arg=["input", "image", "im"],
     strel_arg=["strel", "structure", "footprint"],
     **kwargs,
@@ -1181,22 +1221,28 @@ def chunked_func(
     func : function handle
         The function which should be applied to each chunk, such as
         `spipy.ndimage.binary_dilation`.
-    overlap : scalar or list of scalars, optional
-        The amount of overlap to include when dividing up the image. This
-        value will almost always be the size (i.e. raduis) of the
+        
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include divs (scalar or list of scalars,
+        default = [2, 2, 2]), overlap (scalar or list of scalars, optional),
+        and cores (scalar, default is all available cores).
+        
+        Divs is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image.
+        
+        Overlap is the amount of overlap to include when dividing up the image.
+        This value will almost always be the size (i.e. raduis) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
         case the `strel_arg` must be specified.
-    divs : scalar or list of scalars (default = [2, 2, 2])
-        The number of chunks to divide the image into in each direction.
-        The default is 2 chunks in each direction, resulting in a
-        quartering of the image and 8 total chunks (in 3D).  A scalar is
-        interpreted as applying to all directions, while a list of scalars
-        is interpreted as applying to each individual direction.
-    cores : scalar
-        The number of cores which should be used.  By default, all cores
-        will be used, or as many are needed for the given number of
-        chunks, which ever is smaller.
+        
+        Cores is the number of cores that will be used to parallel process all
+        domains. If ``None`` then all cores will be used but user can specify
+        any integer values to control the memory usage. Setting value to 1 will
+        effectively process the chunks in serial to minimize memory usage.
+
     im_arg : str
         The keyword used by `func` for the image to be operated on. By
         default this function will look for `image`, `input`, and
@@ -1240,6 +1286,11 @@ def chunked_func(
     to view online example.
 
     """
+    # parse out divs, cores, overlap from parallel_kw
+    # take default from settings if not on parallel_kw dict
+    divs = parallel_kw.get("divs", settings.divs)
+    cores = parallel_kw.get("cores", settings.ncores)
+    overlap = parallel_kw.get("overlap", settings.overlap)
 
     @dask.delayed
     def apply_func(func, **kwargs):

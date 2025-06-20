@@ -11,7 +11,7 @@ class NetworkSizeFactorTest():
         assert im.sum()/im.size == 0.498648
         self.im = im[:15, :15, :15]
         self.snow = ps.networks.snow2(self.im, boundary_width=0,
-                                      parallelization=None)
+                                      parallel_kw=None)
 
     def test_diffusive_size_factor_DNS(self):
         regions = self.snow.regions

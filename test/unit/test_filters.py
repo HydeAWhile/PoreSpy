@@ -2,7 +2,7 @@ import numpy as np
 import porespy as ps
 import pytest
 import scipy.ndimage as spim
-from skimage.morphology import disk, ball
+from skimage.morphology import disk, ball, skeletonize
 from skimage.util import random_noise
 import matplotlib.pyplot as plt
 
@@ -457,9 +457,9 @@ class FilterTest():
         im = ps.generators.overlapping_spheres(shape=[1000, 1000],
                                                r=10,
                                                porosity=0.5)
+        parallel_kw = {"divs": [2, 2], "cores": None, "overlap": None}
         snow = ps.filters.snow_partitioning_parallel(im,
-                                                     divs=[2, 2],
-                                                     cores=None,
+                                                     parallel_kw=parallel_kw,
                                                      r_max=5,
                                                      sigma=0.4)
         # assert np.amax(snow.regions) == 919
@@ -472,8 +472,9 @@ class FilterTest():
         im = disk(50)
         f = ps.filters.fftmorphology
         s = disk(1)
-        a = ps.filters.chunked_func(func=f, im=im, overlap=3, im_arg='im',
-                                    strel=s, mode='erosion')
+        parallel_kw = {"divs": 2, "overlap": 3, "cores": None}
+        a = ps.filters.chunked_func(func=f, im=im, parallel_kw=parallel_kw,
+                                    im_arg='im', strel=s, mode='erosion')
         b = ps.filters.fftmorphology(im, strel=s, mode='erosion')
         assert np.all(a == b)
 
@@ -482,8 +483,10 @@ class FilterTest():
         im = ball(50)
         f = ps.filters.fftmorphology
         s = ball(1)
-        a = ps.filters.chunked_func(func=f, im=im, im_arg='im', overlap=3,
-                                    strel=s, mode='erosion')
+        parallel_kw = {"divs": 2, "overlap": 3, "cores": None}
+        a = ps.filters.chunked_func(func=f, im=im, im_arg='im',
+                                    parallel_kw=parallel_kw, strel=s,
+                                    mode='erosion')
         b = ps.filters.fftmorphology(im, strel=s, mode='erosion')
         assert np.all(a == b)
 
@@ -503,14 +506,14 @@ class FilterTest():
             shape=[100, 100, 100], porosity=0.497569, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.497569
         with pytest.raises(IndexError):
+            parallel_kw = {"divs": 2, "overlap": 5, "cores": None}
             ps.filters.chunked_func(func=spsg.convolve,
                                     in1=im*1.0,
                                     in2=ps.tools.ps_ball(5),
                                     im_arg='in1', strel_arg='in2',
-                                    overlap=5)
+                                    parallel_kw=parallel_kw)
 
     def test_prune_branches(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.random_spheres([100, 100, 100], r=4, seed=0)
         skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1)
@@ -518,7 +521,6 @@ class FilterTest():
         # assert skel1.sum() > skel2.sum()
 
     def test_prune_branches_n2(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.random_spheres(shape=[100, 100, 100], r=4, seed=0)
         skel1 = skeletonize(im)
         skel2 = ps.filters.prune_branches(skel1, iterations=1)
@@ -529,7 +531,6 @@ class FilterTest():
         assert skel3.sum() > skel4.sum()
 
     def test_apply_padded(self):
-        from skimage.morphology import skeletonize
         im = ps.generators.blobs(
             shape=[100, 100], periodic=False,)
         skel1 = skeletonize(im)
@@ -635,7 +636,7 @@ class FilterTest():
         hits = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 16, 17, 19, 31, 32, 37]
         assert np.all(hits == np.unique(s)[1:])
 
-    def test_find_trapped_regions_return_mask_side_outlet(self):
+    def test_find_trapped_clusters_side_outlet(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.6, seed=7, periodic=False,)
         inlets = np.zeros_like(im)
@@ -643,24 +644,22 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[:, -1] = True
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp1 = ps.filters.find_trapped_regions(
+        trp1 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
-            method='cluster',
-            return_mask=True,
+            method='labels',
             )
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp2 = ps.filters.find_trapped_regions(
+        trp2 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
             method='queue',
-            return_mask=True,
         )
         assert np.all(trp1 == trp2)
 
-    def test_find_trapped_regions_return_mask_top_outlet(self):
+    def test_find_trapped_clusters_return_mask_top_outlet(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.6, seed=7, periodic=False,)
         inlets = np.zeros_like(im)
@@ -668,20 +667,18 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[-1, :] = True
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp1 = ps.filters.find_trapped_regions(
+        trp1 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
-            method='cluster',
-            return_mask=True,
+            method='labels',
             )
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp2 = ps.filters.find_trapped_regions(
+        trp2 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
             method='queue',
-            return_mask=True,
         )
         assert np.all(trp1 == trp2)
 
@@ -693,20 +690,18 @@ class FilterTest():
         outlets = np.zeros_like(im)
         outlets[-1, :] = True
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp1 = ps.filters.find_trapped_regions(
+        trp1 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
-            method='cluster',
-            return_mask=False,
+            method='labels',
         )
         inv = ps.simulations.drainage(im, inlets=inlets)
-        trp2 = ps.filters.find_trapped_regions(
+        trp2 = ps.filters.find_trapped_clusters(
             im=im,
             seq=inv.im_seq,
             outlets=outlets,
             method='queue',
-            return_mask=False,
         )
 
         assert np.all(trp1 == trp2)

@@ -69,22 +69,13 @@ class IBIPTest(GenericTest):
         # The following asserts have been updated to 840 because the
         # find_trapped_regions function no longer accepts bins, and instead uses
         # ALL the values to generate the bins.
-        inv_w_trapping = ps.filters.find_trapped_regions(
+        inv_w_trapping = ps.filters.find_trapped_clusters(
             im=im,
             outlets=outlets,
             seq=x.im_seq,
-            return_mask=True,
             method='queue',
         )
         assert inv_w_trapping.sum() == 840
-        inv_w_trapping = ps.filters.find_trapped_regions(
-            im=im,
-            seq=x.im_seq,
-            outlets=outlets,
-            return_mask=False,
-            method='queue',
-        )
-        assert (inv_w_trapping == -1).sum() == 840
 
 
 if __name__ == '__main__':

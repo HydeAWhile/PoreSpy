@@ -3,12 +3,11 @@ import inspect
 import logging
 import sys
 import time
-from dataclasses import dataclass
-
-import numpy as np
 import psutil
-
-logger = logging.getLogger("porespy")
+import numpy as np
+from functools import partial
+from dataclasses import dataclass
+import warnings
 
 
 __all__ = [
@@ -19,8 +18,12 @@ __all__ = [
     "tic",
     "toc",
     "get_edt",
+    "get_skel",
     "parse_shape",
 ]
+
+
+logger = logging.getLogger("porespy")
 
 
 def parse_shape(im_or_shape):
@@ -49,14 +52,26 @@ def parse_shape(im_or_shape):
     return shape
 
 
+def get_skel():
+    package = importlib.import_module("skimage.morphology")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            func = package.skeletonize_3d
+        except (FutureWarning, AttributeError):
+            func = package.skeletonize
+    return func
+
+
 def get_edt():
-    import importlib
     try:
         package = importlib.import_module("pyedt")
         return package.edt
     except ModuleNotFoundError:
         package = importlib.import_module("edt")
-        return package.edt
+        edt = package.edt
+        edt = partial(edt, parallel=Settings().ncores)
+        return edt
 
 
 def _format_time(timespan, precision=3):
@@ -188,7 +203,10 @@ class Settings:  # pragma: no cover
         "leave": False,
         "file": sys.stdout,
     }
-    _loglevel = 40 if _is_ipython_notebook() else 30
+    _loglevel = 40
+    # add parallel settings
+    divs = 2  # choose 2 as default
+    overlap = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -393,3 +411,7 @@ class Results:
                 lines.append("{0:<25s} {1}".format(item, self[item]))
         lines.append(header)
         return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    pass

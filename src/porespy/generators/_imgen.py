@@ -1134,7 +1134,7 @@ def blobs(
     shape: List[int],
     porosity: float = 0.5,
     blobiness: int = 1,
-    divs: int = 1,
+    parallel_kw: dict = {"divs": 1},
     seed: int = None,
     periodic: bool = True,
 ):
@@ -1155,12 +1155,27 @@ def blobs(
         Controls the morphology of the blobs.  A higher number results in
         a larger number of small blobs.  If a list is supplied then the
         blobs are anisotropic.
-    divs : int or array_like
-        The number of times to divide the image for parallel processing.
-        If ``1`` then parallel processing does not occur.  ``2`` is
-        equivalent to ``[2, 2, 2]`` for a 3D image.  The number of cores
-        used is specified in ``porespy.settings.ncores`` and defaults to
-        all cores.
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include `divs` (scalar or list of scalars,
+        default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+        and `cores` (scalar, default is all available cores).
+        
+        `divs` is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
+        respective axis will be divided by its corresponding number in the
+        list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
+        and 4 respectively.
+        
+        `overlap` is the amount of overlap to include when dividing up the
+        image. This value is controlled by the blobiness and shape of the
+        image by default but can be controlled using parallel_kw!
+        
+        `cores` is the number of cores that will be used to parallel process all
+        domains. If ``None`` then all cores will be used but user can specify
+        any integer values to control the memory usage. Setting value to 1 will
+        effectively process the chunks in serial to minimize memory usage.
     seed : int, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
@@ -1196,6 +1211,8 @@ def blobs(
     to view online example.
 
     """
+    # parse out divs from parallel_kw, use default from settings
+    divs = parallel_kw.get("divs", settings.divs)
     if seed is not None:
         np.random.seed(seed)
     shape = parse_shape(shape)
@@ -1213,9 +1230,11 @@ def blobs(
     im = np.random.random(shape)
     if parallel:
         overlap = max([int(s*4) for s in np.array(sigma, ndmin=1)])
+        overlap = parallel_kw.get("overlap", overlap)
+        parallel_kw["overlap"] = overlap
         im = chunked_func(func=spim.gaussian_filter,
                           input=im, sigma=sigma,
-                          divs=divs, overlap=overlap)
+                          parallel_kw=parallel_kw)
     else:
         im = spim.gaussian_filter(im, sigma=sigma, mode=mode)
     im = all_to_uniform(im, scale=[0, 1])
