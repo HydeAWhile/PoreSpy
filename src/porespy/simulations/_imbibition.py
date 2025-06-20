@@ -614,12 +614,13 @@ def imbibition(
             conn=conn,
         )
         if min_size > 0:
-            trapped = find_small_clusters(
+            temp = find_small_clusters(
                 im=im,
                 trapped=trapped,
                 min_size=min_size,
                 conn=conn,
-            ).im_trapped
+            )
+            trapped = temp.im_trapped
         im_pc[trapped] = -np.inf
         im_seq[trapped] = -1
 
@@ -708,10 +709,10 @@ if __name__ == '__main__':
     residual = (lt < 8)*im
     pc = ps.filters.capillary_transform(im=im, voxel_size=1e-4)
 
-    imb1 = imbibition(im=im, pc=pc, inlets=inlets)
-    imb2 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets)
-    imb3 = imbibition(im=im, pc=pc, inlets=inlets, residual=residual)
-    imb4 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, residual=residual)
+    imb1 = imbibition(im=im, pc=pc, inlets=inlets, min_size=1)
+    imb2 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, min_size=1)
+    imb3 = imbibition(im=im, pc=pc, inlets=inlets, residual=residual, min_size=1)
+    imb4 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, residual=residual, min_size=1)
 
     # %%
 

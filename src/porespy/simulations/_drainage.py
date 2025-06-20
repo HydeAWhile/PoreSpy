@@ -661,12 +661,13 @@ def drainage(
             conn=conn,
         )
         if min_size > 0:
-            trapped = find_small_clusters(
+            temp = find_small_clusters(
                 im=im,
                 trapped=trapped,
                 min_size=min_size,
                 conn=conn,
-            ).im_trapped
+            )
+            trapped = temp.im_trapped
         trapped[im_seq == -1] = True
         im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf
         if residual is not None:  # Re-add residual to inv
@@ -741,6 +742,7 @@ if __name__ == "__main__":
         pc=pc,
         inlets=inlets,
         steps=30,
+        min_size=5,
     )
     drn2 = ps.simulations.drainage(
         im=im,

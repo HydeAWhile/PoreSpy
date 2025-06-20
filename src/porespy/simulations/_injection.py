@@ -120,12 +120,13 @@ def qbip(
         )
         trapped = trapped.squeeze()
         if min_size > 0:
-            trapped = find_small_clusters(
+            temp = find_small_clusters(
                 im=im,
                 trapped=trapped,
                 min_size=min_size,
                 conn=conn,
-            ).im_trapped
+            )
+            trapped = temp.im_trapped
         pressure = pressure.astype(float).squeeze()
         pressure[trapped] = np.inf
         sequence[trapped] = -1
@@ -422,12 +423,13 @@ def ibip(
             method='queue',
         )
         if min_size > 0:
-            trapped = find_small_clusters(
+            temp = find_small_clusters(
                 im=im,
                 trapped=trapped,
                 min_size=min_size,
                 conn=conn,
-            ).im_trapped
+            )
+            trapped = temp.im_trapped
         seq[trapped] = -1
         seq = make_contiguous(im=seq, mode='symmetric')
         sizes[trapped] = -1
@@ -619,8 +621,8 @@ if __name__ == "__main__":
     pc = ps.filters.capillary_transform(im, voxel_size=1e-5)
 
     drn = drainage(im, pc=pc, inlets=inlets)
-    inv1 = injection(im, pc=pc, inlets=inlets, return_sizes=True, method='qbip', conn='min')
-    inv2 = injection(im, inlets=inlets, return_sizes=True, method='ibip', conn='min')
+    inv1 = injection(im, pc=pc, inlets=inlets, return_sizes=True, method='qbip', conn='min', min_size=1)
+    inv2 = injection(im, inlets=inlets, return_sizes=True, method='ibip', conn='min', min_size=1)
 
     # %%
     drn_data = ps.metrics.pc_map_to_pc_curve(im=im, pc=drn.im_pc, fix_ends=False, mode='drainage')
