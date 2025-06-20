@@ -7,14 +7,6 @@ from skimage.segmentation import clear_border
 from skimage.morphology import ball, disk, square, cube
 from porespy.tools import (
     _check_for_singleton_axes,
-    get_border,
-    subdivide,
-    recombine,
-    unpad,
-    extract_subsection,
-    ps_disk,
-    ps_ball,
-    ps_round,
     get_edt,
 )
 

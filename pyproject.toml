@@ -16,7 +16,6 @@ keywords = [
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -46,10 +45,10 @@ dependencies = [
     "nanomesh>=0.9.1",
 ]
 readme = "README.md"
-requires-python = ">= 3.10"
+requires-python = ">=3.10,<3.13"
 
 [project.optional-dependencies]
-build = ["hatch"]
+build = ["hatch", "meson", "cibuildwheel", "build", "ninja", "pip"]
 test = [
     "codecov",
     "coverage",
@@ -63,13 +62,11 @@ test = [
 extras = [
     "pyevtk",
     "scikit-learn",
-    "tensorflow",
     "trimesh",
 ]
 extras-macos = [
     "pyevtk",
     "scikit-learn",
-    "tensorflow",
     "trimesh",
 ]
 docs = [
@@ -80,6 +77,7 @@ docs = [
     "sphinx",
     "sphinx-copybutton",
     "sphinx-design",
+    "tensorflow",
 ]
 interactive = [
     "ipython",
@@ -96,56 +94,30 @@ Repository = "https://github.com/PMEAL/porespy"
 Documentation = "https://porespy.org"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "meson", "ninja"]
 build-backend = "hatchling.build"
-
-[tool.rye]
-managed = true
-dev-dependencies = [
-    # build
-    "hatch",
-    # test
-    "codecov",
-    "coverage",
-    "nbval",
-    "pytest",
-    "pytest-cache",
-    "pytest-cov",
-    "pytest-custom-exit-code",
-    "pytest-split",
-    # extras
-    "imageio",
-    "nanomesh",
-    "numpy-stl",
-    "pyevtk",
-    "scikit-fmm",
-    "scikit-learn",
-    "tensorflow",
-    "trimesh",
-    # docs
-    "mock",
-    "myst-nb",
-    "pandoc",
-    "pydata-sphinx-theme==0.9",
-    "sphinx",
-    "sphinx-copybutton",
-    "sphinx-design",
-    # interactive
-    "ipython",
-    "ipykernel",
-    "ipywidgets",
-    "jupyter",
-    "jupyterlab_widgets",
-]
 
 [tool.hatch.metadata]
 allow-direct-references = true
+include = [
+    "src/porespy/beta/libwalker.so",
+    "src/porespy/beta/libwalker.dll",
+    "src/porespy/beta/libwalker.dylib",
+]
 
 [tool.hatch.version]
 path = "src/porespy/__version__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/porespy"]
+artifacts = [
+    "src/porespy/beta/*.so",
+    "src/porespy/beta/*.dll",
+    "src/porespy/beta/*.dylib",
+]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -163,7 +135,6 @@ python_classes = "*Test"
 python_functions = "test_*"
 testpaths = ["test", "examples"]
 norecursedirs = [".git", ".github", ".ipynb_checkpoints", "build", "dist"]
-
 
 [tool.coverage.run]
 source = ["src/porespy"]
@@ -244,7 +215,6 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "test/**" = ["F841"]
 "test_snow2.py" = ["E241"]
 
-
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
 quote-style = "double"
@@ -271,11 +241,3 @@ docstring-code-format = true
 # This only has an effect when the `docstring-code-format` setting is
 # enabled.
 docstring-code-line-length = "dynamic"
-
-[tool.uv.sources]
-porespy = { workspace = true }
-
-[dependency-groups]
-dev = [
-    "porespy",
-]

@@ -180,49 +180,49 @@ class ToolsTest():
         with pytest.raises(Exception):
             im = ps.tools.insert_cylinder(im, [20, 20, 20], [80, 80, 80], r=30)
 
-    def test_subdivide_2D_with_vector_overlap(self):
+    def test_get_slices_grid_2D_with_vector_overlap(self):
         im = np.ones([150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20])
         assert np.all(im[s[0]].shape == (60, 70))
         assert np.all(im[s[1]].shape == (60, 90))
         assert np.all(im[s[4]].shape == (70, 90))
 
-    def test_subdivide_2D_with_scalar_overlap(self):
+    def test_get_slices_grid_2D_with_scalar_overlap(self):
         im = np.ones([150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=10)
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=10)
         assert np.all(im[s[0]].shape == (60, 60))
         assert np.all(im[s[1]].shape == (60, 70))
         assert np.all(im[s[4]].shape == (70, 70))
 
-    def test_subdivide_2D_with_vector_overlap_flattened(self):
+    def test_get_slices_grid_2D_with_vector_overlap_flattened(self):
         im = np.ones([150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20])
         assert np.all(im[s[0]].shape == (60, 70))
         assert np.all(im[s[1]].shape == (60, 90))
         assert np.all(im[s[4]].shape == (70, 90))
 
-    def test_subdivide_3D_with_vector_overlap(self):
+    def test_get_slices_grid_3D_with_vector_overlap(self):
         im = np.ones([150, 150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20, 30])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20, 30])
         assert np.all(im[s[0]].shape == (60, 70, 80))
         assert np.all(im[s[1]].shape == (60, 70, 110))
         assert np.all(im[s[13]].shape == (70, 90, 110))
 
-    def test_subdivide_3D_with_scalar_overlap(self):
+    def test_get_slices_grid_3D_with_scalar_overlap(self):
         im = np.ones([150, 150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=10)
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=10)
         assert np.all(im[s[0]].shape == (60, 60, 60))
         assert np.all(im[s[1]].shape == (60, 60, 70))
         assert np.all(im[s[13]].shape == (70, 70, 70))
 
-    def test_subdivided_shape(self):
+    def test_get_slices_gridd_shape(self):
         im = np.ones([150, 150, 150])
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20, 30])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20, 30])
         assert np.all(len(s) == 27)
 
     def test_recombine_2d_zero_overlap(self):
         im = np.random.rand(160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=[0, 0])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[0, 0])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -231,7 +231,7 @@ class ToolsTest():
 
     def test_recombine_2d_with_vector_overlap(self):
         im = np.random.rand(160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=[10, 10])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[10, 10])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -242,7 +242,7 @@ class ToolsTest():
 
     def test_recombine_2d_with_scalar_overlap(self):
         im = np.random.rand(160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=10)
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=10)
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -251,7 +251,7 @@ class ToolsTest():
 
     def test_recombine_3d_zero_overlap(self):
         im = np.random.rand(160, 160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=[0, 0, 0])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[0, 0, 0])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -260,7 +260,7 @@ class ToolsTest():
 
     def test_recombine_3d_with_vector_overlap(self):
         im = np.random.rand(160, 160, 160)
-        s = ps.tools.subdivide(im, divs=2, overlap=[10, 10, 10])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[10, 10, 10])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -271,7 +271,7 @@ class ToolsTest():
 
     def test_recombine_2d_odd_shape(self):
         im = np.random.rand(143, 152)
-        s = ps.tools.subdivide(im, divs=2, overlap=10)
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=10)
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -280,7 +280,7 @@ class ToolsTest():
 
     def test_recombine_2d_odd_shape_vector_overlap(self):
         im = np.random.rand(143, 177)
-        s = ps.tools.subdivide(im, divs=2, overlap=[10, 20])
+        s = ps.tools.get_slices_grid(im, divs=2, overlap=[10, 20])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
@@ -289,16 +289,16 @@ class ToolsTest():
 
     def test_recombine_3d_odd_shape_vector_overlap(self):
         im = np.random.rand(143, 177, 111)
-        s = ps.tools.subdivide(im, divs=3, overlap=[10, 20, 25])
+        s = ps.tools.get_slices_grid(im, divs=3, overlap=[10, 20, 25])
         ims = []
         for i, _ in enumerate(s):
             ims.append(im[s[i]])
         im2 = ps.tools.recombine(ims=ims, slices=s, overlap=[10, 20, 25])
         assert np.all(im == im2)
 
-    def test_subdivide_with_mode_offset(self):
+    def test_get_slices_grid_with_mode_offset(self):
         im = im = np.random.rand(143, 177, 111)
-        s = ps.tools.subdivide(im, block_size=10, mode='offset')
+        s = ps.tools.get_slices_grid(im, block_size=10, mode='offset')
         assert s[0][0].start > 0
         assert s[0][1].start > 0
         assert s[0][2].start == 0  # If only 1 remainder, the start is 0
@@ -306,19 +306,19 @@ class ToolsTest():
         assert s[-1][1].stop < im.shape[1]
         assert s[-1][2].stop < im.shape[2]
 
-    def test_subdivide_with_mode_unsupported(self):
+    def test_get_slices_grid_with_mode_unsupported(self):
         im = im = np.random.rand(143, 177, 111)
         with pytest.raises(Exception):
-            ps.tools.subdivide(im, block_size=10, mode='blah')
+            ps.tools.get_slices_grid(im, block_size=10, mode='blah')
 
-    def test_subdivide_with_mode_strict(self):
+    def test_get_slices_grid_with_mode_strict(self):
         im = im = np.random.rand(143, 177, 111)
         with pytest.raises(Exception):
-            ps.tools.subdivide(im, block_size=10, mode='strict')
+            ps.tools.get_slices_grid(im, block_size=10, mode='strict')
 
-    def test_subdivide_with_mode_partial(self):
+    def test_get_slices_grid_with_mode_partial(self):
         im = im = np.random.rand(143, 177, 111)
-        s = ps.tools.subdivide(im, block_size=10, mode='partial')
+        s = ps.tools.get_slices_grid(im, block_size=10, mode='partial')
         assert s[0][0].start == 0
         assert s[0][1].start == 0
         assert s[0][2].start == 0  # If only 1 remainder, the start is 0
@@ -326,9 +326,9 @@ class ToolsTest():
         assert s[-1][1].stop == im.shape[1]
         assert s[-1][2].stop == im.shape[2]
 
-    def test_subdivide_with_mode_whole(self):
+    def test_get_slices_grid_with_mode_whole(self):
         im = im = np.random.rand(143, 177, 111)
-        s = ps.tools.subdivide(im, block_size=10, mode='whole')
+        s = ps.tools.get_slices_grid(im, block_size=10, mode='whole')
         assert s[0][0].start == 0
         assert s[0][1].start == 0
         assert s[0][2].start == 0  # If only 1 remainder, the start is 0
@@ -513,15 +513,15 @@ class ToolsTest():
         im3 = ~ps.tools.points_to_spheres(im=~im1)
         assert np.all(im2 == im3)
 
-    def test_im_to_slabs_3D_tile(self):
+    def test_get_slices_slabs_3D_tile(self):
         im = np.ones([30, 40, 50])
-        slabs = ps.tools.im_to_slabs(im, span=10, mode='tile')
+        slabs = ps.tools.get_slices_slabs(im, span=10, mode='tile')
         assert len(slabs) == 3
         assert im[slabs[0]].sum() == 10*40*50
         assert im[slabs[1]].sum() == 10*40*50
         assert im[slabs[2]].sum() == 10*40*50
 
-        slabs = ps.tools.im_to_slabs(im, span=10, axis=2, mode='tile')
+        slabs = ps.tools.get_slices_slabs(im, span=10, axis=2, mode='tile')
         assert len(slabs) == 5
         assert im[slabs[0]].sum() == 30*40*10
         assert im[slabs[1]].sum() == 30*40*10
@@ -529,49 +529,76 @@ class ToolsTest():
         assert im[slabs[3]].sum() == 30*40*10
         assert im[slabs[4]].sum() == 30*40*10
 
-        slabs = ps.tools.im_to_slabs(im, span=10, step=5, axis=2, mode='tile')
+        slabs = ps.tools.get_slices_slabs(im, span=10, step=5, axis=2, mode='tile')
         assert len(slabs) == 9
         assert im[slabs[0]].sum() == 30*40*10
         assert im[slabs[-1]].sum() == 30*40*10
 
-        slabs = ps.tools.im_to_slabs(im, span=10, step=15, axis=1, mode='tile')
+        slabs = ps.tools.get_slices_slabs(im, span=10, step=15, axis=1, mode='tile')
         assert len(slabs) == 3
         assert im[slabs[0]].sum() == 30*10*50
         assert im[slabs[1]].sum() == 30*10*50
         assert im[slabs[2]].sum() == 30*10*50
 
-        slabs = ps.tools.im_to_slabs(im, span=5, step=10, axis=1, mode='tile')
+        slabs = ps.tools.get_slices_slabs(im, span=5, step=10, axis=1, mode='tile')
         assert len(slabs) == 4
         assert im[slabs[0]].sum() == 30*5*50
         assert im[slabs[-1]].sum() == 30*5*50
 
-    def test_im_to_slabs_3D_slide(self):
+    def test_get_slices_slabs_3D_slide(self):
         im = np.ones([30, 30, 30])
         span = 10
-        slabs = ps.tools.im_to_slabs(im, span=span, mode='slide')
+        slabs = ps.tools.get_slices_slabs(im, span=span, mode='slide')
         assert len(slabs) == im.shape[0] - span + 1
         assert im[slabs[0]].sum() == 30*30*10
         assert im[slabs[-1]].sum() == 30*30*10
 
         im = np.ones([30, 30, 40])
-        slabs = ps.tools.im_to_slabs(im, span=span, axis=2, mode='slide')
+        slabs = ps.tools.get_slices_slabs(im, span=span, axis=2, mode='slide')
         assert len(slabs) == im.shape[2] - span + 1
         assert im[slabs[0]].sum() == 30*30*10
         assert im[slabs[-1]].sum() == 30*30*10
 
         im = np.ones([30, 30, 30])
-        slabs1 = ps.tools.im_to_slabs(im, span=10, step=10, mode='slide')
-        slabs2 = ps.tools.im_to_slabs(im, span=10, step=10, mode='tile')
+        slabs1 = ps.tools.get_slices_slabs(im, span=10, step=10, mode='slide')
+        slabs2 = ps.tools.get_slices_slabs(im, span=10, step=10, mode='tile')
         assert slabs1 == slabs2
 
-    def test_im_to_slabs_2D(self):
-        im = np.ones([30, 30])
-        span = 10
-        slabs = ps.tools.im_to_slabs(im, span=span, mode='slide')
-        assert len(slabs[0]) == im.ndim
-        assert len(slabs) == im.shape[0] - span + 1
-        assert im[slabs[0]].sum() == 30*10
-        assert im[slabs[-1]].sum() == 30*10
+    def test_get_slices_random_2D(self):
+        im = np.ones([100, 100])
+        s = ps.tools.get_slices_random(im, n=10)
+        assert len(s) == 10
+        for sl in s:
+            # Check that slices are within image bounds
+            assert sl[0].start >= 0 and sl[0].stop <= im.shape[0]
+            assert sl[1].start >= 0 and sl[1].stop <= im.shape[1]
+
+    def test_get_slices_random_3D(self):
+        im = np.ones([100, 100, 100])
+        s = ps.tools.get_slices_random(im, n=10)
+        assert len(s) == 10
+        for sl in s:
+            # Check that slices are within image bounds
+            assert sl[0].start >= 0 and sl[0].stop <= im.shape[0]
+            assert sl[1].start >= 0 and sl[1].stop <= im.shape[1]
+            assert sl[2].start >= 0 and sl[2].stop <= im.shape[2]
+
+    def test_get_slices_multigrid_2D(self):
+        im = np.ones([100, 100])
+        s = ps.tools.get_slices_multigrid(im, block_size_range=[10, 50])
+        # Should get slices for each size
+        assert len(s) == 384
+
+    def test_get_slices_multigrid_3D(self):
+        im = np.ones([100, 100, 100])
+        s = ps.tools.get_slices_multigrid(im, block_size_range=[10, 50])
+        # Should get slices for each size
+        assert len(s) == 3024
+
+    def test_get_slices_multigrid_with_overlap(self):
+        im = np.ones([100, 100])
+        s1 = ps.tools.get_slices_multigrid(im, block_size_range=[10, 50], overlap=5)
+        assert len(s1) == 384
 
 
 if __name__ == '__main__':

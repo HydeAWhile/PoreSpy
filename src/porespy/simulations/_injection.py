@@ -3,20 +3,22 @@ import logging
 import numpy as np
 import numpy.typing as npt
 import heapq as hq
+from typing import Literal
 from numba import njit
 from porespy import settings
 from porespy.tools import (
     get_tqdm,
-    get_border,
     make_contiguous,
     _insert_disk_at_points,
     Results,
     get_edt,
 )
-from typing import Literal
 from porespy.filters import (
     find_trapped_clusters,
     seq_to_satn,
+)
+from porespy.generators import (
+    borders,
 )
 
 

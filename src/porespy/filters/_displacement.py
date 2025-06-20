@@ -12,12 +12,14 @@ from porespy.filters import flood, find_disconnected_voxels
 from porespy.tools import (
     make_contiguous,
     get_tqdm,
-    get_border,
     Results,
 )
 from porespy.filters import (
     region_size,
     flood_func,
+)
+from porespy.generators import (
+    borders,
 )
 
 
