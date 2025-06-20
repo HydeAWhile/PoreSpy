@@ -15,6 +15,7 @@ from porespy.tools import (
 )
 from porespy.filters import (
     find_trapped_clusters,
+    find_small_clusters,
     seq_to_satn,
 )
 from porespy.generators import (
@@ -118,6 +119,13 @@ def qbip(
             method='queue',
         )
         trapped = trapped.squeeze()
+        if min_size > 0:
+            trapped = find_small_clusters(
+                im=im,
+                trapped=trapped,
+                min_size=min_size,
+                conn=conn,
+            )
         pressure = pressure.astype(float).squeeze()
         pressure[trapped] = np.inf
         sequence[trapped] = -1
@@ -413,8 +421,13 @@ def ibip(
             conn=conn,
             method='queue',
         )
-        # pressure = pressure.astype(float).squeeze()
-        # pressure[trapped] = np.inf
+        if min_size > 0:
+            trapped = find_small_clusters(
+                im=im,
+                trapped=trapped,
+                min_size=min_size,
+                conn=conn,
+            )
         seq[trapped] = -1
         seq = make_contiguous(im=seq, mode='symmetric')
         sizes[trapped] = -1

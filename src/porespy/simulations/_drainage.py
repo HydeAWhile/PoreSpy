@@ -19,6 +19,7 @@ from porespy.tools import (
 from porespy.filters import (
     trim_disconnected_blobs,
     find_trapped_clusters,
+    find_small_clusters,
     pc_to_satn,
     fftmorphology,
     erode,
@@ -659,6 +660,13 @@ def drainage(
             method='labels' if len(Ps) < 100 else 'queue',
             conn=conn,
         )
+        if min_size > 0:
+            trapped = find_small_clusters(
+                im=im,
+                trapped=trapped,
+                min_size=min_size,
+                conn=conn,
+            )
         trapped[im_seq == -1] = True
         im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf
         if residual is not None:  # Re-add residual to inv

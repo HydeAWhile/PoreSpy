@@ -2,6 +2,7 @@ import inspect
 import numpy as np
 from porespy.filters import (
     find_trapped_clusters,
+    find_small_clusters,
     seq_to_satn,
     trim_disconnected_blobs,
     fftmorphology,
@@ -612,6 +613,13 @@ def imbibition(
             method='labels' if len(Ps) < 100 else 'queue',
             conn=conn,
         )
+        if min_size > 0:
+            trapped = find_small_clusters(
+                im=im,
+                trapped=trapped,
+                min_size=min_size,
+                conn=conn,
+            )
         im_pc[trapped] = -np.inf
         im_seq[trapped] = -1
 
