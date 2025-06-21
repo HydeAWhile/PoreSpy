@@ -38,6 +38,20 @@ skeletonize = get_skel()
 logger = logging.getLogger(__name__)
 
 
+__all__ = [
+    'magnet',
+    'skeleton',
+    'skeleton_parallel',
+    'find_junctions',
+    'find_throat_junctions',
+    'merge_nearby_juncs',
+    'juncs_to_pore_centers',
+    'junctions_to_network',
+    'partition_skeleton',
+    'get_throat_area',
+]
+
+
 def magnet(im,
            sk=None,
            parallel_kw=None,
