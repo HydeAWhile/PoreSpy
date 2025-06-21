@@ -63,7 +63,7 @@ jobs:
           echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.23.3
+        uses: pypa/cibuildwheel@v3.0.0
         env:
           CIBW_PLATFORM: ${{ matrix.platform }}
           CIBW_ARCHS: ${{ matrix.archs }}
@@ -111,7 +111,7 @@ jobs:
           echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
       - name: Commit version bump, create and push tag
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_message: Bump version to ${{ env.VERSION }}
           commit_author: GitHub Actions <actions@github.com>
