@@ -32,6 +32,7 @@ __all__ = [
     "chord_counts",
     "chord_length_distribution",
     "find_h",
+    "is_percolating",
     "lineal_path_distribution",
     "pore_size_distribution",
     "radial_density_distribution",
@@ -53,28 +54,65 @@ logger = logging.getLogger(__name__)
 strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
-def porosity_threshold(im, axis=0, method='repeated', conn='min'):
+def is_percolating(im, axis=None, conn='min'):
+    R"""
+
+    Parameters
+    ----------
+    im : ndarray
+        Image of the void space with `True` indicating void space
+    axis : int
+        The axis along which percolation is checked. If `None` (default) then
+        percolation is checked in all dimensions
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    percolating : bool or list of bools
+        A boolean value indicating if the domain percolates in the given direction.
+        If `axis=None` then all directions are checked and the result is returned
+        as a list like `[True, False, True]` indicating that the domain percolates
+        in the `x` and `z` directions, but not `y`.
+
+    """
+    if axis is not None:
+        im = np.swapaxes(im, 0, axis) == 1
+    else:
+        ans = []
+        for ax in range(im.ndim):
+            ans.append(is_percolating(im, axis=ax, conn=conn))
+        return ans
+
+    inlets = np.zeros_like(im)
+    inlets[0, ...] = True
+    inlets *= im
+    outlets = np.zeros_like(im)
+    outlets[-1, ...] = True
+    outlets *= im
+
+    labels, N = spim.label(im, structure=strel[im.ndim][conn])
+    a = np.unique(labels[inlets])
+    a = a[a > 0]
+    b = np.unique(labels[outlets])
+    b = b[b > 0]
+    hits = np.isin(a, b)
+    return np.any(hits)
+
+
+def porosity_threshold(im, axis=0, conn='min'):
     r"""
     Find the porosity of the image at the percolation threshold
 
     Parameters
     ----------
     im : ndarray
-        Image of the void space
+        Image of the void space with `True` indicating void space
     axis : int
         The axis along which percolation is checked
-    method : str
-        The method to use when eroding void space to find percolating threshold.
-        Options are:
-
-        =========== ================================================================
-        Method      Description
-        =========== ================================================================
-        repeated    Erodes void space repeatedly using a round structuring element
-                    of radius 1.
-        increasing  Erodes void space using round structuring elements of increasing
-                    radius, starting with 1.
-        =========== ================================================================
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
         element used to determine voxel connectivity.  The default if `'min'` which
@@ -104,7 +142,7 @@ def porosity_threshold(im, axis=0, method='repeated', conn='min'):
         ================ ===========================================================
     """
     im = np.swapaxes(im, 0, axis) == 1
-    im2 = np.swapaxes(im, 0, axis) == 1
+    dt = edt(im)
     inlets = np.zeros_like(im)
     inlets[0, ...] = True
     inlets *= im
@@ -119,31 +157,29 @@ def porosity_threshold(im, axis=0, method='repeated', conn='min'):
     eps_orig = np.sum(im > 0, dtype=np.int64)/Vbulk
     eps_orig_perc = np.sum(invalid[im] == 0, dtype=np.int64)/Vbulk
 
-    R = 1
-    while True:
+    Rmax = int(dt.max())
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    pbar = tqdm(desc=desc, **settings.tqdm)
+    for R in range(1, Rmax, 1):
         # Erode void space
-        if method.startswith('repeat'):
-            se = ps_round(r=R, ndim=im2.ndim, smooth=False)
-            im2 = spim.binary_erosion(im2, structure=se, border_value=True)
-        elif method.startswith('increasing'):
-            se = ps_round(r=R, ndim=im2.ndim, smooth=False)
-            R = R + 1
-            im2 = spim.binary_erosion(im, structure=se, border_value=True)
+        im2 = dt > R
         # Find labels present on inlet and outlet faces
+        # Note: This could use is_percolating but labels is needed below
         labels, N = spim.label(im2, structure=strel[im.ndim][conn])
         a = np.unique(labels[inlets])
         a = a[a > 0]
         b = np.unique(labels[outlets])
         b = b[b > 0]
-        if not np.any(np.isin(a, b)):
+        hits = np.isin(a, b)
+        if not np.any(hits):
             Vpore = im2 > 0  # Pore volume at current iteration
             eps_thresh = np.sum(Vpore, dtype=np.int64)/Vbulk
             eps_thresh_perc = np.sum(Vpore*valid, dtype=np.int64)/Vbulk
             break
         # Find currently percolating void space to use as a mask
-        invalid = find_invalid_pores(im2, conn=conn)
-        invalid[~im] = -1
-        valid = invalid == 0
+        valid = np.isin(labels, a[hits])
+        pbar.update(1)
+    pbar.close()
 
     from porespy.tools import Results
     r = Results()
