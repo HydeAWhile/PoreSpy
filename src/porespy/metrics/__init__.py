@@ -13,6 +13,7 @@ but a few functions can be applied directly to the binary image.
    :template: mybase.rst
    :toctree: generated/
 
+    metrics.bond_number
     metrics.boxcount
     metrics.chord_counts
     metrics.chord_length_distribution
@@ -21,8 +22,7 @@ but a few functions can be applied directly to the binary image.
     metrics.mesh_surface_area
     metrics.mesh_volume
     metrics.pc_curve
-    metrics.pc_curve_from_ibip
-    metrics.pc_curve_from_mio
+    metrics.pc_map_to_pc_curve
     metrics.phase_fraction
     metrics.pore_size_distribution
     metrics.porosity
@@ -34,7 +34,8 @@ but a few functions can be applied directly to the binary image.
     metrics.region_surface_areas
     metrics.region_volumes
     metrics.regionprops_3D
-    metrics.representative_elementary_volume
+    metrics.rev_porosity
+    metrics.rev_tortuosity
     metrics.satn_profile
     metrics.two_point_correlation
 
@@ -43,3 +44,4 @@ but a few functions can be applied directly to the binary image.
 from ._regionprops import *
 from ._funcs import *
 from ._meshtools import *
+from ._rev import *

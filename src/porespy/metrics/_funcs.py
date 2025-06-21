@@ -1,4 +1,5 @@
 import logging
+import inspect
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
@@ -12,18 +13,16 @@ from porespy import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
+    fill_closed_pores,
 )
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
     extend_slice,
     get_tqdm,
-    im_to_slabs,
+    get_slices_slabs,
+    get_edt
 )
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -36,7 +35,6 @@ __all__ = [
     "radial_density_distribution",
     "porosity",
     "porosity_profile",
-    "representative_elementary_volume",
     "satn_profile",
     "two_point_correlation",
     "phase_fraction",
@@ -46,6 +44,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
@@ -103,7 +102,8 @@ def boxcount(im, bins=10):
         Ds = np.array(bins).astype(int)
 
     N = []
-    for d in tqdm(Ds, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for d in tqdm(Ds, desc=desc, **settings.tqdm):
         result = 0
         for i in range(0, im.shape[0], d):
             for j in range(0, im.shape[1], d):
@@ -125,89 +125,10 @@ def boxcount(im, bins=10):
     return data
 
 
-def representative_elementary_volume(im, npoints=1000):
-    r"""
-    Calculates the porosity of an image as a function subdomain size.
-
-    This function extracts a specified number of subdomains of random size,
-    then finds their porosity.
-
-    Parameters
-    ----------
-    im : ndarray
-        The image of the porous material
-    npoints : int
-        The number of randomly located and sized boxes to sample.  The default
-        is 1000.
-
-    Returns
-    -------
-    result : Results object
-        A custom object with the following data added as named attributes:
-
-        ========== ==================================================================
-        Attribute  Description
-        ========== ==================================================================
-        volume     The total volume of each cubic subdomain tested
-        porosity   The porosity of each subdomain tested
-        ========== ==================================================================
-
-        These attributes can be conveniently plotted by passing the Results
-        object to matplotlib's ``plot`` function using the
-        \* notation: ``plt.plot(\*result, 'b.')``.  The resulting plot is
-        similar to the sketch given by Bachmat and Bear [1]_
-
-    Notes
-    -----
-    This function is frustratingly slow.  Profiling indicates that all the time
-    is spent on scipy's ``sum`` function which is needed to sum the number of
-    void voxels (1's) in each subdomain.
-
-    References
-    ----------
-    .. [1] Bachmat and Bear. On the Concept and Size of a Representative
-       Elementary Volume (Rev), Advances in Transport Phenomena in Porous Media
-       (1987)
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/metrics/reference/representative_elementary_volume.html>`_
-    to view online example.
-
-    """
-    # TODO: this function is a prime target for parallelization since the
-    # ``npoints`` are calculated independenlty.
-    im_temp = np.zeros_like(im)
-    crds = np.array(np.random.rand(npoints, im.ndim) * im.shape, dtype=int)
-    pads = np.array(np.random.rand(npoints) * np.amin(im.shape) / 2 + 10, dtype=int)
-    im_temp[tuple(crds.T)] = True
-    labels, N = spim.label(input=im_temp)
-    slices = spim.find_objects(input=labels)
-    porosity = np.zeros(shape=(N,), dtype=float)
-    volume = np.zeros(shape=(N,), dtype=int)
-    for i in tqdm(np.arange(0, N), **settings.tqdm):
-        s = slices[i]
-        p = pads[i]
-        new_s = extend_slice(s, shape=im.shape, pad=p)
-        temp = im[new_s]
-        Vp = np.sum(temp, dtype=np.int64)
-        Vt = np.size(temp)
-        porosity[i] = Vp / Vt
-        volume[i] = Vt
-    profile = Results()
-    profile.volume = volume
-    profile.porosity = porosity
-    return profile
-
-
-def porosity(im, mask=None):
+def porosity(im, mask=None, fill_closed=False, fill_surface=False):
     r"""
     Calculates the porosity of an image assuming 1's are void space and 0's
     are solid phase.
-
-    All other values are ignored, so this can also return the relative
-    fraction of a phase of interest in multiphase images.
 
     Parameters
     ----------
@@ -221,6 +142,12 @@ def porosity(im, mask=None):
         entire array, like cylindrical cores.  Note that setting values in `im`
         to 2 will also exclude them from consideration so provides the same effect
         as `mask`, but providing a `mask` is usually much easier.
+    fill_closed : bool (default = `False`)
+        A flag to indicate if closed pores (not connected to any image boundary)
+        should be filled or not before computing the porosity.
+    fill_surface : bool (default = `False`)
+        A flag to indicate if surface pores connected only to one surface should be
+        filled or not before computing the porosity.
 
     Returns
     -------
@@ -238,11 +165,6 @@ def porosity(im, mask=None):
     other values are ignored.  This is useful, for example, for images of
     cylindrical cores, where all voxels outside the core are labelled with 2.
 
-    Alternatively, images can be processed with ``find_disconnected_voxels``
-    to get an image of only blind pores.  This can then be added to the orignal
-    image such that blind pores have a value of 2, thus allowing the
-    calculation of accessible porosity, rather than overall porosity.
-
     Examples
     --------
     `Click here
@@ -250,8 +172,16 @@ def porosity(im, mask=None):
     to view online example.
 
     """
+    im = im.copy()
     if mask is not None:
         im = np.array(im, dtype=np.int64)*mask
+    if fill_closed or fill_surface:
+        closed_pores = im * ~fill_closed_pores(im, surface=False)
+        surface_pores = im * ~fill_closed_pores(im, surface=True) * ~closed_pores
+        if fill_closed:
+            im[closed_pores] = 0
+        if fill_surface:
+            im[surface_pores] = 0
     Vp = np.sum(im == 1, dtype=np.int64)
     Vs = np.sum(im == 0, dtype=np.int64)
     e = Vp / (Vs + Vp)
@@ -311,7 +241,7 @@ def porosity_profile(im, axis=0, span=1, mode='tile'):
     """
     if axis >= im.ndim:
         raise Exception('axis out of range')
-    slices = im_to_slabs(im=im, axis=axis, span=span, mode=mode)
+    slices = get_slices_slabs(im=im, axis=axis, span=span, mode=mode)
     eps = np.zeros(len(slices))
     z = np.zeros_like(eps)
     for i, s in enumerate(slices):
@@ -1041,7 +971,6 @@ def pc_curve(im, pc, seq=None):
     to view online example.
 
     """
-    tqdm = get_tqdm()
     Ps = np.unique(pc[im])
     # Utilize the fact that -inf and +inf will be at locations 0 & -1 in Ps
     if Ps[-1] == np.inf:
@@ -1054,7 +983,8 @@ def pc_curve(im, pc, seq=None):
     y = []
     Vp = im.sum(dtype=np.int64)
     temp = pc[im]
-    for p in tqdm(Ps, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for p in tqdm(Ps, desc=desc, **settings.tqdm):
         y.append((temp <= p).sum(dtype=np.int64)/Vp)
     pc_curve = Results()
     pc_curve.pc = Ps
@@ -1088,7 +1018,7 @@ def pc_map_to_pc_curve(
         when computing the saturation.
     seq : ndarray, optional
         A numpy array with each voxel containing the sequence at which it was
-        invaded. This is required when analyzing results from invasion percolation
+        invaded. This is required when analyzing results from injection simulations
         since the pressures in `pc` do not correspond to the sequence in which
         they were filled.
     mode : str
@@ -1245,7 +1175,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
         if satn.max() < s:
             raise Exception(msg)
 
-    slices = im_to_slabs(im=satn, axis=axis, span=span, mode=mode)
+    slices = get_slices_slabs(im=satn, axis=axis, span=span, mode=mode)
     y = np.zeros(len(slices))
     z = np.zeros_like(y)
     for i, slab in enumerate(slices):
@@ -1277,8 +1207,19 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
 
     Returns
     -------
-    h : scalar
-        The height of the two-phase zone
+    A dataclass-like object with the following attributes:
+
+        =========== ================================================================
+        Attribute   Description
+        =========== ================================================================
+        `zmax`      The position where the saturation first exceeds `smax`
+        `zmin`      The position where the saturation first exceeds `smin`
+        `smax`      The value defining the start of the saturation profile
+        `smin`      The value defining the end of the saturation profile
+        `h`         The total distance in voxels between `zmax` and `zmin`
+        `valid`     A flag indicating whether the requested saturation difference
+                    (between `smin` and `smax`) was found.
+        =========== ================================================================
 
     See Also
     --------
@@ -1286,8 +1227,9 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
 
     Notes
     -----
-    The ``satn_profile`` function can be used to obtain the ``saturation``
-    and ``position`` from an image.
+    The `satn_profile` function can be used to obtain the ``saturation``
+    and `position` from an image, such as a displacement map produced by
+    `drainage` or `imbibition`.
 
     Examples
     --------
@@ -1335,7 +1277,8 @@ def bond_number(
     voxel_size: float,
     source: str = 'lt',
     method: str = 'median',
-    mask: bool = False,
+    mask_source: bool = False,
+    use_diameter: bool = False,
 ):
     r"""
     Computes the Bond number for an image
@@ -1344,7 +1287,6 @@ def bond_number(
     ----------
     im : ndarray
         The image of the domain with `True` values indicating the phase of interest
-        space
     delta_rho : float
         The difference in the density of the non-wetting and wetting phase
     g : float
@@ -1380,11 +1322,15 @@ def bond_number(
         pmean          The power mean of the values (using `scipy.stats.pmean`)
         ============== =============================================================
 
-    mask : bool
+    mask_source : bool (default is `False`)
         If `True` then the distance values in `source` are masked by the skeleton
-        before computing the average value using the specified `method`.
+        before computing the average value using the specified `method`. This
+        requires computing the skeleton which can take a few moments.
+    use_diameter : bool (default is `False`)
+        If `True` then the characteristic size obtaine from `source` is multiplied by
+        2 to convert radius to diameter.
     """
-    if mask is True:
+    if mask_source is True:
         mask = skeletonize(im)
     else:
         mask = im
@@ -1405,5 +1351,7 @@ def bond_number(
     else:
         raise Exception(f"Unrecognized method {method}")
     R = f(dvals[mask])
+    if use_diameter:
+        R = 2*R
     Bo = abs(delta_rho*g*(R*voxel_size)**2/sigma)
     return Bo

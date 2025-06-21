@@ -3,15 +3,12 @@ import numpy as np
 import pandas as pd
 import porespy as ps
 
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+
+edt = ps.tools.get_edt()
 
 
-def test_inverse_Bo_study():
+def test_inverse_Bo_study(plot=False):
     np.random.seed(0)
-    plot = True
 
     # Generate image
     vx = 0.0001

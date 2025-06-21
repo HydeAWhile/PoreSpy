@@ -6,17 +6,13 @@ from pandas import DataFrame
 from skimage.measure import mesh_surface_area, regionprops
 from skimage.measure._regionprops import RegionProperties
 from skimage.morphology import ball, skeletonize
-
-from porespy.tools import bbox_to_slices, extract_subsection
+from porespy.tools import bbox_to_slices, extract_subsection, get_edt
 
 try:
     from skimage.measure import marching_cubes
 except ImportError:
     from skimage.measure import marching_cubes_lewiner as marching_cubes
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+
 
 
 __all__ = [
@@ -26,6 +22,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 

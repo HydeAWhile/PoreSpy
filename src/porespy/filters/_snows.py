@@ -1,6 +1,5 @@
-import inspect as insp
 import logging
-
+import inspect
 import dask.array as da
 import numpy as np
 import scipy.ndimage as spim
@@ -8,7 +7,6 @@ import scipy.spatial as sptl
 from numba import njit, prange
 from skimage.morphology import cube, square
 from skimage.segmentation import watershed
-
 from porespy import settings
 from porespy.filters import chunked_func
 from porespy.tools import (
@@ -18,12 +16,8 @@ from porespy.tools import (
     get_tqdm,
     ps_rect,
     ps_round,
+    get_edt,
 )
-
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -38,6 +32,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
@@ -254,7 +249,7 @@ def snow_partitioning_n(im, r_max=4, sigma=0.4, peaks=None):
     return tup
 
 
-def find_peaks(dt, r_max=4, strel=None, sigma=None, divs=1):
+def find_peaks(dt, r_max=4, strel=None, sigma=None, parallel_kw={"divs": 1}):
     r"""
     Finds local maxima in the distance transform
 
@@ -273,12 +268,28 @@ def find_peaks(dt, r_max=4, strel=None, sigma=None, divs=1):
         If given, then a gaussian filter is applied to the distance transform
         using this value for the kernel
         (i.e. ``scipy.ndimage.gaussian_filter(dt, sigma)``)
-    divs : int or array_like
-        The number of times to divide the image for parallel processing.
-        If ``1`` then parallel processing does not occur.  ``2`` is
-        equivalent to ``[2, 2, 2]`` for a 3D image. The number of cores
-        used is specified in ``porespy.settings.ncores`` and defaults to
-        all cores.
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include `divs` (scalar or list of scalars,
+        default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+        and `cores` (scalar, default is all available cores).
+        
+        `divs` is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
+        respective axis will be divided by its corresponding number in the
+        list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
+        and 4 respectively.
+        
+        `overlap` is the amount of overlap to include when dividing up the
+        image. This value is controlled by the size (i.e. radius) of the
+        structuring element and cannot be controlled in this function using
+        parallel_kw!
+        
+        `cores` is the number of cores that will be used to parallel process all
+        domains. If ``None`` then all cores will be used but user can specify
+        any integer values to control the memory usage. Setting value to 1 will
+        effectively process the chunks in serial to minimize memory usage.
 
     Returns
     -------
@@ -305,6 +316,9 @@ def find_peaks(dt, r_max=4, strel=None, sigma=None, divs=1):
     to view online example.
 
     """
+    # parse out divs from parallel_kw, take from settings if not given!
+    divs = parallel_kw.get("divs", settings.divs)
+    cores = parallel_kw.get("cores", settings.ncores)
     im = dt > 0
     _check_for_singleton_axes(im)
     if strel is None:
@@ -316,13 +330,13 @@ def find_peaks(dt, r_max=4, strel=None, sigma=None, divs=1):
         divs = [divs]*len(im.shape)
     if np.any(np.array(divs) > 1):
         parallel = True
-        logger.info(f'Performing {insp.currentframe().f_code.co_name} in parallel')
+        logger.info(f'Performing {inspect.currentframe().f_code.co_name} in parallel')
     if parallel:
         overlap = max(strel.shape)
-        mx = chunked_func(func=spim.maximum_filter, overlap=overlap,
+        parallel_kw = {"divs": divs, "overlap": overlap, "cores": cores}
+        mx = chunked_func(func=spim.maximum_filter, parallel_kw=parallel_kw,
                           im_arg='input', input=dt + 2.0 * (~im),
-                          footprint=strel,
-                          cores=settings.ncores, divs=divs)
+                          footprint=strel)
     else:
         # The "2 * (~im)" sets solid voxels to 2 so peaks are not found
         # at the void/solid interface
@@ -418,7 +432,8 @@ def trim_saddle_points(peaks, dt, maxiter=20):
         from skimage.morphology import cube
     labels, N = spim.label(peaks > 0)
     slices = spim.find_objects(labels)
-    for i, s in tqdm(enumerate(slices), **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, s in tqdm(enumerate(slices), desc=desc, **settings.tqdm):
         sx = extend_slice(s, shape=peaks.shape, pad=maxiter)
         peaks_i = labels[sx] == i + 1
         dt_i = dt[sx]
@@ -492,7 +507,8 @@ def trim_saddle_points_legacy(peaks, dt, maxiter=10):
         from skimage.morphology import cube
     labels, N = spim.label(peaks > 0)
     slices = spim.find_objects(labels)
-    for i, s in tqdm(enumerate(slices), **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, s in tqdm(enumerate(slices), desc=desc, **settings.tqdm):
         sx = extend_slice(s, shape=peaks.shape, pad=10)
         peaks_i = labels[sx] == i + 1
         dt_i = dt[sx]
@@ -624,9 +640,7 @@ def _estimate_overlap(im, mode='dt', zoom=0.25):
 def snow_partitioning_parallel(im,
                                r_max=4,
                                sigma=0.4,
-                               divs=2,
-                               overlap=None,
-                               cores=None,
+                               parallel_kw={}
                                ):
     r"""
     Performs SNOW algorithm in parallel (or serial) to reduce time
@@ -637,22 +651,29 @@ def snow_partitioning_parallel(im,
     im : ndarray
         A binary image of porous media with 'True' values indicating
         phase of interest.
-    overlap : float (optional)
-        The amount of overlap to apply between chunks.  If not provided it
-        will be estiamted using ``porespy.tools.estimate_overlap`` with
-        ``mode='dt'``.
-    divs : list or int
-        Number of domains each axis will be divided. Options are:
-          - scalar: it will be assigned to all axis.
-          - list: each respective axis will be divided by its
-            corresponding number in the list. For example [2, 3, 4] will
-            divide z, y and x axis to 2, 3, and 4 respectively.
-    cores : int or None
-        Number of cores that will be used to parallel process all domains.
-        If ``None`` then all cores will be used but user can specify any
-        integer values to control the memory usage.  Setting value to 1
-        will effectively process the chunks in serial to minimize memory
-        usage.
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include `divs` (scalar or list of scalars,
+        default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+        and `cores` (scalar, default is all available cores).
+        
+        `divs` is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
+        respective axis will be divided by its corresponding number in the
+        list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
+        and 4 respectively.
+        
+        `overlap` is the amount of overlap to include when dividing up the image.
+        This value will almost always be the size (i.e. raduis) of the
+        structuring element. If not specified then the amount of overlap
+        is inferred from the size of the structuring element, in which
+        case the `strel_arg` must be specified.
+        
+        `cores` is the number of cores that will be used to parallel process all
+        domains. If ``None`` then all cores will be used but user can specify
+        any integer values to control the memory usage. Setting value to 1 will
+        effectively process the chunks in serial to minimize memory usage.
 
     Returns
     -------
@@ -668,6 +689,11 @@ def snow_partitioning_parallel(im,
     to view online example.
 
     """
+    # parse out divs, cores, overlap from parallel_kw
+    # take default from settings if not on parallel_kw dict
+    divs = parallel_kw.get("divs", settings.divs)
+    cores = parallel_kw.get("cores", settings.ncores)
+    overlap = parallel_kw.get("overlap", settings.overlap)
     # Adjust image shape according to specified dimension
     if isinstance(divs, int):
         divs = [divs for i in range(im.ndim)]
@@ -685,7 +711,7 @@ def snow_partitioning_parallel(im,
     # Get overlap thickness from distance transform
     chunk_shape = (np.array(shape) / np.array(divs)).astype(int)
     logger.info('Beginning parallel SNOW algorithm...')
-
+    
     if overlap is None:
         overlap = _estimate_overlap(im, mode='dt')
     overlap = overlap / 2.0

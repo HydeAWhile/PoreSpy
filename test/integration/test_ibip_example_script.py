@@ -5,11 +5,16 @@ import numpy as np
 import porespy as ps
 
 
-def test_ibip():
+def test_ibip(plot=False):
     np.random.seed(0)
 
     # Generate or load a test image
-    im = ps.generators.blobs(shape=[200, 200], porosity=0.605475, blobiness=2)
+    im = ps.generators.blobs(
+        shape=[200, 200],
+        porosity=0.605475,
+        blobiness=2,
+        periodic=False,
+    )
 
     bd = np.zeros_like(im)
     bd[:, 0] = True
@@ -21,7 +26,6 @@ def test_ibip():
     assert result.im_size.max() == 11.045360565185547
 
     # %% Generate images and plots
-    plot = False
     if plot:
         inv_satn = ps.filters.seq_to_satn(result.im_seq, im=im)
         cmap = copy(plt.cm.viridis)

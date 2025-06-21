@@ -1,12 +1,18 @@
 from typing import List
-
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as spim
 import scipy.stats as spst
+from porespy.generators import (
+    lattice_spheres,
+    spheres_from_coords
+)
+from porespy.tools import (
+    _insert_disks_at_points_parallel,
+    extend_slice,
+    parse_shape,
+)
 
-from porespy.generators import borders, lattice_spheres, spheres_from_coords
-from porespy.tools import _insert_disks_at_points_parallel, extend_slice
 
 __all__ = [
     'rectangular_pillars_array',
@@ -109,6 +115,7 @@ def rectangular_pillars_array(
         <https://porespy.org/examples/generators/reference/rectangular_pillars_array.html>`_
         to view online example.
     """
+    shape = parse_shape(shape)
     if len(shape) != 2:
         raise Exception('shape must be 2D for this function')
     if seed is not None:
@@ -206,13 +213,13 @@ def cylindrical_pillars_array(
         <https://porespy.org/examples/generators/reference/cylindrical_pillars_array.html>`_
         to view online example.
     """
+    shape = parse_shape(shape)
     if len(shape) != 2:
         raise Exception('shape must be 2D for this function')
     if seed is not None:
         np.random.seed(seed)
     if isinstance(dist, str):
         f = getattr(spst, dist)(**dist_kwargs)
-    shape = np.array(shape)
     new_shape = (np.ones_like(shape)*shape.max()*2).astype(int)
     if lattice.startswith('s'):
         pts = ~lattice_spheres(new_shape, r=1, spacing=spacing, offset=0)
@@ -285,12 +292,14 @@ def cylindrical_pillars_mesh(
         to view online example.
 
     """
+    from porespy.generators import borders
     try:
         from nanomesh import Mesher2D
     except ModuleNotFoundError:
         msg = "The nanomesh package can be installed with `pip install nanomesh`"
         raise ModuleNotFoundError(msg)
 
+    shape = parse_shape(shape)
     if len(shape) != 2:
         raise Exception('shape must be 2D for this function')
     if n is None:

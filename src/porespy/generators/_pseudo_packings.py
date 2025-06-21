@@ -1,25 +1,18 @@
 import logging
-from typing import List, Literal
-
-import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
+import numpy as np
+from typing import List, Literal
 from numba import njit
 from skimage.morphology import ball, disk
-
 from porespy.filters import trim_disconnected_blobs
 from porespy.tools import (
     _insert_disk_at_point,
-    get_border,
-    get_tqdm,
     ps_round,
     unpad,
+    get_edt,
+    parse_shape,
 )
-
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
@@ -29,7 +22,7 @@ __all__ = [
 ]
 
 
-tqdm = get_tqdm()
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +50,7 @@ def _random_spheres2(
     machinery as the pseudo packing generators.  It is not as fast as the original
     though.
     """
-
+    from porespy.generators import borders
     if seed is not None:
         _set_seed(seed)  # Initialize rng so numba sees it
         np.random.seed(seed)  # Also initialize numpys rng
@@ -80,7 +73,7 @@ def _random_spheres2(
 
     # Deal with edge mode
     if edges == 'contained':
-        border = get_border(im.shape, thickness=1, mode='faces')
+        border = borders(im.shape, thickness=1, mode='faces')
         mask[border] = False
 
     # Generate mask of valid insertion points
@@ -198,7 +191,8 @@ def pseudo_gravity_packing(
 
     """
     logger.debug(f'Adding spheres of radius {r}')
-
+    if shape:
+        shape = parse_shape(shape)
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
@@ -233,8 +227,7 @@ def pseudo_gravity_packing(
     # Finalize the mask of valid insertion points
     inlets = np.zeros_like(im)
     inlets[-r:, ...] = True
-    s = ball(1) if im.ndim == 3 else disk(1)
-    mask = trim_disconnected_blobs(im=mask, inlets=inlets, strel=s)
+    mask = trim_disconnected_blobs(im=mask, inlets=inlets, conn='min')
 
     # Generate elevation values to initialize queue
     from porespy.generators import ramp
@@ -351,10 +344,12 @@ def pseudo_electrostatic_packing(
     to view online example.
 
     """
+    from porespy.generators import borders
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
-
+    if shape:
+        shape = parse_shape(shape)
     if im is None:  # If shape was given, generate empty im
         im = np.zeros(shape, dtype=bool)
 
@@ -370,15 +365,15 @@ def pseudo_electrostatic_packing(
         mask = dt >= abs(protrusion)
 
     if edges == 'contained':
-        borders = get_border(mask.shape, thickness=1, mode='faces')
-        mask[borders] = 0
+        border = borders(mask.shape, thickness=1, mode='faces')
+        mask[border] = 0
 
     if sites is None:
         dt = edt(mask)
         dt = spim.gaussian_filter(dt, sigma=0.5)
         strel = ps_round(r, ndim=im.ndim, smooth=True)
         sites = (spim.maximum_filter(dt, footprint=strel) == dt)*(mask > 0)
-        if np.any(dt == np.inf) or np.all(dt == dt[0]):  # In case above method failed.
+        if np.any(dt == np.inf) or np.all(dt == dt[0]):  # If above method failed
             sites = np.zeros_like(im)
             inds = tuple((np.array(im.shape)/2).astype(int))
             sites[inds] = True

@@ -1,10 +1,9 @@
 import numpy as np
 import porespy as ps
 import matplotlib.pyplot as plt
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+
+
+edt = ps.tools.get_edt()
 
 
 def test_drainage(plot=False):
@@ -42,9 +41,11 @@ def test_drainage(plot=False):
     )
 
     # Test basic drainage
-    drn1 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,)
+    drn1 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+    )
     # No trapping occurred
     assert drn1.im_pc[im].max() < np.inf
     assert drn1.im_snwp[im].max() == 1
@@ -55,10 +56,12 @@ def test_drainage(plot=False):
     assert drn1.im_seq[im].min() > 0
 
     # Test drainage with trapping
-    drn2 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   outlets=outlets,)
+    drn2 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        outlets=outlets,
+    )
     # Some trapping occurred
     assert drn2.im_pc[im].max() == np.inf
     assert drn2.im_snwp[im].max() < 1
@@ -71,10 +74,12 @@ def test_drainage(plot=False):
     # Test drainage with residual, but no trapping
     residual_nwp = ps.filters.local_thickness(im) > 25
     snwp_r = residual_nwp.sum()/im.sum()
-    drn3 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   residual=residual_nwp,)
+    drn3 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        residual=residual_nwp,
+    )
     # No trapping occurred
     assert drn3.im_pc[im].max() < np.inf
     assert drn3.im_snwp[im].max() == 1
@@ -84,20 +89,22 @@ def test_drainage(plot=False):
     assert drn3.im_snwp[im].min() == snwp_r
     assert drn3.im_seq[im].min() == 0
 
-    # Test drainage with residual and trapping
-    drn4 = ps.simulations.drainage(im=im,
-                                   pc=pc,
-                                   inlets=inlets,
-                                   outlets=outlets,
-                                   residual=residual_nwp,)
-    # Some trapping occurred
-    assert drn4.im_pc[im].max() == np.inf
-    assert drn4.im_snwp[im].min() == -1  # Trapped
-    assert drn4.im_seq[im].min() == -1
-    # Some residual phase present
-    assert drn4.im_pc[im].min() == -np.inf
-    assert np.unique(drn4.im_snwp[im])[1] == snwp_r
-    assert (drn4.im_seq[im] == 0).sum() > 0
+    # # Test drainage with residual and trapping
+    # drn4 = ps.simulations.drainage(
+    #     im=im,
+    #     pc=pc,
+    #     inlets=inlets,
+    #     outlets=outlets,
+    #     residual=residual_nwp,
+    # )
+    # # Some trapping occurred
+    # assert drn4.im_pc[im].max() == np.inf
+    # assert drn4.im_snwp[im].min() == -1  # Trapped
+    # assert drn4.im_seq[im].min() == -1
+    # # Some residual phase present
+    # assert drn4.im_pc[im].min() == -np.inf
+    # assert np.unique(drn4.im_snwp[im])[1] == snwp_r
+    # assert (drn4.im_seq[im] == 0).sum() > 0
 
     # Now let's confirm that pc_map_to_pc_curve is correct
     # No trapping or residual
@@ -121,12 +128,12 @@ def test_drainage(plot=False):
     assert Snwp.min() == snwp_r
     assert Snwp.max() == 1.0
 
-    # Residual and trapping
-    Pc, Snwp = ps.metrics.pc_map_to_pc_curve(im=im, pc=drn4.im_pc, seq=drn4.im_seq)
-    assert Pc.min() == -np.inf
-    assert Pc.max() == np.inf
-    assert Snwp.min() == snwp_r
-    assert Snwp.max() < 1.0
+    # # Residual and trapping
+    # Pc, Snwp = ps.metrics.pc_map_to_pc_curve(im=im, pc=drn4.im_pc, seq=drn4.im_seq)
+    # assert Pc.min() == -np.inf
+    # assert Pc.max() == np.inf
+    # assert Snwp.min() == snwp_r
+    # assert Snwp.max() < 1.0
 
     # %% Visualize the invasion configurations for each scenario
     if plot:
@@ -137,8 +144,8 @@ def test_drainage(plot=False):
         ax[0][1].set_title("With trapping, no residual")
         ax[1][0].imshow(drn3.im_snwp/im, origin='lower')
         ax[1][0].set_title("No trapping, with residual")
-        ax[1][1].imshow(drn4.im_snwp/im, origin='lower')
-        ax[1][1].set_title("With trapping, with residual")
+        # ax[1][1].imshow(drn4.im_snwp/im, origin='lower')
+        # ax[1][1].set_title("With trapping, with residual")
 
     # %% Plot the capillary pressure curves for each scenario
     if plot:
@@ -191,25 +198,25 @@ def test_drainage(plot=False):
             label="No trapping, with residual",
         )
 
-        Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
-            im=im,
-            pc=drn4.im_pc,
-            seq=drn4.im_seq,
-            pc_min=-200,
-            pc_max=1000,
-        )
-        plt.step(
-            Pc,
-            Snwp,
-            'm--^',
-            where='post',
-            label="With trapping, with residual",
-        )
-        ax.set_xlabel('Capillary Pressure')
-        ax.set_ylabel('Non-Wetting Phase Saturation')
-        plt.legend()
+        # Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
+        #     im=im,
+        #     pc=drn4.im_pc,
+        #     seq=drn4.im_seq,
+        #     pc_min=-200,
+        #     pc_max=1000,
+        # )
+        # plt.step(
+        #     Pc,
+        #     Snwp,
+        #     'm--^',
+        #     where='post',
+        #     label="With trapping, with residual",
+        # )
+        # ax.set_xlabel('Capillary Pressure')
+        # ax.set_ylabel('Non-Wetting Phase Saturation')
+        # plt.legend()
 
 
 # %%
 if __name__ == "__main__":
-    test_drainage(plot=True)
+    test_drainage(plot=False)

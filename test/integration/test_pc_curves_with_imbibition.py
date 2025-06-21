@@ -1,10 +1,9 @@
 import numpy as np
 import porespy as ps
 import matplotlib.pyplot as plt
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+
+
+edt = ps.tools.get_edt()
 
 
 def test_drainage(plot=False):
@@ -226,4 +225,4 @@ def test_drainage(plot=False):
 
 # %%
 if __name__ == "__main__":
-    test_drainage(plot=True)
+    test_drainage(plot=False)

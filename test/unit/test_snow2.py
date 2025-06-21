@@ -4,12 +4,8 @@ import porespy as ps
 import scipy.ndimage as spim
 from scipy import stats as spst
 
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
-
+edt = ps.tools.get_edt()
 ws = op.Workspace()
 ws.settings["loglevel"] = 50
 ps.settings.tqdm["disable"] = True
@@ -25,9 +21,10 @@ class Snow2Test:
         )
 
     def test_single_phase_2d_serial(self):
-        im = ps.generators.blobs(shape=[200, 200], seed=0, porosity=0.52215)
+        im = ps.generators.blobs(
+            shape=[200, 200], seed=0, porosity=0.52215, periodic=False,)
         assert im.sum() / im.size == 0.52215
-        snow2 = ps.networks.snow2(im, phase_alias={1: "phase1"}, parallelization=None)
+        snow2 = ps.networks.snow2(im, phase_alias={1: "phase1"}, parallel_kw=None)
         if hasattr(op.io, "PoreSpy"):
             pn, geo = op.io.PoreSpy.import_data(snow2.network)
         elif hasattr(op.io, "from_porespy"):
@@ -38,9 +35,10 @@ class Snow2Test:
         assert "pore.phase1" not in pn.keys()
 
     def test_return_all_serial(self):
-        im = ps.generators.blobs(shape=[200, 200], seed=0, porosity=0.52215)
+        im = ps.generators.blobs(
+            shape=[200, 200], seed=0, porosity=0.52215, periodic=False,)
         assert im.sum() / im.size == 0.52215
-        snow2 = ps.networks.snow2(im, parallelization=None)
+        snow2 = ps.networks.snow2(im, parallel_kw=None)
         if hasattr(op.io, "PoreSpy"):
             pn, geo = op.io.PoreSpy.import_data(snow2.network)
         elif hasattr(op.io, "from_porespy"):
@@ -51,9 +49,11 @@ class Snow2Test:
         assert hasattr(snow2, "phases")
 
     def test_multiphase_2d(self):
-        im1 = ps.generators.blobs(shape=[200, 200], porosity=0.415425, seed=0)
+        im1 = ps.generators.blobs(
+            shape=[200, 200], porosity=0.415425, seed=0, periodic=False,)
         assert im1.sum() / im1.size == 0.415425
-        im2 = ps.generators.blobs(shape=[200, 200], porosity=0.710825, seed=0)
+        im2 = ps.generators.blobs(
+            shape=[200, 200], porosity=0.710825, seed=0, periodic=False,)
         assert im2.sum() / im2.size == 0.710825
         phases = im1 + (im2 * ~im1) * 2
         snow2 = ps.networks.snow2(phases, phase_alias={1: "phase1", 2: "test2"})
@@ -71,7 +71,8 @@ class Snow2Test:
         assert "pore.phase2" not in pn.keys()
 
     def test_single_phase_3d(self):
-        im = ps.generators.blobs(shape=[100, 100, 100], porosity=0.601226, seed=0)
+        im = ps.generators.blobs(
+            shape=[100, 100, 100], porosity=0.601226, seed=0, periodic=False,)
         assert im.sum() / im.size == 0.601226
         snow2 = ps.networks.snow2(im, phase_alias={1: "phase1"})
         if hasattr(op.io, "PoreSpy"):
@@ -84,9 +85,11 @@ class Snow2Test:
         assert "pore.phase1" not in pn.keys()
 
     def test_multiphase_3d(self):
-        im1 = ps.generators.blobs(shape=[100, 100, 100], porosity=0.394667, seed=0)
+        im1 = ps.generators.blobs(
+            shape=[100, 100, 100], porosity=0.394667, seed=0, periodic=False,)
         assert im1.sum() / im1.size == 0.394667
-        im2 = ps.generators.blobs(shape=[100, 100, 100], porosity=0.704319, seed=0)
+        im2 = ps.generators.blobs(
+            shape=[100, 100, 100], porosity=0.704319, seed=0, periodic=False,)
         assert im2.sum() / im2.size == 0.704319
         phases = im1 + (im2 * ~im1) * 2
         snow2 = ps.networks.snow2(phases, phase_alias={1: "phase1"})
@@ -157,7 +160,7 @@ class Snow2Test:
         im = self.spheres2D
         phases = im.astype(int) + 1
         alias = {1: "void", 2: "solid"}
-        snow = ps.networks.snow2(phases=phases, phase_alias=alias, parallelization=None)
+        snow = ps.networks.snow2(phases=phases, phase_alias=alias, parallel_kw=None)
         assert "throat.solid_void" in snow.network.keys()
         assert "throat.void_solid" in snow.network.keys()
         assert "throat.solid_solid" in snow.network.keys()
@@ -167,7 +170,7 @@ class Snow2Test:
 
     def test_ensure_correct_sizes_are_returned_single_phase_2d(self):
         im = self.spheres2D
-        snow = ps.networks.snow2(phases=im, parallelization=None)
+        snow = ps.networks.snow2(phases=im, parallel_kw=None)
         mode = spst.mode(snow.network["pore.extended_diameter"], keepdims=False)
         assert mode[0] == 60
         D = np.unique(snow.network["pore.extended_diameter"].astype(int))
@@ -176,7 +179,7 @@ class Snow2Test:
     def test_ensure_correct_sizes_are_returned_dual_phase_2d(self):
         im = self.spheres2D
         phases = im.astype(int) + 1
-        snow = ps.networks.snow2(phases=phases, parallelization=None)
+        snow = ps.networks.snow2(phases=phases, parallel_kw=None)
         mode = spst.mode(snow.network["pore.extended_diameter"], keepdims=False)
         assert mode[0] == 60
         D = np.unique(snow.network["pore.extended_diameter"].astype(int))
@@ -184,7 +187,7 @@ class Snow2Test:
 
     def test_ensure_correct_sizes_are_returned_single_phase_3d(self):
         im = self.spheres3D
-        snow = ps.networks.snow2(phases=im, parallelization=None)
+        snow = ps.networks.snow2(phases=im, parallel_kw=None)
         mode = spst.mode(snow.network["pore.extended_diameter"], keepdims=False)
         assert mode[0] == 30
         D = np.unique(snow.network["pore.extended_diameter"].astype(int))
@@ -193,7 +196,7 @@ class Snow2Test:
     def test_ensure_correct_sizes_are_returned_dual_phase_3d(self):
         im = self.spheres3D
         phases = im.astype(int) + 1
-        snow = ps.networks.snow2(phases=phases, parallelization=None)
+        snow = ps.networks.snow2(phases=phases, parallel_kw=None)
         mode = spst.mode(snow.network["pore.extended_diameter"], keepdims=False)
         assert mode[0] == 30
         D = np.unique(snow.network["pore.extended_diameter"].astype(int))
@@ -204,7 +207,7 @@ class Snow2Test:
 
     def test_trim_saddle_points(self):
         im = ps.generators.blobs(
-            shape=[400, 400], blobiness=[2, 1], porosity=0.5916375, seed=0
+            shape=[400, 400], blobiness=[2, 1], porosity=0.5916375, seed=0, periodic=False,
         )
         assert im.sum() / im.size == 0.5916375
         dt = edt(im)
@@ -215,7 +218,7 @@ class Snow2Test:
 
     def test_trim_saddle_points_legacy(self):
         im = ps.generators.blobs(
-            shape=[400, 400], blobiness=[2, 1], porosity=0.5916375, seed=0
+            shape=[400, 400], blobiness=[2, 1], porosity=0.5916375, seed=0, periodic=False,
         )
         assert im.sum() / im.size == 0.5916375
         dt = edt(im)
@@ -229,7 +232,7 @@ class Snow2Test:
             shape=[100, 100, 100], r=15, offset=22, spacing=28
         )
         snow_1 = ps.networks.snow2(
-            im, boundary_width=[0, 0, 0], accuracy="high", parallelization=None
+            im, boundary_width=[0, 0, 0], accuracy="high", parallel_kw=None
         )
         A = snow_1.network["throat.cross_sectional_area"]
         np.testing.assert_almost_equal(A, 99.163, decimal=3)
@@ -239,17 +242,17 @@ class Snow2Test:
             shape=[100, 100, 100], r=15, offset=22, spacing=28
         )
         snow_1 = ps.networks.snow2(
-            im, boundary_width=[0, 0, 0], accuracy="standard", parallelization=None
+            im, boundary_width=[0, 0, 0], accuracy="standard", parallel_kw=None
         )
         A = snow_1.network["throat.cross_sectional_area"]
         assert np.all(A == 89.0)
 
     def test_single_and_dual_phase_on_blobs(self):
         im = ps.generators.blobs(
-            shape=[100, 100, 100], porosity=0.601899, blobiness=1.5, seed=0
+            shape=[100, 100, 100], porosity=0.601899, blobiness=1.5, seed=0, periodic=False,
         )
         assert im.sum() / im.size == 0.601899
-        snow_1 = ps.networks.snow2(im, accuracy="standard", parallelization=None)
+        snow_1 = ps.networks.snow2(im, accuracy="standard", parallel_kw=None)
         if hasattr(op.io, "PoreSpy"):
             pn1, geo = op.io.PoreSpy.import_data(snow_1.network)
         elif hasattr(op.io, "from_porespy"):
@@ -266,7 +269,7 @@ class Snow2Test:
             im.astype(int) + 1,
             phase_alias={1: "solid", 2: "void"},
             accuracy="standard",
-            parallelization=None,
+            parallel_kw=None,
         )
         if hasattr(op.io, "PoreSpy"):
             pn2, geo = op.io.PoreSpy.import_data(snow_2.network)
@@ -284,7 +287,7 @@ class Snow2Test:
         assert pn1.num_pores("all") == pn2.num_pores("void")
         assert pn1.num_throats("all") == pn2.num_throats("void_void")
 
-        snow_3 = ps.networks.snow2(im == 0, accuracy="standard", parallelization=None)
+        snow_3 = ps.networks.snow2(im == 0, accuracy="standard", parallel_kw=None)
         if hasattr(op.io, "PoreSpy"):
             pn3, geo = op.io.PoreSpy.import_data(snow_3.network)
         elif hasattr(op.io, "from_porespy"):
@@ -308,7 +311,8 @@ class Snow2Test:
         assert pn3.num_throats("all") == pn2.num_throats("solid_solid")
 
     def test_send_peaks_to_snow_partitioning(self):
-        im = ps.generators.blobs([200, 200], porosity=0.705375, blobiness=1.5, seed=0)
+        im = ps.generators.blobs(
+            shape=[200, 200], porosity=0.705375, blobiness=1.5, seed=0, periodic=False,)
         assert im.sum() / im.size == 0.705375
         snow1 = ps.filters.snow_partitioning(im, sigma=0.4, r_max=5)
         assert snow1.regions.max() == 97
@@ -321,7 +325,8 @@ class Snow2Test:
         assert snow2.regions.max() == 97
 
     def test_send_peaks_to_snow_partitioning_n(self):
-        im = ps.generators.blobs([200, 200], porosity=0.72105, blobiness=0.5, seed=0)
+        im = ps.generators.blobs(
+            shape=[200, 200], porosity=0.72105, blobiness=0.5, seed=0, periodic=False,)
         assert im.sum() / im.size == 0.72105
         sph = im * ps.generators.lattice_spheres(
             shape=im.shape, r=12, offset=20, spacing=40
@@ -341,7 +346,8 @@ class Snow2Test:
         assert snow2.regions.max() == 56
 
     def test_snow2_with_peaks(self):
-        im = ps.generators.blobs([200, 200], porosity=0.705375, blobiness=1.5, seed=0)
+        im = ps.generators.blobs(
+            shape=[200, 200], porosity=0.705375, blobiness=1.5, seed=0, periodic=False,)
         assert im.sum() / im.size == 0.705375
         snow1 = ps.networks.snow2(im, sigma=0.4, r_max=5, boundary_width=0)
         assert snow1.regions.max() == 97
@@ -355,8 +361,10 @@ class Snow2Test:
 
     def test_two_phases_and_boundary_nodes(self):
         np.random.seed(0)
-        im1 = ps.generators.blobs(shape=[600, 400], porosity=None, blobiness=1) < 0.4
-        im2 = ps.generators.blobs(shape=[600, 400], porosity=None, blobiness=1) < 0.7
+        im1 = ps.generators.blobs(
+            shape=[600, 400], porosity=None, blobiness=1, periodic=False,) < 0.4
+        im2 = ps.generators.blobs(
+            shape=[600, 400], porosity=None, blobiness=1, periodic=False,) < 0.7
         phases = im1 + (im2 * ~im1) * 2
         # phases = phases > 0
 
@@ -365,7 +373,7 @@ class Snow2Test:
             phase_alias={1: "solid", 2: "void"},
             boundary_width=5,
             accuracy="high",
-            parallelization=None,
+            parallel_kw=None,
         )
 
         assert snow_n.regions.max() == 210

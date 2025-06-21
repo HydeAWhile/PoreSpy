@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-from porespy.tools import get_tqdm
 
 __all__ = [
     'bar',
@@ -10,9 +9,6 @@ __all__ = [
     'show_mesh',
     'show_panels',
 ]
-
-
-tqdm = get_tqdm()
 
 
 def show_panels(im, rc=[3, 3], axis=0):

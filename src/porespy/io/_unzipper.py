@@ -1,12 +1,16 @@
+import inspect
 import os
 import shutil
 from pathlib import Path
 from zipfile import ZipFile
-
+from skimage.io import imread_collection
 import imageio
 import numpy as np
-
+from pathlib import Path
+from zipfile import ZipFile
 from porespy.tools import get_tqdm
+from porespy import settings
+
 
 tqdm = get_tqdm()
 
@@ -39,9 +43,15 @@ def folder_to_stack(target_dir):
     p = Path(target_dir)
     test_im = imageio.v2.imread(os.path.join(p, os.listdir(p)[0]))
     im = np.zeros(
-        shape=[test_im.shape[0], test_im.shape[1], len(os.listdir(p))], dtype=test_im.dtype
+        shape=[
+            test_im.shape[0],
+            test_im.shape[1],
+            len(os.listdir(p)),
+        ],
+        dtype=test_im.dtype,
     )
-    for i, f in enumerate(tqdm(os.listdir(p))):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, f in enumerate(tqdm(os.listdir(p), desc=desc, **settings.tqdm)):
         im[..., i] = imageio.v2.imread(os.path.join(p, f))
 
     return im
@@ -70,28 +80,18 @@ def zip_to_stack(f):
     layer number, like 001, 002, etc.
     """
     p = Path(f)
-    dir_for_files = p.parts[-1].rpartition(".")[0]
+    target_dir = p.parts[-1].rpartition(".")[0]
 
     with ZipFile(p, "r") as f:
-        f.extractall(dir_for_files)
+        f.extractall(target_dir)
 
-    # Method 1: uses skimage and numpy function so is easy to understand
-    # filenames = []
-    # for f in os.listdir(target_dir):
-    #     filenames.append(os.path.join(target_dir, f))
-    # files = imread_collection(filenames, conserve_memory=True)
-    # im = np.stack(files, axis=2)
-
-    # Method 2: Same speed as 1 but more complex, but allows tqdm progress bar
-    test_im = imageio.v2.imread(os.path.join(dir_for_files, os.listdir(dir_for_files)[0]))
-    im = np.zeros(
-        shape=[test_im.shape[0], test_im.shape[1], len(os.listdir(dir_for_files))],
-        dtype=test_im.dtype,
-    )
-    for i, f in enumerate(tqdm(os.listdir(dir_for_files))):
-        im[..., i] = imageio.v2.imread(os.path.join(dir_for_files, f))
+    filenames = []
+    for f in os.listdir(target_dir):
+        filenames.append(os.path.join(target_dir, f))
+    files = imread_collection(filenames, conserve_memory=True)
+    im = np.stack(files, axis=2)
 
     # Remove the unzipped folder
-    shutil.rmtree(dir_for_files)
+    shutil.rmtree(target_dir)
 
     return im

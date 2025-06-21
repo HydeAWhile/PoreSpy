@@ -1,20 +1,16 @@
 import os
 from pathlib import Path
 import numpy as np
-
 import porespy as ps
 import pytest
 import scipy.ndimage as spim
 from numpy.testing import assert_allclose
 from skimage import io
 from skimage.morphology import ball
-
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import get_edt
 
 
+edt = get_edt()
 ps.settings.tqdm['disable'] = True
 
 
@@ -34,15 +30,24 @@ class MetricsTest():
         self.blobs = ps.generators.blobs(shape=[101, 101, 101],
                                          porosity=0.500148014997559,
                                          blobiness=[1, 2, 3],
-                                         seed=0)
+                                         seed=0,
+                                         periodic=False,
+                                         )
         assert self.blobs.sum()/self.blobs.size == 0.500148014997559
         path = Path(os.path.realpath(__file__),
                     '../../../test/fixtures/partitioned_regions.tif')
         self.regions = np.array(io.imread(path))
 
     def test_porosity(self):
-        phi = ps.metrics.porosity(im=self.im2D)
-        assert np.allclose(phi, 0.66856)
+        im = ps.generators.blobs([300, 300], porosity=0.6, seed=1)
+        phi = ps.metrics.porosity(im)
+        assert np.allclose(phi, 0.6)
+        phi = ps.metrics.porosity(im, fill_surface=True, fill_closed=False)
+        assert np.allclose(phi, 0.3963111111111111)
+        phi = ps.metrics.porosity(im, fill_surface=False, fill_closed=True)
+        assert np.allclose(phi, 0.5996222222222222)
+        phi = ps.metrics.porosity(im, fill_surface=True, fill_closed=True)
+        assert np.allclose(phi, 0.39593333333333336)
 
     def test_tpcf_fft_2d(self):
         tpcf_fft_1 = ps.metrics.two_point_correlation(self.im2D)
@@ -85,7 +90,7 @@ class MetricsTest():
         assert np.sqrt((np.mean(tpcf_bf.probability[-5:]) - phi1)**2) < tol
 
     def test_rev(self):
-        rev = ps.metrics.representative_elementary_volume(self.blobs)
+        rev = ps.metrics.rev_porosity(self.blobs)
         assert (np.mean(rev.porosity) - 0.5)**2 < 0.05
 
     def test_radial_density(self):
@@ -173,7 +178,7 @@ class MetricsTest():
     def test_region_volumes(self):
         regions = self.regions[:50, :50, :50]
         vols_march = ps.metrics.region_volumes(regions=regions)
-        vols_vox = ps.metrics.region_volumes(regions=regions, mode='voxel')
+        vols_vox = ps.metrics.region_volumes(regions=regions, method='voxel')
         assert_allclose(vols_march[:5], [1498.85320453, 2597.90798652,
                                          2158.34548652, 1281.17978573, 1172.39853573])
         assert_allclose(vols_vox[:5], [1540., 2648., 2206., 1320., 1210.])
@@ -183,7 +188,7 @@ class MetricsTest():
     def test_region_volumes_for_sphere(self):
         region = ball(10)
         vol_march = ps.metrics.region_volumes(regions=region)
-        vol_vox = ps.metrics.region_volumes(region, mode='voxel')
+        vol_vox = ps.metrics.region_volumes(region, method='voxel')
         assert_allclose(vol_march, 4102.28678846)
         assert_allclose(vol_vox, 4169.)
 
@@ -209,7 +214,7 @@ class MetricsTest():
         assert np.allclose(k, [0.5, 1.5, 12])
         assert np.allclose(v, [0.2, 0.3, 0.5])
 
-    def test_representative_elementary_volume(self):
+    def test_rev_porosity(self):
         im = ps.generators.lattice_spheres(
             shape=[999, 999],
             r=15,
@@ -217,7 +222,7 @@ class MetricsTest():
             smooth=True,
             lattice='sc',
         )
-        rev = ps.metrics.representative_elementary_volume(im)
+        rev = ps.metrics.rev_porosity(im)
         assert_allclose(np.average(rev.porosity), im.sum() / im.size, rtol=1e-1)
 
         im = ps.generators.lattice_spheres(
@@ -227,43 +232,59 @@ class MetricsTest():
             smooth=True,
             lattice='sc',
         )
-        rev = ps.metrics.representative_elementary_volume(im)
+        rev = ps.metrics.rev_porosity(im)
         assert_allclose(np.average(rev.porosity), im.sum() / im.size, rtol=1e-1)
 
-    # def test_geometric_tortuosity_2d(self):
-        # np.random.seed(0)
-        # im = ps.generators.blobs(shape=[300, 300], porosity=0.6, blobiness=2)
-        # out = ps.metrics.geometrical_tortuosity(im)
-        # assert np.size(out) == 1
-        # assert out >= 1
+    def test_rev_porosity_with_slices(self):
+        im = ps.generators.blobs(shape=[100, 100], porosity=0.5, seed=0)
+        slices = ps.tools.get_slices_random(im=im, n=10)
+        rev = ps.metrics.rev_porosity(im, slices=slices)
+        assert len(rev.porosity) == 10
+        assert len(rev.volume) == 10
+        assert np.all(rev.porosity >= 0)
+        assert np.all(rev.porosity <= 1)
+        assert np.all(rev.volume > 0)
 
-    # def test_geometric_tortuosity_3d(self):
-        # np.random.seed(0)
-        # im = ps.generators.blobs(shape=[100, 100, 100], porosity=0.6, blobiness=2)
-        # out = ps.metrics.geometrical_tortuosity(im)
-        # assert np.size(out) == 1
-        # assert out >= 1
+    def test_rev_tortuosity(self):
+        im = ps.generators.blobs(shape=[100, 100], porosity=0.5, seed=0)
+        rev = ps.metrics.rev_tortuosity(im, n=10, axis=0)
+        assert hasattr(rev, 'porosity_orig')
+        assert hasattr(rev, 'porosity_perc')
+        assert hasattr(rev, 'g')
+        assert hasattr(rev, 'tau')
+        assert hasattr(rev, 'volume')
+        assert hasattr(rev, 'length')
+        assert hasattr(rev, 'axis')
+        assert hasattr(rev, 'time')
+        assert hasattr(rev, 'slice')
+        assert len(rev.porosity_orig) == 10
+        assert np.all(rev.porosity_orig >= 0)
+        assert np.all(rev.porosity_orig <= 1)
+        assert np.all(rev.volume > 0)
+        rev = ps.metrics.rev_tortuosity(im, n=10, axis=None)
+        assert len(rev.porosity_orig) == 20
 
-    # def test_geometric_tortuosity_points_2d(self):
-        # This function is not quite ready yet
-        # np.random.seed(0)
-        # im = ps.generators.blobs(shape=[300, 300], porosity=0.6, blobiness=2)
-        # out = ps.metrics.geometrical_tortuosity_points(im)
-        # assert np.shape(out[0])[0] ==np.shape(out[0])[1]
-        # assert np.size(out[1]) == 1
-        # assert out[1] >= 1
+    def test_rev_tortuosity_with_slices(self):
+        im = ps.generators.blobs(shape=[100, 100], porosity=0.5, seed=0)
+        slices = ps.tools.get_slices_random(im=im, n=10)
+        rev = ps.metrics.rev_tortuosity(im, slices=slices, axis=0)
+        assert len(rev.porosity_orig) == 10
+        assert len(rev.volume) == 10
+        assert np.all(rev.porosity_orig >= 0)
+        assert np.all(rev.porosity_orig <= 1)
+        assert np.all(rev.volume > 0)
 
-    # def test_geometric_tortuosity_points_3d(self):
-        # This function is not quite ready yet
-        # np.random.seed(0)
-        # im = ps.generators.blobs(shape=[50, 50, 50], porosity=0.6, blobiness=2)
-        # out = ps.metrics.geometrical_tortuosity_points(im)
-        # assert np.shape(out[0])[0] ==np.shape(out[0])[1]
-        # assert np.size(out[1]) == 1
-        # assert out[1] >= 1
+    def test_rev_tortuosity_3d(self):
+        im = ps.generators.blobs(shape=[50, 50, 50], porosity=0.5, seed=0)
+        rev = ps.metrics.rev_tortuosity(im, n=10)
+        assert len(rev.porosity_orig) == 30  # 10 samples * 3 axes
+        assert np.all(rev.porosity_orig >= 0)
+        assert np.all(rev.porosity_orig <= 1)
+        assert np.all(rev.volume > 0)
 
     def test_pc_curve(self):
-        im = ps.generators.blobs(shape=[100, 100], porosity=0.7026, seed=0)
+        im = ps.generators.blobs(
+            shape=[100, 100], porosity=0.7026, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.7026
         sizes = ps.filters.porosimetry(im=im)
         pc_map = ps.filters.size_to_pc(
@@ -273,7 +294,8 @@ class MetricsTest():
         assert hasattr(pc_curve, 'snwp')
 
     def test_pc_curve_from_ibip(self):
-        im = ps.generators.blobs(shape=[100, 100], porosity=0.7026, seed=0)
+        im = ps.generators.blobs(
+            shape=[100, 100], porosity=0.7026, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.7026
         results = ps.simulations.ibip(im=im, return_sizes=True)
         pc_map = ps.filters.size_to_pc(
@@ -339,10 +361,11 @@ class MetricsTest():
 
     def test_pc_map_to_pc_curve_drainage_with_trapping_and_residual(self):
         vx = 50e-6
-        im = ps.generators.blobs(shape=[200, 200], porosity=0.5088, blobiness=2, seed=0)
+        im = ps.generators.blobs(
+            shape=[200, 200], porosity=0.5088, blobiness=2, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.5088
         mio = ps.filters.porosimetry(im)
-        trapped = im*(~ps.filters.fill_blind_pores(im))
+        trapped = im*(~ps.filters.fill_closed_pores(im))
         residual = im*(~trapped)*(mio < mio.mean())
         pc = ps.filters.capillary_transform(im, voxel_size=vx, sigma=0.072, theta=110)
         pc[trapped] = np.inf
@@ -353,7 +376,8 @@ class MetricsTest():
 
     def test_pc_map_to_pc_curve_invasion_with_trapping(self):
         vx = 50e-6
-        im = ps.generators.blobs(shape=[200, 200], porosity=0.5088, blobiness=2, seed=0)
+        im = ps.generators.blobs(
+            shape=[200, 200], porosity=0.5088, blobiness=2, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.5088
         ibip = ps.simulations.ibip(im=im)
         pc = -2*0.072*np.cos(np.radians(110))/(ibip.im_size*vx)
@@ -368,13 +392,13 @@ class MetricsTest():
     def test_pc_map_to_pc_curve_compare_invasion_to_drainage(self):
         vx = 50e-6
         im = ps.generators.blobs(
-            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0)
+            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
-        inlets = ps.tools.get_border(shape=im.shape, mode='faces')
+        im = ps.filters.fill_closed_pores(im, conn='max', surface=True)
+        inlets = ps.generators.borders(shape=im.shape, mode='faces')
 
         # Do drainage without sequence
-        drn = ps.simulations.drainage(im, steps=None, return_sizes=True)
+        drn = ps.simulations.drainage(im, steps=None)
         pc1 = ps.filters.size_to_pc(
             im=im, size=drn.im_size, sigma=0.072, theta=110, voxel_size=vx)
         d1 = ps.metrics.pc_map_to_pc_curve(pc=pc1, im=im)
@@ -392,7 +416,7 @@ class MetricsTest():
 
         bins = np.unique(pc3)
         drn4 = ps.simulations.drainage(
-            im=im, inlets=inlets, steps=bins, return_sizes=True)
+            im=im, inlets=inlets, steps=bins)
         pc4 = ps.filters.size_to_pc(
             im=im, size=drn4.im_size, sigma=0.072, theta=110, voxel_size=vx)
         d4 = ps.metrics.pc_map_to_pc_curve(pc=pc4, im=im)
@@ -413,9 +437,9 @@ class MetricsTest():
 
     def test_pc_map_to_pc_curve_end_points_drainage(self):
         im = ps.generators.blobs(
-            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0)
+            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        im = ps.filters.fill_closed_pores(im, conn="max", surface=True)
         inlets = ps.generators.faces(shape=im.shape, inlet=0)
         pc = ps.filters.capillary_transform(im)
         drn = ps.simulations.drainage(im=im, pc=pc, inlets=inlets)
@@ -434,9 +458,9 @@ class MetricsTest():
 
     def test_pc_map_to_pc_curve_end_points_imbibition(self):
         im = ps.generators.blobs(
-            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0)
+            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
+        im = ps.filters.fill_closed_pores(im, conn="max", surface=True)
         inlets = ps.generators.faces(shape=im.shape, inlet=0)
         pc = ps.filters.capillary_transform(im=im)
         imb = ps.simulations.imbibition(im=im, pc=pc, inlets=inlets)
@@ -462,10 +486,10 @@ class MetricsTest():
 
     def test_qbip_and_ibip_are_equivalent(self):
         im = ps.generators.blobs(
-            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0)
+            shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_blind_pores(im, conn=8, surface=True)
-        inlets = ps.tools.get_border(shape=im.shape, mode='faces')
+        im = ps.filters.fill_closed_pores(im, conn="max", surface=True)
+        inlets = ps.generators.borders(shape=im.shape, mode='faces')
 
         ibip = ps.simulations.ibip(im=im, inlets=inlets, return_sizes=True)
         qbip = ps.simulations.qbip(im=im, pc=None, inlets=inlets, return_sizes=True)

@@ -5,12 +5,10 @@ import scipy.ndimage as spim
 from skimage.morphology import disk, ball, skeletonize
 from skimage.util import random_noise
 from scipy.stats import norm
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import get_edt
 
 
+edt = get_edt()
 ps.settings.tqdm['disable'] = True
 
 
@@ -20,13 +18,19 @@ class SimulationsTest():
         self.im = ps.generators.blobs(shape=[100, 100, 100],
                                       blobiness=2,
                                       seed=0,
-                                      porosity=0.499829)
+                                      porosity=0.499829,
+                                      periodic=False,
+                                      )
         assert self.im.sum()/self.im.size == 0.499829
         self.im_dt = edt(self.im)
 
     def test_drainage_with_gravity(self):
-        im = ps.generators.blobs(shape=[100, 100, 100], porosity=0.7066, seed=0)
-        # im = ps.generators.blobs(shape=[400, 400], porosity=0.7066, seed=2)
+        im = ps.generators.blobs(
+            shape=[200, 200],
+            porosity=0.7066,
+            seed=0,
+            periodic=False,
+        )
         assert im.sum()/im.size == 0.7066
         dt = edt(im)
         pc = ps.filters.capillary_transform(
@@ -40,11 +44,12 @@ class SimulationsTest():
         )
         np.testing.assert_approx_equal(pc[im].max(), 0.144)
         # With inaccessible regions, resulting in inf in some voxels (uninvaded)
-        drn = ps.simulations.drainage(pc=pc, im=im)
+        inlets = ps.generators.faces(im.shape, inlet=0)
+        drn = ps.simulations.drainage(pc=pc, im=im, inlets=inlets)
         np.testing.assert_approx_equal(drn.im_pc.max(), np.inf)
 
         # After filling inaccessible voxels
-        im2 = ps.filters.fill_blind_pores(im, conn=2*im.ndim, surface=True)
+        im2 = ps.filters.fill_closed_pores(im, conn='min', surface=True)
         assert im2.sum()/im2.size < 0.7066
         dt2 = edt(im2)
         pc2 = ps.filters.capillary_transform(
@@ -56,7 +61,7 @@ class SimulationsTest():
             voxel_size=1e0,
             g=0,
         )
-        drn2 = ps.simulations.drainage(pc=pc2*im2, im=im2)
+        drn2 = ps.simulations.drainage(pc=pc2*im2, im=im2, inlets=inlets)
         np.testing.assert_approx_equal(drn2.im_pc[im2].max(), 0.14399999380111694)
 
         pc3 = ps.filters.capillary_transform(

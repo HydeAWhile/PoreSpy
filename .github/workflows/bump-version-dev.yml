@@ -1,13 +1,15 @@
 name: Bump Version (dev)
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - dev
 
 jobs:
-  build:
-    if: (! contains(github.event.head_commit.message, '[no bump]'))
+  bump-version:
+    if: github.event.pull_request.merged == true
 
     name: Bump version
     runs-on: ubuntu-latest
@@ -16,28 +18,27 @@ jobs:
       contents: write
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
+      - name: Set up uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.10"
+          cache-dependency-glob: "**/pyproject.toml"
 
-    - name: Install uv for faster builds
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Install build dependencies
+        run: |
+          uv sync --extra build
 
-    - name: Install dependencies
-      run: |
-        uv pip install --system -e .[build]
+      - name: Bump version (dev)
+        run: |
+          uv run hatch version dev
 
-    - name: Bump version (dev)
-      run: |
-        hatch version dev
-
-    - name: Commit files
-      uses: stefanzweifel/git-auto-commit-action@v5
-      with:
-        commit_message: Bump version number (dev segment)
-        commit_author: GitHub Actions <actions@github.com>
+      - name: Commit files
+        uses: stefanzweifel/git-auto-commit-action@v6
+        with:
+          commit_message: Bump version number (dev segment)
+          commit_author: GitHub Actions <actions@github.com>

@@ -1,14 +1,12 @@
-import inspect as insp
+import inspect
 import logging
 from typing import List, Literal
-
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
 from numba import njit
-
 from porespy import metrics, settings
 from porespy.filters import chunked_func
 from porespy.tools import (
@@ -16,25 +14,23 @@ from porespy.tools import (
     _insert_disk_at_points_parallel,
     all_to_uniform,
     extract_subsection,
-    get_border,
     get_tqdm,
     insert_sphere,
     ps_ball,
     ps_disk,
+    get_edt,
+    parse_shape
 )
-
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
 
 
 __all__ = [
     "blobs",
+    "borders",
     "bundle_of_tubes",
     "cylinders",
     "cylindrical_plug",
     "elevation",
+    "faces",
     "insert_shape",
     "lattice_spheres",
     "line_segment",
@@ -47,8 +43,122 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
+
+
+def faces(shape, inlet: int = None, outlet: int = None):
+    r"""
+    Generate an image with ``True`` values on the specified ``inlet`` and
+    ``outlet`` faces
+
+    Parameters
+    ----------
+    shape : list
+        The ``[x, y, z (optional)]`` shape to generate. This will likely
+        be obtained from ``im.shape`` where ``im`` is the image for which
+        an array of faces is required.
+    inlet : int
+        The axis where the faces should be added (e.g. ``inlet=0`` will
+        put ``True`` values on the ``x=0`` face). A value of ``None``
+        bypasses the addition of inlets.
+    outlet : int
+        Same as ``inlet`` except for the outlet face. This is optional. It
+        can be be applied at the same time as ``inlet``, instead of
+        ``inlet`` (if ``inlet`` is set to ``None``), or ignored
+        (if ``outlet = None``).
+
+    Returns
+    -------
+    faces : ndarray
+        A boolean image of the given ``shape`` with ``True`` values on the
+        specified ``inlet`` and/or ``outlet`` face(s).
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/generators/reference/faces.html>`_
+    to view online example.
+
+    """
+    shape = parse_shape(shape)
+    im = np.zeros(shape, dtype=bool)
+    # Parse inlet and outlet
+    if inlet is not None:
+        im = np.swapaxes(im, 0, inlet)
+        im[0, ...] = True
+        im = np.swapaxes(im, 0, inlet)
+    if outlet is not None:
+        im = np.swapaxes(im, 0, outlet)
+        im[-1, ...] = True
+        im = np.swapaxes(im, 0, outlet)
+    if (inlet is None) and (outlet is None):
+        raise Exception('Both inlet and outlet were given as None')
+    return im
+
+
+def borders(
+    shape,
+    thickness: int = 1,
+    mode: Literal['edges', 'faces', 'corners'] = 'edges'
+):
+    r"""
+    Creates an array of specified size with corners, edges or faces
+    labelled as ``True``.
+
+    This can be used as mask to manipulate values laying on the perimeter
+    of an image.
+
+    Parameters
+    ----------
+    shape : array_like
+        The shape of the array to return.  Can be either 2D or 3D.
+    thickness : scalar (default is 1)
+        The number of pixels/voxels layers to place along perimeter.
+    mode : string
+        The type of border to create.  Options are 'faces', 'edges'
+        (default) and 'corners'.  In 2D 'faces' and 'edges' give the
+        same result.
+
+    Returns
+    -------
+    image : ndarray
+        An ndarray of specified shape with ``True`` values at the
+        perimeter and ``False`` elsewhere
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/generators/reference/borders.html>`_
+    to view online example.
+
+    """
+    shape = parse_shape(shape)
+    ndims = len(shape)
+    t = thickness
+    border = np.ones(shape, dtype=bool)
+    if mode == 'faces':
+        if ndims == 2:
+            border[t:-t, t:-t] = False
+        if ndims == 3:
+            border[t:-t, t:-t, t:-t] = False
+    elif mode == 'edges':
+        if ndims == 2:
+            border[t:-t, t:-t] = False
+        if ndims == 3:
+            border[0::, t:-t, t:-t] = False
+            border[t:-t, 0::, t:-t] = False
+            border[t:-t, t:-t, 0::] = False
+    elif mode == 'corners':
+        if ndims == 2:
+            border[t:-t, 0::] = False
+            border[0::, t:-t] = False
+        if ndims == 3:
+            border[t:-t, 0::, 0::] = False
+            border[0::, t:-t, 0::] = False
+            border[0::, 0::, t:-t] = False
+    return border
 
 
 def elevation(
@@ -87,6 +197,7 @@ def elevation(
     # TODO: Create a notebook example for this function
 
     """
+    shape = parse_shape(shape)
     im = np.zeros(shape, dtype=bool)
     im = np.swapaxes(im, 0, axis)
     a = np.arange(0, im.shape[0])
@@ -138,7 +249,7 @@ def ramp(
     <https://porespy.org/examples/generators/reference/ramp.html>`_
     to view online example.
     """
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     vals = np.linspace(inlet, outlet, shape[axis])
     vals = np.reshape(vals, [shape[axis]]+[1]*len(shape[1:]))
     vals = np.swapaxes(vals, 0, axis)
@@ -176,7 +287,7 @@ def cylindrical_plug(shape, r=None, axis=2):
     to view online example.
 
     """
-    shape = np.array(shape, dtype=int)
+    shape = parse_shape(shape)
     axes = np.array(list(set([0, 1, 2]).difference(set([axis]))), dtype=int)
     if len(shape) == 3:
         im2d = np.ones(shape=shape[axes])
@@ -389,7 +500,8 @@ def random_spheres(
 
     """
     logger.debug(f"random_spheres: Adding spheres of size {r}")
-
+    if shape:
+        shape = parse_shape(shape)
     if smooth:
         r = r + 1
 
@@ -409,7 +521,7 @@ def random_spheres(
 
     # Depending on mode, adjust options_im to remove options around edge
     if edges == "contained":
-        border = get_border(im.shape, thickness=r, mode="faces")
+        border = borders(im.shape, thickness=r, mode="faces")
         options_im[border] = False
     elif edges == "extended":
         pass
@@ -575,7 +687,7 @@ def bundle_of_tubes(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if len(shape) == 2:
         shape = np.hstack((shape, [1]))
     shape2 = shape[shape > 1]
@@ -608,7 +720,8 @@ def polydisperse_spheres(
     dist,
     nbins: int = 5,
     r_min: int = 5,
-    seed=None):
+    seed=None,
+):
     r"""
     Create an image of randomly placed, overlapping spheres with a
     distribution of radii.
@@ -655,7 +768,7 @@ def polydisperse_spheres(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if np.size(shape) == 1:
         shape = np.full((3,), int(shape))
     Rs = dist.interval(np.linspace(0.05, 0.95, nbins))
@@ -715,13 +828,10 @@ def voronoi_edges(
     to view online example.
 
     """
-    if 'radius' in kwargs.keys():
-        r = kwargs['radius']
-        print('radius keyword is deprecated in favor of just r')
     if seed is not None:
         np.random.seed(seed)
     logger.info(f"Generating {ncells} cells")
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if np.size(shape) == 1:
         shape = np.full((3,), int(shape))
     im = np.zeros(shape, dtype=bool)
@@ -847,7 +957,7 @@ def lattice_spheres(
 
     """
     logger.debug(f"Generating {lattice} lattice")
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     im = np.zeros(shape, dtype=bool)
 
     # Parse lattice type
@@ -975,9 +1085,7 @@ def overlapping_spheres(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
-    if np.size(shape) == 1:
-        shape = np.full((3, ), int(shape))
+    shape = parse_shape(shape)
     ndim = (shape != 1).sum(dtype=np.int64)
     s_vol = ps_disk(r).sum(dtype=np.int64) if ndim == 2 \
         else ps_ball(r).sum(dtype=np.int64)
@@ -1026,8 +1134,9 @@ def blobs(
     shape: List[int],
     porosity: float = 0.5,
     blobiness: int = 1,
-    divs: int = 1,
-    seed=None,
+    parallel_kw: dict = {"divs": 1},
+    seed: int = None,
+    periodic: bool = True,
 ):
     """
     Generates an image containing amorphous blobs
@@ -1042,20 +1151,39 @@ def blobs(
         prior to returning.  If ``None`` is specified, then the scalar
         noise field is converted to a uniform distribution and returned
         without thresholding.
-    blobiness : int or list of ints(default = 1)
+    blobiness : int or list of ints (default = 1)
         Controls the morphology of the blobs.  A higher number results in
         a larger number of small blobs.  If a list is supplied then the
         blobs are anisotropic.
-    divs : int or array_like
-        The number of times to divide the image for parallel processing.
-        If ``1`` then parallel processing does not occur.  ``2`` is
-        equivalent to ``[2, 2, 2]`` for a 3D image.  The number of cores
-        used is specified in ``porespy.settings.ncores`` and defaults to
-        all cores.
-    seed : int, optional, default = `None`
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include `divs` (scalar or list of scalars,
+        default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+        and `cores` (scalar, default is all available cores).
+        
+        `divs` is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
+        respective axis will be divided by its corresponding number in the
+        list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
+        and 4 respectively.
+        
+        `overlap` is the amount of overlap to include when dividing up the
+        image. This value is controlled by the blobiness and shape of the
+        image by default but can be controlled using parallel_kw!
+        
+        `cores` is the number of cores that will be used to parallel process all
+        domains. If ``None`` then all cores will be used but user can specify
+        any integer values to control the memory usage. Setting value to 1 will
+        effectively process the chunks in serial to minimize memory usage.
+    seed : int, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
         ``np.random.state(seed)`` prior to calling this function will be respected.
+    periodic : bool, default = `True`
+        If `True` the blobs will be periodic, meaning that the image can be tiled
+        and the phases will be continuous. `False` will provide the "legacy" version
+        of an image, which has high-porosity artifacts at the image boundaries.
 
     Returns
     -------
@@ -1083,31 +1211,32 @@ def blobs(
     to view online example.
 
     """
+    # parse out divs from parallel_kw, use default from settings
+    divs = parallel_kw.get("divs", settings.divs)
     if seed is not None:
         np.random.seed(seed)
-    if isinstance(shape, int):
-        shape = [shape]*3
-    if len(shape) == 1:
-        shape = [shape[0]]*3
-    shape = np.array(shape)
+    shape = parse_shape(shape)
     if isinstance(blobiness, int):
         blobiness = [blobiness]*len(shape)
     blobiness = np.array(blobiness)
+    mode = 'wrap' if periodic else 'reflect'
     parallel = False
     if isinstance(divs, int):
         divs = [divs]*len(shape)
     if max(divs) > 1:
         parallel = True
-        logger.info(f'Performing {insp.currentframe().f_code.co_name} in parallel')
+        logger.info(f'Performing {inspect.currentframe().f_code.co_name} in parallel')
     sigma = np.mean(shape) / (40 * blobiness)
     im = np.random.random(shape)
     if parallel:
         overlap = max([int(s*4) for s in np.array(sigma, ndmin=1)])
+        overlap = parallel_kw.get("overlap", overlap)
+        parallel_kw["overlap"] = overlap
         im = chunked_func(func=spim.gaussian_filter,
                           input=im, sigma=sigma,
-                          divs=divs, overlap=overlap)
+                          parallel_kw=parallel_kw)
     else:
-        im = spim.gaussian_filter(im, sigma=sigma)
+        im = spim.gaussian_filter(im, sigma=sigma, mode=mode)
     im = all_to_uniform(im, scale=[0, 1])
     if porosity:
         im = im < porosity
@@ -1171,10 +1300,8 @@ def _cylinders(
     """
     if seed is not None:
         np.random.seed(seed)
-    shape = np.array(shape)
-    if np.size(shape) == 1:
-        shape = np.full((3, ), int(shape))
-    elif np.size(shape) == 2:
+    shape = parse_shape(shape)
+    if np.size(shape) == 2:
         raise Exception("2D cylinders don't make sense")
     # Find hypotenuse of domain from [0,0,0] to [Nx,Ny,Nz]
     H = np.sqrt(np.sum(np.square(shape), dtype=np.int64)).astype(int)
@@ -1194,7 +1321,8 @@ def _cylinders(
     tqdm_settings = settings.tqdm.copy()
     if not settings.tqdm["disable"]:
         tqdm_settings = {**settings.tqdm, **{'disable': not verbose}}
-    with tqdm(ncylinders, **tqdm_settings) as pbar:
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    with tqdm(ncylinders, desc=desc, **tqdm_settings) as pbar:
         while n < ncylinders:
             # Choose a random starting point in domain
             x = np.random.rand(3) * (shape + 2 * L)
@@ -1355,7 +1483,8 @@ def cylinders(
         fractions.append(fractions[i - 1] + (maxiter - i) ** 2 * subdif)
 
     im = np.ones(shape, dtype=bool)
-    for frac in tqdm(fractions, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for frac in tqdm(fractions, desc=desc, **settings.tqdm):
         n_fibers_total = n_pixels_to_add / vol_fiber
         n_fibers = int(np.ceil(frac * n_fibers_total) - n_fibers_added)
         if n_fibers > 0:

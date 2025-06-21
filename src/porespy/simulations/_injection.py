@@ -1,35 +1,37 @@
+import inspect
+import logging
 import numpy as np
 import numpy.typing as npt
-import logging
 import heapq as hq
+from typing import Literal
 from numba import njit
 from porespy import settings
 from porespy.tools import (
     get_tqdm,
-    get_border,
     make_contiguous,
     _insert_disk_at_points,
     Results,
+    get_edt,
 )
-from typing import Literal
 from porespy.filters import (
-    find_trapped_regions,
+    find_trapped_clusters,
+    find_small_clusters,
     seq_to_satn,
 )
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.generators import (
+    borders,
+)
 
 
 logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
+edt = get_edt()
 
 
 __all__ = [
     'qbip',
     'ibip',
-    'invasion',
+    'injection',
 ]
 
 
@@ -46,12 +48,12 @@ def qbip(
     min_size: int = 0,
 ):
     r"""
-    Performs invasion percolation using a priority queue, optionally including
+    Simulates non-wetting injection using a priority queue, optionally including
     the effect of gravity
     """
     im = np.atleast_3d(im == 1)
-    if maxiter is None:  # Compute numpy of pixels in image
-        maxiter = (im == 1).sum()
+    if maxiter is None:  # Compute number of pixels in image
+        maxiter = im.sum()
 
     if inlets is None:
         inlets = np.zeros_like(im)
@@ -109,18 +111,26 @@ def qbip(
     # Deal with trapping if outlets were specified
     if outlets is not None:
         logger.info('Computing trapping and adjusting outputs')
-        sequence = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=sequence,
             outlets=outlets,
-            return_mask=False,
             conn=conn,
-            min_size=min_size,
             method='queue',
         )
-        trapped = (sequence == -1).squeeze()
+        trapped = trapped.squeeze()
+        if min_size > 0:
+            temp = find_small_clusters(
+                im=im,
+                trapped=trapped,
+                min_size=min_size,
+                conn=conn,
+            )
+            trapped = temp.im_trapped
         pressure = pressure.astype(float).squeeze()
         pressure[trapped] = np.inf
+        sequence[trapped] = -1
+        sequence = make_contiguous(im=sequence, mode='symmetric')
         size = size.astype(float)
         size[trapped] = np.inf
 
@@ -146,6 +156,7 @@ def _qbip_inner_loop(
     size,
     maxiter,
     conn,
+    smooth=True,
 ):  # pragma: no cover
     # Initialize the heap
     inds = np.where(inlets*im)
@@ -163,21 +174,21 @@ def _qbip_inner_loop(
         while len(bd) and (bd[0][0] == pts[0][0]):  # Pop any items with equal Pc
             pts.append(hq.heappop(bd))
         for pt in pts:
-            # Insert discs of invading fluid into images
+            # Insert discs of invading fluid into image(s)
             seq = _insert_disk_at_point(
                 im=seq,
                 i=pt[2], j=pt[3], k=pt[4],
-                r=int(pt[1]), v=step, overwrite=False)
+                r=int(pt[1]), v=step, overwrite=False, smooth=smooth,)
             # Putting -inf in images is a numba compatible flag for 'skip'
             if pressure[0, 0, 0] > -np.inf:
                 pressure = _insert_disk_at_point(
                     im=pressure,
                     i=pt[2], j=pt[3], k=pt[4],
-                    r=int(pt[1]), v=pt[0], overwrite=False)
+                    r=int(pt[1]), v=pt[0], overwrite=False, smooth=smooth,)
             if size[0, 0, 0] > -np.inf:
                 size = _insert_disk_at_point(
                     im=size, i=pt[2], j=pt[3], k=pt[4],
-                    r=int(pt[1]), v=pt[1], overwrite=False)
+                    r=int(pt[1]), v=pt[1], overwrite=False, smooth=smooth,)
             # Add neighboring points to heap and processed array
             neighbors = _find_valid_neighbors(
                 i=pt[2], j=pt[3], k=pt[4], im=processed, conn=conn)
@@ -197,45 +208,31 @@ def _find_valid_neighbors(
     conn='min',
     valid=False
 ):  # pragma: no cover
-    if im.ndim == 2:
-        xlim, ylim = im.shape
-        if conn == 'min':
-            mask = [[0, 1, 0], [1, 1, 1], [0, 1, 0]]
-        elif conn == 'max':
-            mask = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
-        neighbors = []
-        for a, x in enumerate(range(i-1, i+2)):
-            if (x >= 0) and (x < xlim):
-                for b, y in enumerate(range(j-1, j+2)):
-                    if (y >= 0) and (y < ylim):
-                        if mask[a][b] == 1:
-                            if im[x, y] == valid:
-                                neighbors.append((x, y))
-    else:
-        xlim, ylim, zlim = im.shape
-        if conn == 'min':
-            mask = [[[0, 0, 0], [0, 1, 0], [0, 0, 0]],
-                    [[0, 1, 0], [1, 1, 1], [0, 1, 0]],
-                    [[0, 0, 0], [0, 1, 0], [0, 0, 0]]]
-        elif conn == 'max':
-            mask = [[[1, 1, 1], [1, 1, 1], [1, 1, 1]],
-                    [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
-                    [[1, 1, 1], [1, 1, 1], [1, 1, 1]]]
-        neighbors = []
-        for a, x in enumerate(range(i-1, i+2)):
-            if (x >= 0) and (x < xlim):
-                for b, y in enumerate(range(j-1, j+2)):
-                    if (y >= 0) and (y < ylim):
-                        for c, z in enumerate(range(k-1, k+2)):
-                            if (z >= 0) and (z < zlim):
-                                if mask[a][b][c] == 1:
-                                    if im[x, y, z] == valid:
-                                        neighbors.append((x, y, z))
+    xlim, ylim, zlim = im.shape
+    if conn == 'min':
+        mask = [[[0, 0, 0], [0, 1, 0], [0, 0, 0]],
+                [[0, 1, 0], [1, 1, 1], [0, 1, 0]],
+                [[0, 0, 0], [0, 1, 0], [0, 0, 0]]]
+    elif conn == 'max':
+        mask = [[[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                [[1, 1, 1], [1, 1, 1], [1, 1, 1]]]
+    neighbors = []
+    for a, x in enumerate(range(i-1, i+2)):
+        if (x >= 0) and (x < xlim):
+            for b, y in enumerate(range(j-1, j+2)):
+                if (y >= 0) and (y < ylim):
+                    for c, z in enumerate(range(k-1, k+2)):
+                        if (z >= 0) and (z < zlim):
+                            if mask[a][b][c] == 1:
+                                if im[x, y, z] == valid:
+                                    neighbors.append((x, y, z))
     return neighbors
 
 
 @njit
-def _insert_disk_at_point(im, i, j, r, v, k=0, overwrite=False):  # pragma: no cover
+def _insert_disk_at_point(
+    im, i, j, r, v, k=0, overwrite=False, smooth=True):  # pragma: no cover
     r"""
     Insert spheres (or disks) of specified radii into an ND-image at given locations.
 
@@ -247,7 +244,7 @@ def _insert_disk_at_point(im, i, j, r, v, k=0, overwrite=False):  # pragma: no c
     im : ND-array
         The image into which the spheres/disks should be inserted. This is an
         'in-place' operation.
-    i, j, k: int
+    i, j, k : int
         The center point of each sphere/disk.  If the image is 2D then `k` can be
         omitted.
     r : array_like
@@ -259,37 +256,26 @@ def _insert_disk_at_point(im, i, j, r, v, k=0, overwrite=False):  # pragma: no c
         default is ``False``.
     smooth : boolean
         If `True` (default) then the small bumps on the outer perimeter of each
-        face is not present.
+        face are not present.
 
     """
-    if im.ndim == 2:
-        xlim, ylim = im.shape
-        for a, x in enumerate(range(i-r, i+r+1)):
-            if (x >= 0) and (x < xlim):
-                for b, y in enumerate(range(j-r, j+r+1)):
-                    if (y >= 0) and (y < ylim):
+    xlim, ylim, zlim = im.shape
+    for a, x in enumerate(range(i-r, i+r+1)):
+        if (x >= 0) and (x < xlim):
+            for b, y in enumerate(range(j-r, j+r+1)):
+                if (y >= 0) and (y < ylim):
+                    if zlim > 1:  # For a truly 3D image
+                        for c, z in enumerate(range(k-r, k+r+1)):
+                            if (z >= 0) and (z < zlim):
+                                R = ((a - r)**2 + (b - r)**2 + (c - r)**2)**0.5
+                                if ((R < r) and smooth) or ((R <= r) and not smooth):
+                                    if overwrite or (im[x, y, z] == 0):
+                                        im[x, y, z] = v
+                    else:  # For 3D image with singleton 3rd dimension
                         R = ((a - r)**2 + (b - r)**2)**0.5
-                        if R < r:
-                            if overwrite or (im[x, y] == 0):
-                                im[x, y] = v
-    else:
-        xlim, ylim, zlim = im.shape
-        for a, x in enumerate(range(i-r, i+r+1)):
-            if (x >= 0) and (x < xlim):
-                for b, y in enumerate(range(j-r, j+r+1)):
-                    if (y >= 0) and (y < ylim):
-                        if zlim > 1:  # For a truly 3D image
-                            for c, z in enumerate(range(k-1, k+r+1)):
-                                if (z >= 0) and (z < zlim):
-                                    R = ((a - r)**2 + (b - r)**2 + (c - r)**2)**0.5
-                                    if R < r:
-                                        if overwrite or (im[x, y, z] == 0):
-                                            im[x, y, z] = v
-                        else:  # For 3D image with singleton 3rd dimension
-                            R = ((a - r)**2 + (b - r)**2)**0.5
-                            if R < r:
-                                if overwrite or (im[x, y, 0] == 0):
-                                    im[x, y, 0] = v
+                        if ((R < r) and smooth) or ((R <= r) and not smooth):
+                            if overwrite or (im[x, y, 0] == 0):
+                                im[x, y, 0] = v
     return im
 
 
@@ -311,7 +297,7 @@ def ibip(
     min_size: int = 0,
 ):
     r"""
-    Performs invasion percolation on given image using the IBIP algorithm [1]_
+    Simulates non-wetting fluid injection on an image using the IBIP algorithm [1]_
 
     Parameters
     ----------
@@ -354,8 +340,6 @@ def ibip(
     --------
     porosimetry
     drainage
-    qbip
-    ibop
 
     References
     ----------
@@ -368,13 +352,6 @@ def ibip(
     -----
     This function is slower and is less capable than `qbip`, which returns identical
     results, so it is recommended to use that instead.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/ibip.html>`_
-    to view an online example.
-
     """
     # Process the boundary image
     if inlets is None:
@@ -389,10 +366,10 @@ def ibip(
     # Initialize inv image with -1 in the solid, and 0's in the void
     seq = -1*(~im)
     sizes = -1.0*(~im)
-    scratch = np.copy(bd)
-    for step in tqdm(range(1, maxiter), **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for step in tqdm(range(1, maxiter), desc=desc, **settings.tqdm):
         # Find insertion points
-        edge = scratch*(dt > 0)
+        edge = bd*(dt > 0)
         if ~edge.any():
             break
         # Find the maximum value of the dt underlaying the new edge
@@ -417,14 +394,14 @@ def ibip(
                 smooth=True,
             )
         dt, bd = _update_dt_and_bd(dt, bd, pt)
-        scratch = _insert_disk_at_points(
-            im=scratch,
+        # Add neighbors of current points to bd image
+        bd = _insert_disk_at_points(
+            im=bd,
             coords=pt,
-            r=1,
+            r=1 if conn == 'min' else 2,
             v=1,
-            smooth=False,
+            smooth=False if conn == 'min' else True,
         )
-
     # Convert inv image so that uninvaded voxels are set to -1 and solid to 0
     temp = seq == 0  # Uninvaded voxels are set to -1 after _ibip
     seq[~im] = 0
@@ -438,19 +415,23 @@ def ibip(
     # Deal with trapping if outlets were specified
     if outlets is not None:
         logger.info('Computing trapping and adjusting outputs')
-        sequence = find_trapped_regions(
+        trapped = find_trapped_clusters(
             im=im,
             seq=seq,
             outlets=outlets,
-            return_mask=False,
             conn=conn,
-            min_size=min_size,
             method='queue',
         )
-        trapped = (sequence == -1).squeeze()
-        # pressure = pressure.astype(float).squeeze()
-        # pressure[trapped] = np.inf
+        if min_size > 0:
+            temp = find_small_clusters(
+                im=im,
+                trapped=trapped,
+                min_size=min_size,
+                conn=conn,
+            )
+            trapped = temp.im_trapped
         seq[trapped] = -1
+        seq = make_contiguous(im=seq, mode='symmetric')
         sizes[trapped] = -1
 
     results = Results()
@@ -474,7 +455,7 @@ def _update_dt_and_bd(dt, bd, pt):
     return dt, bd
 
 
-def invasion(
+def injection(
     im,
     pc=None,
     dt=None,
@@ -488,7 +469,8 @@ def invasion(
     method='qbip',
 ):
     r"""
-    Performs volume-controlled invasion of non-wetting fluid
+    Performs injection of non-wetting fluid including the effect of gravity and
+    trapping of wetting phase.
 
     Parameters
     ----------
@@ -514,7 +496,7 @@ def invasion(
     return_sizes : bool, default = `False`
         If `True` then an array containing the size of the sphere which first
         overlapped each pixel is returned. This array is not computed by default
-        as computing it increases computation time.
+        to save computation time.
     return_pressures : bool, default = `True`
         If `True` then an array containing the capillary pressure at which
         each pixels was first invaded is returned.
@@ -576,7 +558,7 @@ def invasion(
 
     References
     ----------
-    .. [1] Gostick JT, Misaghian N*, A Irannezhad, B Zhao. *A computationally
+    .. [1] Gostick JT, Misaghian N, A Irannezhad, B Zhao. *A computationally
        efficient queue-based algorithm for simulating volume-controlled drainage
        under the influence of gravity on volumetric images*. `Advances in Water
        Resources <https://doi.org/10.1016/j.advwatres.2024.104799>`_. 193(11),
@@ -589,8 +571,8 @@ def invasion(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/simulations/reference/invasion.html>`_
-    to view online example.
+    <https://porespy.org/examples/filters/reference/injection.html>`_
+    to view an online example.
 
 
     """
@@ -625,69 +607,31 @@ if __name__ == "__main__":
     import porespy as ps
     import matplotlib.pyplot as plt
     from copy import copy
+    from porespy.simulations import drainage
+
+    ps.settings.tqdm['disable'] = False
+    ps.settings.tqdm['leave'] = True
 
     # %%
-    im = ~ps.generators.random_spheres([400, 200], r=20, seed=0, clearance=10)
+    im = ~ps.generators.random_spheres([60, 60], r=5, seed=0, clearance=4)
 
     inlets = np.zeros_like(im)
-    inlets[0, :] = True
+    inlets[0, ...] = True
     inlets = inlets*im
-    pc = ps.filters.capillary_transform(im)
-    ip = invasion(im, pc=pc, inlets=inlets, return_sizes=True)
+    pc = ps.filters.capillary_transform(im, voxel_size=1e-5)
 
-    outlets = np.zeros_like(im)
-    outlets[-1, :] = True
-    outlets = outlets*im
-    ps.tools.tic()
-    trapped_new = ps.filters.find_trapped_regions(
-        im=im,
-        seq=ip.im_seq,
-        outlets=outlets,
-        return_mask=False,
-        method='queue',
-        min_size=5,
-    )
-    ps.tools.toc()
-    ps.tools.tic()
-    trapped = ps.filters.find_trapped_regions(
-        im=im,
-        seq=ip.im_seq,
-        outlets=outlets,
-        return_mask=False,
-        method='cluster',
-        min_size=5,
-    )
-    ps.tools.toc()
+    drn = drainage(im, pc=pc, inlets=inlets)
+    inv1 = injection(im, pc=pc, inlets=inlets, return_sizes=True, method='qbip', conn='min', min_size=1)
+    inv2 = injection(im, inlets=inlets, return_sizes=True, method='ibip', conn='min', min_size=1)
 
     # %%
-    cm = copy(plt.cm.turbo)
-    cm.set_under('grey')
-    fig, ax = plt.subplots(1, 3)
-    ax[0].imshow(
-        ip.im_seq/im,
-        origin='lower',
-        interpolation='none',
-        vmin=0.0001,
-        cmap=cm,
-    )
-    ax[1].imshow(
-        trapped/im,
-        origin='lower',
-        interpolation='none',
-        vmin=0.0001,
-        cmap=cm,
-    )
-    ax[2].imshow(
-        trapped_new/im,
-        origin='lower',
-        interpolation='none',
-        vmin=0.0001,
-        cmap=cm,
-    )
+    drn_data = ps.metrics.pc_map_to_pc_curve(im=im, pc=drn.im_pc, fix_ends=False, mode='drainage')
+    im_pc1 = ps.filters.capillary_transform(im=im, dt=inv1.im_size, sigma=1.0, voxel_size=1e-5)
+    inj_data = ps.metrics.pc_map_to_pc_curve(im=im, pc=inv1.im_pc, seq=inv1.im_seq, fix_ends=False, mode='drainage')
+    im_pc2 = ps.filters.capillary_transform(im=im, dt=inv2.im_size, sigma=1.0, voxel_size=1e-5)
+    ibip_data = ps.metrics.pc_map_to_pc_curve(im=im, pc=im_pc2, seq=inv2.im_seq, fix_ends=False, mode='drainage')
 
-    ip2 = ps.simulations.invasion(
-        im=im,
-        inlets=inlets,
-        outlets=outlets,
-        method='ibip',
-    )
+    fig, ax = plt.subplots()
+    ax.step(np.log10(drn_data.pc), drn_data.snwp, where='post', linewidth=.5)
+    ax.step(np.log10(inj_data.pc), inj_data.snwp, where='post', linewidth=1)
+    ax.step(np.log10(ibip_data.pc), ibip_data.snwp, where='post', linewidth=.5)

@@ -1,7 +1,5 @@
 import logging
-
 import numpy as np
-
 from porespy.filters import (
     snow_partitioning,
     snow_partitioning_parallel,
@@ -12,12 +10,7 @@ from porespy.networks import (
     label_phases,
     regions_to_network,
 )
-from porespy.tools import Results
-
-try:
-    from pyedt import edt
-except ModuleNotFoundError:
-    from edt import edt
+from porespy.tools import Results, get_edt
 
 
 __all__ = [
@@ -26,6 +19,7 @@ __all__ = [
 ]
 
 
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 
@@ -59,7 +53,7 @@ def snow2(
     r_max=4,
     peaks=None,
     porosity_map=None,
-    parallelization={},
+    parallel_kw={},
 ):
     r"""
     Applies the SNOW algorithm to each phase indicated in ``phases``.
@@ -140,15 +134,29 @@ def snow2(
         array should contain peaks for all phases, and they are masked by
         the ``phases`` argument. If ``peaks`` are provided the parallelization
         is disabled.
-    parallelization : dict
-        The arguments for controlling the parallelization of the watershed
-        function are rolled into this dictionary, otherwise the function
-        signature would become too complex. Refer to the docstring of
-        ``snow_partitioning_parallel`` for complete details. If no values
-        are provided then the defaults for that function are used here.
-        To disable parallelization pass ``parallel=None``, which will
-        invoke the standard ``snow_partitioning`` or ``snow_partitioning_n``.
-        If ``peaks`` are provided the parallelization is disabled.
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include `divs` (scalar or list of scalars,
+        default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+        and `cores` (scalar, default is all available cores).
+        
+        `divs` is the number of times to divide the image for parallel
+        processing. If `1` then parallel processing does not occur. `2` is
+        equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
+        respective axis will be divided by its corresponding number in the
+        list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
+        and 4 respectively.
+        
+        `overlap` is the amount of overlap to include when dividing up the image.
+        This value will almost always be the size (i.e. raduis) of the
+        structuring element. If not specified then the amount of overlap
+        is inferred from the size of the structuring element, in which
+        case the `strel_arg` must be specified.
+        
+        `cores` is the number of cores that will be used to parallel process all
+        domains. If ``None`` then all cores will be used but user can specify
+        any integer values to control the memory usage. Setting value to 1 will
+        effectively process the chunks in serial to minimize memory usage.
 
     Returns
     -------
@@ -201,23 +209,23 @@ def snow2(
         vals = np.unique(phases)
         vals = vals[vals > 0]
     if peaks is not None:
-        parallelization = None
+        parallel_kw = None
     regions = None
     for i in vals:
         logger.info(f"Processing phase {i}...")
         phase = phases == i
         pk = None if peaks is None else peaks*phase
         overlap, chunk = estimate_overlap_and_chunk(phase)
+        # TODO: this may not be the overlap the user provides!
         if (overlap > (chunk//2 - 1)).any():
-            parallelization = None
+            parallel_kw = None
             logger.warning("Disabling paralelization as overlap exceeds than chunk size.")
-        if parallelization is not None:
+        if parallel_kw is not None:
             snow = snow_partitioning_parallel(
                 im=phase,
                 sigma=sigma,
                 r_max=r_max,
-                overlap=overlap,
-                **parallelization,
+                parallel_kw=parallel_kw,
             )
         else:
             snow = snow_partitioning(im=phase, sigma=sigma, r_max=r_max,

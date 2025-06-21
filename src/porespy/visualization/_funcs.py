@@ -1,12 +1,11 @@
 from copy import copy
-
+import inspect
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
 from tqdm import tqdm
-
-import porespy as ps
 from porespy import settings
+
 
 __all__ = [
     'set_mpl_style',
@@ -127,7 +126,8 @@ def satn_to_movie(
     movie = []  # List to append each frame
     fig, ax = plt.subplots(1, 1)
     steps = np.unique(target)[1:]
-    with tqdm(steps, **settings.tqdm) as pbar:
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    with tqdm(steps, desc=desc, **settings.tqdm) as pbar:
         for v in steps:
             pbar.update()
             seq += v*(target == v)
