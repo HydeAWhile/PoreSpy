@@ -16,6 +16,10 @@ from porespy.filters import (
     fill_closed_pores,
     find_invalid_pores,
 )
+from porespy.generators import (
+    faces,
+    borders,
+)
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
@@ -109,7 +113,7 @@ def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
 
 def find_porosity_threshold(im, axis=0, conn='min'):
     r"""
-    Find the porosity of the image at the percolation threshold
+    Finds the porosity of the image at the percolation threshold
 
     This function progressively dilates the solid and reports the porosity at the
     step just before there are no percolating paths (in the specified direction)
@@ -144,10 +148,14 @@ def find_porosity_threshold(im, axis=0, conn='min'):
                          and surface pores filled)
         ================ ===========================================================
     """
+    if axis is None:
+        raise Exception('axis must be specified')
+
     def _check_percolation(dt, R, step, axis, conn):
         while True:
             im2 = dt >= R
-            if not is_percolating(im2, axis=axis, conn=conn):
+            check = np.array(is_percolating(im2, axis=axis, conn=conn))
+            if not np.all(check):
                 break
             R += step
         return R
@@ -155,8 +163,8 @@ def find_porosity_threshold(im, axis=0, conn='min'):
     dt = edt(im)
 
     R = _check_percolation(dt, R=1, step=10, axis=axis, conn=conn)
-    R = _check_percolation(dt, R=max(1, R-10), step=5, axis=axis, conn=conn)
-    R = _check_percolation(dt, R=max(1, R-5), step=1, axis=axis, conn=conn)
+    R = _check_percolation(dt, R=max(1, R-10), step=4, axis=axis, conn=conn)
+    R = _check_percolation(dt, R=max(1, R-4), step=1, axis=axis, conn=conn)
 
     im2 = dt >= (R - 1)
     eps_thresh_total = porosity(im2)
