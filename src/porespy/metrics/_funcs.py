@@ -133,7 +133,7 @@ def find_porosity_threshold(im, axis=0, conn='min'):
     Returns
     -------
     results
-        A results object with the following attributes:
+        A Results object with the following attributes:
 
         ================ ===========================================================
         Attribute        Description
@@ -146,6 +146,8 @@ def find_porosity_threshold(im, axis=0, conn='min'):
                          space results in no percolating paths
         eps_thresh_perc  The percolating porosity of the eroded image (with closed
                          and surface pores filled)
+        R                The threshold to apply to the distance transform to
+                         obtain the percolating image (i.e. im = dt >= R)
         ================ ===========================================================
     """
     if axis is None:
@@ -176,6 +178,7 @@ def find_porosity_threshold(im, axis=0, conn='min'):
     r.eps_orig_perc = percolating_porosity(im, axis=axis)
     r.eps_thresh = eps_thresh_total
     r.eps_thresh_perc = eps_thresh_perc
+    r.R = R - 1
     return r
 
 
