@@ -16,10 +16,6 @@ from porespy.filters import (
     fill_closed_pores,
     find_invalid_pores,
 )
-from porespy.generators import (
-    faces,
-    borders,
-)
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
