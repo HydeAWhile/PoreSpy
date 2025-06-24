@@ -5,15 +5,16 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
-from skimage.morphology import skeletonize
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
+from skimage.morphology import skeletonize, ball, disk, square, cube
 from porespy import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
     fill_closed_pores,
+    find_invalid_pores,
 )
 from porespy.tools import (
     Results,
@@ -21,7 +22,8 @@ from porespy.tools import (
     extend_slice,
     get_tqdm,
     get_slices_slabs,
-    get_edt
+    get_edt,
+    ps_round,
 )
 
 
@@ -30,13 +32,16 @@ __all__ = [
     "chord_counts",
     "chord_length_distribution",
     "find_h",
+    "is_percolating",
     "lineal_path_distribution",
     "pore_size_distribution",
     "radial_density_distribution",
     "porosity",
+    "find_porosity_threshold",
     "porosity_profile",
     "satn_profile",
     "two_point_correlation",
+    "percolating_porosity",
     "phase_fraction",
     "pc_curve",
     "pc_map_to_pc_curve",
@@ -47,6 +52,169 @@ __all__ = [
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
+
+
+def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
+    R"""
+    Determines if a percolating path exists across the domain (in the specified
+    direction) or between given inlets and outlets.
+
+    Parameters
+    ----------
+    im : ndarray
+        Image of the void space with `True` indicating void space.
+    axis : int
+        The axis along which percolation is checked. If `None` (default) then
+        percolation is checked in all dimensions.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    percolating : bool or list of bools
+        A boolean value indicating if the domain percolates in the given direction.
+        If `axis=None` then all directions are checked and the result is returned
+        as a list like `[True, False, True]` indicating that the domain percolates
+        in the `x` and `z` directions, but not `y`.
+
+    """
+    if (inlets is not None) and (outlets is not None):
+        pass
+    elif axis is not None:
+        im = np.swapaxes(im, 0, axis) == 1
+        inlets = np.zeros_like(im)
+        inlets[0, ...] = True
+        inlets *= im
+        outlets = np.zeros_like(im)
+        outlets[-1, ...] = True
+        outlets *= im
+    else:
+        ans = []
+        for ax in range(im.ndim):
+            ans.append(is_percolating(im, axis=ax, conn=conn))
+        return ans
+
+    labels, N = spim.label(im, structure=strel[im.ndim][conn])
+    a = np.unique(labels[inlets])
+    a = a[a > 0]
+    b = np.unique(labels[outlets])
+    b = b[b > 0]
+    hits = np.isin(a, b)
+    return np.any(hits)
+
+
+def find_porosity_threshold(im, axis=0, conn='min'):
+    r"""
+    Finds the porosity of the image at the percolation threshold
+
+    This function progressively dilates the solid and reports the porosity at the
+    step just before there are no percolating paths (in the specified direction)
+
+    Parameters
+    ----------
+    im : ndarray
+        Image of the void space with `True` indicating void space
+    axis : int
+        The axis along which percolation is checked
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    results
+        A Results object with the following attributes:
+
+        ================ ===========================================================
+        Attribute        Description
+        ================ ===========================================================
+        eps_orig         The total porosity of the original image, including closed
+                         and surface pores
+        eps_orig_perc    The percolating porosity of the original image (i.e. with
+                         closed and surface pores filled)
+        eps_thresh       The total porosity of the image after eroding the void
+                         space results in no percolating paths
+        eps_thresh_perc  The percolating porosity of the eroded image (with closed
+                         and surface pores filled)
+        R                The threshold to apply to the distance transform to
+                         obtain the percolating image (i.e. im = dt >= R)
+        ================ ===========================================================
+    """
+    if axis is None:
+        raise Exception('axis must be specified')
+
+    def _check_percolation(dt, R, step, axis, conn):
+        while True:
+            im2 = dt >= R
+            check = np.array(is_percolating(im2, axis=axis, conn=conn))
+            if not np.all(check):
+                break
+            R += step
+        return R
+
+    dt = edt(im)
+
+    R = _check_percolation(dt, R=1, step=10, axis=axis, conn=conn)
+    R = _check_percolation(dt, R=max(1, R-10), step=4, axis=axis, conn=conn)
+    R = _check_percolation(dt, R=max(1, R-4), step=1, axis=axis, conn=conn)
+
+    im2 = dt >= (R - 1)
+    eps_thresh_total = porosity(im2)
+    eps_thresh_perc = percolating_porosity(im2, axis=axis)
+
+    from porespy.tools import Results
+    r = Results()
+    r.eps_orig = porosity(im)
+    r.eps_orig_perc = percolating_porosity(im, axis=axis)
+    r.eps_thresh = eps_thresh_total
+    r.eps_thresh_perc = eps_thresh_perc
+    r.R = R - 1
+    return r
+
+
+def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn='min'):
+    r"""
+    Finds volume fraction of void space which belongs to percolating paths
+    across the domain in the direction specified.
+
+    Parameters
+    ----------
+    im : ndarray
+        Image of the void space with `True` indicating void space
+    axis : int
+        The axis along which percolation is checked
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+    inlets, outlets : ndarray
+        Boolean arrays indicating the locations of the inlets and outlets. These
+        are useful if the domain is not cubic or if special inlet and outlet
+        locations are desired.
+    """
+    se = strel[im.ndim][conn]
+    if (inlets is None) and (outlets is None):
+        im2 = np.swapaxes(im, 0, axis)
+        inlets = np.zeros_like(im2, dtype=bool)
+        inlets[0, ...] = True
+        outlets = np.zeros_like(im2, dtype=bool)
+        outlets[-1, ...] = True
+    labels, N = spim.label(im2, structure=se)
+    a = np.unique(labels*inlets)
+    a = a[a > 0]
+    b = np.unique(labels*outlets)
+    b = b[b > 0]
+    hits = np.intersect1d(a, b)
+    im3 = np.isin(labels, hits)
+    eps = porosity(im3)
+    return eps
 
 
 def boxcount(im, bins=10):

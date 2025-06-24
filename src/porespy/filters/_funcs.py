@@ -688,21 +688,21 @@ def local_thickness(
         then parallel processing does not occur.  `2` is equivalent to
         `[2, 2, 2]` for a 3D image.  The number of cores used is specified in
         `porespy.settings.ncores` and defaults to all cores.
-        
+
     parallel_kw : dict
         Dictionary containing the settings for parallelization by chunking. The
         optional settings include divs (scalar or list of scalars,
         default = 1), overlap (scalar or list of scalars, unused in this func),
         and cores (scalar, default is all available cores).
-        
+
         Divs is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image.
-        
+
         Overlap is the amount of overlap to apply between chunks. In this
         function, the overlap is controlled by the distance transform and
         cannot be altered in any way.
-        
+
         Cores is the number of cores that will be used to parallel process all
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will
@@ -865,21 +865,21 @@ def porosimetry(
         equivalent to `[2, 2, 2]` for a 3D image.  The number of cores
         used is specified in `porespy.settings.ncores` and defaults to
         all cores.
-    
+
     parallel_kw : dict
         Dictionary containing the settings for parallelization by chunking. The
         optional settings include divs (scalar or list of scalars,
         default = 1), overlap (scalar or list of scalars, unused in this func),
         and cores (scalar, default is all available cores).
-        
+
         Divs is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image.
-        
+
         Overlap is the amount of overlap to apply between chunks. In this
         function, the overlap is controlled by the distance transform and
         cannot be altered in any way.
-        
+
         Cores is the number of cores that will be used to parallel process all
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will
@@ -1221,23 +1221,23 @@ def chunked_func(
     func : function handle
         The function which should be applied to each chunk, such as
         `spipy.ndimage.binary_dilation`.
-        
+
     parallel_kw : dict
         Dictionary containing the settings for parallelization by chunking. The
         optional settings include divs (scalar or list of scalars,
         default = [2, 2, 2]), overlap (scalar or list of scalars, optional),
         and cores (scalar, default is all available cores).
-        
+
         Divs is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image.
-        
+
         Overlap is the amount of overlap to include when dividing up the image.
         This value will almost always be the size (i.e. raduis) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
         case the `strel_arg` must be specified.
-        
+
         Cores is the number of cores that will be used to parallel process all
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will

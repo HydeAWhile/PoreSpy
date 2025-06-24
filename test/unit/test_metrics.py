@@ -514,6 +514,34 @@ class MetricsTest():
             source='dt', method='max')
         assert np.around(bo, decimals=5) == 0.79461
 
+    def test_is_percolating(self):
+        im = np.ones([20, 20], dtype=bool)
+        im[:, 10:12] = False
+        im[10, 10] = True
+        im[11, 11] = True
+        assert ps.metrics.is_percolating(im=im, axis=0)
+        assert not ps.metrics.is_percolating(im=im, axis=1, conn='min')
+        assert ps.metrics.is_percolating(im=im, axis=1, conn='max')
+        assert ps.metrics.is_percolating(im=im, axis=None) == [True, False]
+        assert ps.metrics.is_percolating(im=im, axis=None, conn='max') == [True, True]
+
+    def test_pecolating_porosity(self):
+        im = np.ones([20, 20], dtype=bool)
+        im[:10, 10] = False
+        im[10:, 11] = False
+        e = im.sum()/im.size
+        assert ps.metrics.percolating_porosity(im, axis=0, conn='min') == e
+        assert ps.metrics.percolating_porosity(im, axis=1, conn='min') == 0
+        assert ps.metrics.percolating_porosity(im, axis=0, conn='max') == e
+        assert ps.metrics.percolating_porosity(im, axis=1, conn='max') == e
+
+    def test_find_porosity_threshold(self):
+        im = ps.generators.lattice_spheres([31, 51], r=15, offset=5, spacing=30)
+        ep = ps.metrics.find_porosity_threshold(im, axis=0)
+        assert ep.eps_thresh == 0.4484503478810879
+        ep = ps.metrics.find_porosity_threshold(im, axis=1)
+        assert ep.eps_thresh == 0.05439595192915876
+
 
 if __name__ == '__main__':
     t = MetricsTest()
