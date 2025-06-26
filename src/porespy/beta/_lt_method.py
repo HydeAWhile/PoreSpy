@@ -108,7 +108,7 @@ def local_thickness(im, dt=None):
     args = np.argsort(dt.flatten())[-1::-1]
     ijk = np.vstack(np.unravel_index(args, dt.shape)).T
 
-    # Call jitted, parallelized function to draw spheres
+    # Call jitted function to draw spheres
     if im.ndim == 2:
         lt = _run2D(im, dt, ijk)
     elif im.ndim == 3:
@@ -121,6 +121,7 @@ def local_thickness(im, dt=None):
 def _run2D(im, dt, ijk):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
+    used = np.copy(lt)
     count = 0
     for idx in ijk:
         i = idx[0]
@@ -131,6 +132,7 @@ def _run2D(im, dt, ijk):
             break
         # Only process if point has not yet been engulfed on previous step
         if valid[i, j]:
+            used[i, j] = 1.0
             # Scan neighborhood around current pixel
             for m in range(-r, r + 1):
                 if ((i + m) >= 0) and ((i + m) < im.shape[0]):
@@ -145,12 +147,13 @@ def _run2D(im, dt, ijk):
                             if int(dt[i+m, j+n]) < int(L):
                                 valid[i+m, j+n] = False
             count += 1
-    return lt, count
+    return lt, count, used
 
 
 @njit
 def _run3D(im, dt, ijk):
     valid = np.copy(im)
+    # used = np.zeros(im.shape, dtype=bool)
     lt = np.zeros(im.shape, dtype=float)
     count = 0
     for idx in ijk:
@@ -161,8 +164,9 @@ def _run3D(im, dt, ijk):
         r = int(rval)
         if r == 0:
             break
-        # Only process if point has not yet been engulfed on previous step
+        # Only process if point has not yet been engulfed on a previous step
         if valid[i, j, k]:
+            # used[i, j, k] = True
             # Scan neighborhood around current pixel
             for m in range(-r, r + 1):
                 if ((i + m) >= 0) and ((i + m) < im.shape[0]):
@@ -179,17 +183,17 @@ def _run3D(im, dt, ijk):
                                     if int(dt[i+m, j+n, k+o]) < int(L):
                                         valid[i+m, j+n, k+o] = False
             count += 1
-    return lt, count
+    return lt, count, used
 
 
 if __name__ == "__main__":
     import porespy as ps
     import matplotlib.pyplot as plt
 
-    im = ~ps.generators.random_spheres([200, 200, 200], r=10, clearance=10, seed=0)
+    im = ~ps.generators.random_spheres([200, 200], r=10, clearance=10, seed=0)
     dt = edt(im)
     ps.tools.tic()
-    lt1, count = local_thickness(im)
+    lt1, count, used = local_thickness(im)
     t1 = ps.tools.toc()
     # ps.tools.tic()
     # lt2 = local_thickness_bf(im, smooth=False)
