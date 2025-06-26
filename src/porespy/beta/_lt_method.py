@@ -94,6 +94,14 @@ def local_thickness(im, dt=None, smooth=False, approx=False):
         Boolean image of the porous material
     dt : ndarray, optional
         The distance transform of the image
+    smooth : bool, optional
+        Indicates if protrusions should be removed from the faces of the spheres
+        or not. Default is `True`.
+    approx : bool, optional
+        If `True` the algorithm is more agressive at skipping voxels to process,
+        which speeds things up, but this sacrifices accuracy in terms of a
+        voxel-by-voxel match with the reference implementation. The default is
+        `False`, meaning full accuracy is the default.
 
     Returns
     -------
@@ -128,6 +136,8 @@ def _run2D(im, dt, ijk, smooth, approx):
         j = idx[1]
         rval = dt[i, j]
         r = int(rval)
+        # Since entries in ijk are sorted by size, once we reach an entry with
+        # r = 0, then we know all remain entries will also be 0 so we can stop
         if r == 0:
             break
         # Only process if point has not yet been engulfed on previous step
@@ -166,12 +176,14 @@ def _run3D(im, dt, ijk, smooth, approx):
         k = idx[2]
         rval = dt[i, j, k]
         r = int(rval)
+        # Since entries in ijk are sorted by size, once we reach an entry with
+        # r = 0, then we know all remain entries will also be 0 so we can stop
         if r == 0:
             break
         # Only process if point has not yet been engulfed on a previous step
         if valid[i, j, k]:
             used[i, j, k] = True
-            # Scan neighborhood around current pixel
+            # Scan neighborhood around current voxel
             for m in range(-r, r + 1):
                 if ((i + m) >= 0) and ((i + m) < im.shape[0]):
                     for n in range(-r, r + 1):
@@ -180,7 +192,8 @@ def _run3D(im, dt, ijk, smooth, approx):
                                 if ((k + o) >= 0) and ((k + o) < im.shape[2]):
                                     # Draw spheres within L of point (i, j, k)
                                     L = r - (m**2 + n**2 + o**2)**0.5 + 1
-                                    if (lt[i+m, j+n, k+o] == 0) and (L > 1 if smooth else L >= 1):
+                                    if (lt[i+m, j+n, k+o] == 0) and \
+                                            (L > 1 if smooth else L >= 1):
                                         lt[i+m, j+n, k+o] = rval
                                     # Use ints here since it's about actual sphere
                                     # sizes not exact distances between pixel centers
