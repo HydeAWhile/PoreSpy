@@ -8,6 +8,11 @@ from numba import njit, prange
 
 edt = get_edt()
 
+__all__ = [
+    "local_thickness_bf",
+    "local_thickness",
+]
+
 
 def local_thickness_bf(im, dt=None, mask=None, smooth=True):
     r"""
