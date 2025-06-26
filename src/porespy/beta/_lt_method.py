@@ -21,7 +21,7 @@ def local_thickness_bf(im, dt=None, mask=None, smooth=True):
         The distance transform of the image
     mask : ndarray, optional
         A boolean mask indicating which sites to insert spheres at. If not provided
-        that all `True` values in `im` are used.
+        then all `True` values in `im` are used.
     smooth : bool, optional
         Indicates if protrusions should be removed from the faces of the spheres
         or not. Default is `True`.
@@ -59,32 +59,35 @@ def local_thickness(im, dt=None):
     if dt is None:
         dt = edt(im)
 
-    # Make precomputed list of sphere templates, including ind, (i, j, k) and r.
-    ims = [np.array(0, dtype=float)]
+    # Make precomputed list of sphere templates
     mno = []
     for r in range(1, int(dt.max())+1):
         tmp = np.ones([2*r + 1, 2*r + 1], dtype=bool)
         tmp[r, r] = False
         tmp = edt(tmp)
         mask = tmp <= r
-        ims.append(mask*(1 + r - tmp))
         inds = np.vstack([np.meshgrid(np.arange(2*r + 1),
                                       np.arange(2*r + 1))[ax].flatten()
                           for ax in range(dt.ndim)]).T
         inds = inds[mask.flatten()]
         mno.append(inds)
+
+    # Generate pointers into flattened version of mro
     indptr = np.cumsum([len(arr) for arr in mno])
     indptr = np.hstack(([0], indptr))
     mno = np.vstack(mno)
 
+    # Sort dt to scan sites from largest to smallest
     args = np.argsort(dt.flatten())[-1::-1]
     ijk = np.vstack(np.unravel_index(args, dt.shape)).T
+
+    # Call jitted, parallelized function to draw spheres
     lt = _run(im, dt, ijk, mno, indptr)
 
     return lt
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def _run(im, dt, ijk, mno, indptr):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
@@ -99,7 +102,7 @@ def _run(im, dt, ijk, mno, indptr):
             rval = dt[i, j]
             r = int(rval)
             # Scan neighborhood around current pixel
-            for ptr in prange(indptr[r-1], indptr[r]):
+            for ptr in range(indptr[r-1], indptr[r]):
                 m = mno[ptr, 0] - r
                 n = mno[ptr, 1] - r
                 # Check bounds for current m and n
@@ -114,17 +117,17 @@ def _run(im, dt, ijk, mno, indptr):
                     if int(dt[i+m, j+n]) < int(L):
                         valid[i+m, j+n] = False
             count += 1
-    print(f"Total steps: {count/im.sum()*100}%")
-    return lt
+    return lt, count
 
 
 if __name__ == "__main__":
     import porespy as ps
     import matplotlib.pyplot as plt
 
-    im = ~ps.generators.random_spheres([200, 200], r=10, clearance=10, seed=0)
-    lt = local_thickness(im)
+    im = ~ps.generators.random_spheres([600, 600], r=10, clearance=10, seed=0)
+    lt, count = local_thickness(im)
     im3 = local_thickness_bf(im, smooth=False)
+    print(f"Total steps: {count/im.sum()*100}%")
     print(f"Error: {np.sum(im3 != lt)/im.sum()*100}% ")
 
     fig, ax = plt.subplots(1, 3)
