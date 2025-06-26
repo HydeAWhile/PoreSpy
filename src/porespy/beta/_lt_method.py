@@ -81,7 +81,7 @@ def _run3D_bf(im, dt, mask, inds, smooth):
     return im3
 
 
-def local_thickness(im, dt=None, smooth=False):
+def local_thickness(im, dt=None, smooth=False, approx=False):
     r"""
     Insert a maximally inscribed sphere at every pixel labelled by sphere radius
 
@@ -110,15 +110,15 @@ def local_thickness(im, dt=None, smooth=False):
 
     # Call jitted function to draw spheres
     if im.ndim == 2:
-        lt = _run2D(im, dt, ijk, smooth)
+        lt = _run2D(im, dt, ijk, smooth, approx)
     elif im.ndim == 3:
-        lt = _run3D(im, dt, ijk, smooth)
+        lt = _run3D(im, dt, ijk, smooth, approx)
 
     return lt
 
 
 @njit
-def _run2D(im, dt, ijk, smooth):
+def _run2D(im, dt, ijk, smooth, approx):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
     used = np.copy(lt)
@@ -144,14 +144,18 @@ def _run2D(im, dt, ijk, smooth):
                                 lt[i+m, j+n] = rval
                             # Use ints here since it's about actual sphere sizes
                             # not exact distances between pixel centers
-                            if int(dt[i+m, j+n]) < int(L):
-                                valid[i+m, j+n] = False
+                            if approx:
+                                if int(dt[i+m, j+n]) <= int(L):
+                                    valid[i+m, j+n] = False
+                            else:
+                                if int(dt[i+m, j+n]) < int(L):
+                                    valid[i+m, j+n] = False
             count += 1
     return lt, count, used
 
 
 @njit
-def _run3D(im, dt, ijk, smooth):
+def _run3D(im, dt, ijk, smooth, approx):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
     used = np.copy(lt)
@@ -180,8 +184,12 @@ def _run3D(im, dt, ijk, smooth):
                                         lt[i+m, j+n, k+o] = rval
                                     # Use ints here since it's about actual sphere
                                     # sizes not exact distances between pixel centers
-                                    if int(dt[i+m, j+n, k+o]) < int(L):
-                                        valid[i+m, j+n, k+o] = False
+                                    if approx:
+                                        if int(dt[i+m, j+n, k+o]) <= int(L):
+                                            valid[i+m, j+n, k+o] = False
+                                    else:
+                                        if int(dt[i+m, j+n, k+o]) < int(L):
+                                            valid[i+m, j+n, k+o] = False
             count += 1
     return lt, count, used
 
@@ -191,10 +199,10 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from localthickness import local_thickness as loct
 
-    im = ~ps.generators.random_spheres([200, 200], r=10, clearance=10, seed=0)
+    im = ~ps.generators.random_spheres([200, 200, 200], r=10, clearance=10, seed=0)
     dt = edt(im)
     ps.tools.tic()
-    lt1, count, used = local_thickness(im, dt=dt, smooth=True)
+    lt1, count, used = local_thickness(im, dt=dt, smooth=True, approx=True)
     t1 = ps.tools.toc(quiet=True)
     ps.tools.tic()
     lt2 = local_thickness_bf(im, dt=dt, smooth=True)
