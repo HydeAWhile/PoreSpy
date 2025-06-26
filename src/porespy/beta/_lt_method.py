@@ -81,7 +81,7 @@ def _run3D_bf(im, dt, mask, inds, smooth):
     return im3
 
 
-def local_thickness(im, dt=None):
+def local_thickness(im, dt=None, smooth=False):
     r"""
     Insert a maximally inscribed sphere at every pixel labelled by sphere radius
 
@@ -110,15 +110,15 @@ def local_thickness(im, dt=None):
 
     # Call jitted function to draw spheres
     if im.ndim == 2:
-        lt = _run2D(im, dt, ijk)
+        lt = _run2D(im, dt, ijk, smooth)
     elif im.ndim == 3:
-        lt = _run3D(im, dt, ijk)
+        lt = _run3D(im, dt, ijk, smooth)
 
     return lt
 
 
 @njit
-def _run2D(im, dt, ijk):
+def _run2D(im, dt, ijk, smooth):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
     used = np.copy(lt)
@@ -140,7 +140,7 @@ def _run2D(im, dt, ijk):
                         if ((j + n) >= 0) and ((j + n) < im.shape[1]):
                             # Draw spheres within L of point (i, j)
                             L = r - ((m)**2 + (n)**2)**0.5 + 1
-                            if (lt[i+m, j+n] == 0) and (L >= 1):
+                            if (lt[i+m, j+n] == 0) and (L > 1 if smooth else L >= 1):
                                 lt[i+m, j+n] = rval
                             # Use ints here since it's about actual sphere sizes
                             # not exact distances between pixel centers
@@ -151,10 +151,10 @@ def _run2D(im, dt, ijk):
 
 
 @njit
-def _run3D(im, dt, ijk):
+def _run3D(im, dt, ijk, smooth):
     valid = np.copy(im)
-    # used = np.zeros(im.shape, dtype=bool)
     lt = np.zeros(im.shape, dtype=float)
+    used = np.copy(lt)
     count = 0
     for idx in ijk:
         i = idx[0]
@@ -166,7 +166,7 @@ def _run3D(im, dt, ijk):
             break
         # Only process if point has not yet been engulfed on a previous step
         if valid[i, j, k]:
-            # used[i, j, k] = True
+            used[i, j, k] = True
             # Scan neighborhood around current pixel
             for m in range(-r, r + 1):
                 if ((i + m) >= 0) and ((i + m) < im.shape[0]):
@@ -176,7 +176,7 @@ def _run3D(im, dt, ijk):
                                 if ((k + o) >= 0) and ((k + o) < im.shape[2]):
                                     # Draw spheres within L of point (i, j, k)
                                     L = r - (m**2 + n**2 + o**2)**0.5 + 1
-                                    if (lt[i+m, j+n, k+o] == 0) and (L >= 1):
+                                    if (lt[i+m, j+n, k+o] == 0) and (L > 1 if smooth else L >= 1):
                                         lt[i+m, j+n, k+o] = rval
                                     # Use ints here since it's about actual sphere
                                     # sizes not exact distances between pixel centers
@@ -189,27 +189,44 @@ def _run3D(im, dt, ijk):
 if __name__ == "__main__":
     import porespy as ps
     import matplotlib.pyplot as plt
+    from localthickness import local_thickness as loct
 
     im = ~ps.generators.random_spheres([200, 200], r=10, clearance=10, seed=0)
     dt = edt(im)
     ps.tools.tic()
-    lt1, count, used = local_thickness(im)
-    t1 = ps.tools.toc()
-    # ps.tools.tic()
-    # lt2 = local_thickness_bf(im, smooth=False)
-    # t2 = ps.tools.toc()
+    lt1, count, used = local_thickness(im, dt=dt, smooth=True)
+    t1 = ps.tools.toc(quiet=True)
     ps.tools.tic()
-    lt3 = ps.filters.local_thickness(im, sizes=np.unique(dt[im].astype(int)))
-    t3 = ps.tools.toc()
-    print(f"Times are: {t1} and {t3}")
+    lt2 = local_thickness_bf(im, dt=dt, smooth=True)
+    t2 = ps.tools.toc(quiet=True)
+    ps.tools.tic()
+    lt3 = ps.filters.local_thickness(im, sizes=np.unique(dt[im].astype(int)), mode='dt')
+    t3 = ps.tools.toc(quiet=True)
+    ps.tools.tic()
+    lt4 = loct(im)
+    t4 = ps.tools.toc(quiet=True)
+    print(f"Times are:")
+    print(f" Reference: {t2}")
+    print(f" New Method: {t1}")
+    print(f" PoreSpy: {t3}")
+    print(f" Dahl: {t4}")
+    print(f"Errors are:")
+    print(f" New Method: {np.sum(lt2 != lt1)/im.sum()}")
+    print(f" PoreSpy: {np.sum(lt2 != lt3)/im.sum()}")
+    print(f" Dahl: {np.sum(lt2 != lt4)/im.sum()}")
+    print(f"New method used {round(count/im.sum()*100, 2)}% of pixels")
 
-    # fig, ax = plt.subplots(1, 3)
-    # ax[0].imshow(lt2 / im)
-    # ax[0].set_title('Reference')
-    # ax[0].axis('off')
-    # ax[1].imshow(lt1 / im)
-    # ax[1].set_title('New Method')
-    # ax[1].axis('off')
-    # ax[2].imshow(lt3 / im)
-    # ax[2].set_title('PoreSpy')
-    # ax[2].axis('off')
+    if im.ndim == 2:
+        fig, ax = plt.subplots(1, 4)
+        ax[0].imshow(lt2 / im)
+        ax[0].set_title('Reference')
+        ax[0].axis('off')
+        ax[1].imshow(lt1 / im)
+        ax[1].set_title('New Method')
+        ax[1].axis('off')
+        ax[2].imshow(lt3 / im)
+        ax[2].set_title('PoreSpy')
+        ax[2].axis('off')
+        ax[3].imshow(lt4 / im)
+        ax[3].set_title('Dahl')
+        ax[3].axis('off')
