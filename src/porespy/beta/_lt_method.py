@@ -125,7 +125,7 @@ def local_thickness(im, dt=None, smooth=False, approx=False):
     return lt
 
 
-@njit
+@njit(parallel=True)
 def _run2D(im, dt, ijk, smooth, approx):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
@@ -144,27 +144,29 @@ def _run2D(im, dt, ijk, smooth, approx):
         if valid[i, j]:
             used[i, j] = 1.0
             # Scan neighborhood around current pixel
-            for m in range(-r, r + 1):
-                if ((i + m) >= 0) and ((i + m) < im.shape[0]):
-                    for n in range(-r, r + 1):
-                        if ((j + n) >= 0) and ((j + n) < im.shape[1]):
-                            # Draw spheres within L of point (i, j)
-                            L = r - ((m)**2 + (n)**2)**0.5 + 1
-                            if (lt[i+m, j+n] == 0) and (L > 1 if smooth else L >= 1):
-                                lt[i+m, j+n] = rval
-                            # Use ints here since it's about actual sphere sizes
-                            # not exact distances between pixel centers
-                            if approx:
-                                if int(dt[i+m, j+n]) <= int(L):
-                                    valid[i+m, j+n] = False
-                            else:
-                                if int(dt[i+m, j+n]) < int(L):
-                                    valid[i+m, j+n] = False
+            mn = r_to_inds_2d(r)
+            for row in prange(len(mn[0])):
+                m = mn[0][row] - r
+                n = mn[1][row] - r
+                if ((i + m) >= 0) and ((i + m) < im.shape[0]) \
+                        and ((j + n) >= 0) and ((j + n) < im.shape[1]):
+                    # Draw spheres within L of point (i, j)
+                    L = r - ((m)**2 + (n)**2)**0.5 + 1
+                    if (lt[i+m, j+n] == 0) and (L > 1 if smooth else L >= 1):
+                        lt[i+m, j+n] = rval
+                    # Use ints here since it's about actual sphere sizes
+                    # not exact distances between pixel centers
+                    if approx:
+                        if int(dt[i+m, j+n]) <= int(L):
+                            valid[i+m, j+n] = False
+                    else:
+                        if int(dt[i+m, j+n]) < int(L):
+                            valid[i+m, j+n] = False
             count += 1
     return lt, count, used
 
 
-@njit
+@njit(parallel=True)
 def _run3D(im, dt, ijk, smooth, approx):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
@@ -184,27 +186,62 @@ def _run3D(im, dt, ijk, smooth, approx):
         if valid[i, j, k]:
             used[i, j, k] = True
             # Scan neighborhood around current voxel
-            for m in range(-r, r + 1):
-                if ((i + m) >= 0) and ((i + m) < im.shape[0]):
-                    for n in range(-r, r + 1):
-                        if ((j + n) >= 0) and ((j + n) < im.shape[1]):
-                            for o in range(-r, r + 1):
-                                if ((k + o) >= 0) and ((k + o) < im.shape[2]):
-                                    # Draw spheres within L of point (i, j, k)
-                                    L = r - (m**2 + n**2 + o**2)**0.5 + 1
-                                    if (lt[i+m, j+n, k+o] == 0) and \
-                                            (L > 1 if smooth else L >= 1):
-                                        lt[i+m, j+n, k+o] = rval
-                                    # Use ints here since it's about actual sphere
-                                    # sizes not exact distances between pixel centers
-                                    if approx:
-                                        if int(dt[i+m, j+n, k+o]) <= int(L):
-                                            valid[i+m, j+n, k+o] = False
-                                    else:
-                                        if int(dt[i+m, j+n, k+o]) < int(L):
-                                            valid[i+m, j+n, k+o] = False
+            mno = r_to_inds_3d(r)
+            for row in prange(len(mno[0])):
+                m = mno[0][row] - r
+                n = mno[1][row] - r
+                o = mno[2][row] - r
+                if ((i + m) >= 0) and ((i + m) < im.shape[0]) \
+                    and ((j + n) >= 0) and ((j + n) < im.shape[1]) \
+                        and ((k + o) >= 0) and ((k + o) < im.shape[2]):
+                    # Draw spheres within L of point (i, j, k)
+                    L = r - (m**2 + n**2 + o**2)**0.5 + 1
+                    if (lt[i+m, j+n, k+o] == 0) and \
+                            (L > 1 if smooth else L >= 1):
+                        lt[i+m, j+n, k+o] = rval
+                    # Use ints here since it's about actual sphere
+                    # sizes not exact distances between pixel centers
+                    if approx:
+                        if int(dt[i+m, j+n, k+o]) <= int(L):
+                            valid[i+m, j+n, k+o] = False
+                    else:
+                        if int(dt[i+m, j+n, k+o]) < int(L):
+                            valid[i+m, j+n, k+o] = False
             count += 1
     return lt, count, used
+
+
+def r_to_inds(r, ndim):
+    m = np.meshgrid(*[np.arange(2*r+1) for _ in range(ndim)])
+    inds = np.vstack([n.flatten() for n in m]).T
+    return inds
+
+
+@njit
+def r_to_inds_3d(r):
+    size = 2*r + 1
+    xx = np.empty(shape=(size**3), dtype=np.int_)
+    yy = np.empty_like(xx)
+    zz = np.empty_like(xx)
+    for i in range(size):
+        for j in range(size):
+            for k in range(size):
+                xx[i*size**2 + j*size + k] = i
+                yy[i*size**2 + j*size + k] = j
+                zz[i*size**2 + j*size + k] = k
+    return xx, yy, zz
+
+
+@njit
+def r_to_inds_2d(r):
+    size = 2*r + 1
+    xx = np.empty(shape=(size**2), dtype=np.int_)
+    yy = np.empty_like(xx)
+    for i in range(size):
+        for j in range(size):
+            xx[i*size + j] = i
+            yy[i*size + j] = j
+    return xx, yy
 
 
 if __name__ == "__main__":
@@ -212,13 +249,13 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from localthickness import local_thickness as loct
 
-    im = ~ps.generators.random_spheres([200, 200, 200], r=10, clearance=10, seed=0)
+    im = ~ps.generators.random_spheres([150, 150, 150], r=10, clearance=10, seed=0)
     dt = edt(im)
     ps.tools.tic()
     lt1, count, used = local_thickness(im, dt=dt, smooth=True, approx=True)
     t1 = ps.tools.toc(quiet=True)
     ps.tools.tic()
-    lt2 = local_thickness_bf(im, dt=dt, smooth=True)
+    lt2, count, used = local_thickness(im, dt=dt, smooth=True, approx=False)
     t2 = ps.tools.toc(quiet=True)
     ps.tools.tic()
     lt3 = ps.filters.local_thickness(im, sizes=np.unique(dt[im].astype(int)), mode='dt')
@@ -239,7 +276,7 @@ if __name__ == "__main__":
 
     if im.ndim == 2:
         fig, ax = plt.subplots(1, 4)
-        ax[0].imshow(lt2 / im)
+        # ax[0].imshow(lt2 / im)
         ax[0].set_title('Reference')
         ax[0].axis('off')
         ax[1].imshow(lt1 / im)
