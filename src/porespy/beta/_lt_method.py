@@ -249,7 +249,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from localthickness import local_thickness as loct
 
-    im = ~ps.generators.random_spheres([150, 150, 150], r=10, clearance=10, seed=0)
+    im = ~ps.generators.random_spheres([50, 50, 50], r=10, clearance=10, seed=0)
     dt = edt(im)
     ps.tools.tic()
     lt1, count, used = local_thickness(im, dt=dt, smooth=True, approx=True)
