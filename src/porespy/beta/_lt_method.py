@@ -85,37 +85,19 @@ def local_thickness(im, dt=None):
     if dt is None:
         dt = edt(im)
 
-    # Make precomputed list of sphere templates
-    mno = []
-    for r in range(1, int(dt.max())+1):
-        tmp = np.ones([2*r + 1, 2*r + 1], dtype=bool)
-        tmp[r, r] = False
-        tmp = edt(tmp)
-        mask = tmp <= r
-        inds = np.vstack([np.meshgrid(np.arange(2*r + 1),
-                                      np.arange(2*r + 1))[ax].flatten()
-                          for ax in range(dt.ndim)]).T
-        inds = inds[mask.flatten()]
-        mno.append(inds)
-
-    # Generate pointers into flattened version of mro
-    indptr = np.cumsum([len(arr) for arr in mno])
-    indptr = np.hstack(([0], indptr))
-    mno = np.vstack(mno)
-
     # Sort dt to scan sites from largest to smallest
     args = np.argsort(dt.flatten())[-1::-1]
     ijk = np.vstack(np.unravel_index(args, dt.shape)).T
 
     # Call jitted, parallelized function to draw spheres
-    lt = _run(im, dt, ijk, mno, indptr)
+    lt = _run(im, dt, ijk)
 
     return lt
 
 
 # @njit(parallel=True)
 @njit(parallel=False)
-def _run(im, dt, ijk, mno, indptr):
+def _run(im, dt, ijk):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
     count = 0
@@ -127,23 +109,23 @@ def _run(im, dt, ijk, mno, indptr):
         # Only process if point has not been engulfed yet on previous step
         if valid[i, j]:
             rval = dt[i, j]
+            if rval == 0:
+                break
             r = int(rval)
             # Scan neighborhood around current pixel
             # for ptr in prange(indptr[r-1], indptr[r]):  # Parallel seems slower!
-            for ptr in range(indptr[r-1], indptr[r]):
-                m = mno[ptr, 0] - r
-                n = mno[ptr, 1] - r
-                # Check bounds for current m and n
-                if ((i + m) >= 0) and ((i + m) < im.shape[0]) and \
-                        ((j + n) >= 0) and ((j + n) < im.shape[1]):
-                    # Draw spheres within L of point (i, j)
-                    L = r - (m**2 + n**2)**0.5 + 1
-                    if (lt[i+m, j+n] == 0):
-                        lt[i+m, j+n] = rval
-                    # Use ints here since it's about actual sphere sizes not
-                    # exact distances between pixel centers.
-                    if int(dt[i+m, j+n]) < int(L):
-                        valid[i+m, j+n] = False
+            for m in range(-r, r + 1):
+                if ((i + m) >= 0) and ((i + m) < im.shape[0]):
+                    for n in range(-r, r + 1):
+                        if ((j + n) >= 0) and ((j + n) < im.shape[1]):
+                            # Draw spheres within L of point (i, j)
+                            L = r - ((m)**2 + (n)**2)**0.5 + 1
+                            if (lt[i+m, j+n] == 0) and (L >= 1):
+                                lt[i+m, j+n] = rval
+                            # Use ints here since it's about actual sphere sizes not
+                            # exact distances between pixel centers.
+                            if int(dt[i+m, j+n]) < int(L):
+                                valid[i+m, j+n] = False
             count += 1
     return lt, count
 
