@@ -44,13 +44,17 @@ def local_thickness_bf(im, dt=None, mask=None, smooth=True):
         mask = im
     args = np.argsort(dt.flatten())
     inds = np.vstack(np.unravel_index(args, dt.shape)).T
-    lt = _run_bf(im, dt, mask, inds, smooth)
+    if im.ndim == 2:
+        lt = _run2D_bf(im, dt, mask, inds, smooth)
+    elif im.ndim == 3:
+        lt = _run3D_bf(im, dt, mask, inds, smooth)
     return lt
 
 
 @njit
-def _run_bf(im, dt, mask, inds, smooth):
+def _run2D_bf(im, dt, mask, inds, smooth):
     im2 = np.zeros(im.shape, dtype=float)
+    # if im2.ndim == 2:
     for idx in inds:
         i = idx[0]
         j = idx[1]
@@ -60,6 +64,21 @@ def _run_bf(im, dt, mask, inds, smooth):
             im2 = _insert_disk_at_points(
                 im=im2, coords=idx, r=int(r), v=r, overwrite=True, smooth=smooth)
     return im2
+
+
+@njit
+def _run3D_bf(im, dt, mask, inds, smooth):
+    im3 = np.zeros(im.shape, dtype=float)
+    for idx in inds:
+        i = idx[0]
+        j = idx[1]
+        k = idx[2]
+        idx = np.array([[i, j, k]]).T
+        r = dt[i, j, k]
+        if mask[i, j, k]:
+            im3 = _insert_disk_at_points(
+                im=im3, coords=idx, r=int(r), v=r, overwrite=True, smooth=smooth)
+    return im3
 
 
 def local_thickness(im, dt=None):
@@ -90,30 +109,29 @@ def local_thickness(im, dt=None):
     ijk = np.vstack(np.unravel_index(args, dt.shape)).T
 
     # Call jitted, parallelized function to draw spheres
-    lt = _run(im, dt, ijk)
+    if im.ndim == 2:
+        lt = _run2D(im, dt, ijk)
+    elif im.ndim == 3:
+        lt = _run3D(im, dt, ijk)
 
     return lt
 
 
-# @njit(parallel=True)
-@njit(parallel=False)
-def _run(im, dt, ijk):
+@njit
+def _run2D(im, dt, ijk):
     valid = np.copy(im)
     lt = np.zeros(im.shape, dtype=float)
     count = 0
-    rval = 0.0
-    r = 0
     for idx in ijk:
         i = idx[0]
         j = idx[1]
-        # Only process if point has not been engulfed yet on previous step
+        rval = dt[i, j]
+        r = int(rval)
+        if r == 0:
+            break
+        # Only process if point has not yet been engulfed on previous step
         if valid[i, j]:
-            rval = dt[i, j]
-            if rval == 0:
-                break
-            r = int(rval)
             # Scan neighborhood around current pixel
-            # for ptr in prange(indptr[r-1], indptr[r]):  # Parallel seems slower!
             for m in range(-r, r + 1):
                 if ((i + m) >= 0) and ((i + m) < im.shape[0]):
                     for n in range(-r, r + 1):
@@ -122,10 +140,44 @@ def _run(im, dt, ijk):
                             L = r - ((m)**2 + (n)**2)**0.5 + 1
                             if (lt[i+m, j+n] == 0) and (L >= 1):
                                 lt[i+m, j+n] = rval
-                            # Use ints here since it's about actual sphere sizes not
-                            # exact distances between pixel centers.
+                            # Use ints here since it's about actual sphere sizes
+                            # not exact distances between pixel centers
                             if int(dt[i+m, j+n]) < int(L):
                                 valid[i+m, j+n] = False
+            count += 1
+    return lt, count
+
+
+@njit
+def _run3D(im, dt, ijk):
+    valid = np.copy(im)
+    lt = np.zeros(im.shape, dtype=float)
+    count = 0
+    for idx in ijk:
+        i = idx[0]
+        j = idx[1]
+        k = idx[2]
+        rval = dt[i, j, k]
+        r = int(rval)
+        if r == 0:
+            break
+        # Only process if point has not yet been engulfed on previous step
+        if valid[i, j, k]:
+            # Scan neighborhood around current pixel
+            for m in range(-r, r + 1):
+                if ((i + m) >= 0) and ((i + m) < im.shape[0]):
+                    for n in range(-r, r + 1):
+                        if ((j + n) >= 0) and ((j + n) < im.shape[1]):
+                            for o in range(-r, r + 1):
+                                if ((k + o) >= 0) and ((k + o) < im.shape[2]):
+                                    # Draw spheres within L of point (i, j, k)
+                                    L = r - (m**2 + n**2 + o**2)**0.5 + 1
+                                    if (lt[i+m, j+n, k+o] == 0) and (L >= 1):
+                                        lt[i+m, j+n, k+o] = rval
+                                    # Use ints here since it's about actual sphere
+                                    # sizes not exact distances between pixel centers
+                                    if int(dt[i+m, j+n, k+o]) < int(L):
+                                        valid[i+m, j+n, k+o] = False
             count += 1
     return lt, count
 
@@ -134,7 +186,7 @@ if __name__ == "__main__":
     import porespy as ps
     import matplotlib.pyplot as plt
 
-    im = ~ps.generators.random_spheres([600, 600], r=10, clearance=10, seed=0)
+    im = ~ps.generators.random_spheres([100, 100, 100], r=10, clearance=10, seed=0)
     lt, count = local_thickness(im)
     im3 = local_thickness_bf(im, smooth=False)
     print(f"Total steps: {count/im.sum()*100}%")
