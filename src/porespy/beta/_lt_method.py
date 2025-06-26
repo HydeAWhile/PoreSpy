@@ -30,7 +30,7 @@ def local_thickness_bf(im, dt=None, mask=None, smooth=True):
     -------
     lt : ndarray
         The local thickness of the image with each voxel labelled according to the
-        radius of the largest sphere which overlaps it.
+        radius of the largest sphere which overlaps it
 
     Notes
     -----
@@ -44,10 +44,18 @@ def local_thickness_bf(im, dt=None, mask=None, smooth=True):
         mask = im
     args = np.argsort(dt.flatten())
     inds = np.vstack(np.unravel_index(args, dt.shape)).T
-    im2 = np.zeros_like(im, dtype=float)
-    for i, j in inds:
+    lt = _run_bf(im, dt, mask, inds, smooth)
+    return lt
+
+
+@njit
+def _run_bf(im, dt, mask, inds, smooth):
+    im2 = np.zeros(im.shape, dtype=float)
+    for idx in inds:
+        i = idx[0]
+        j = idx[1]
         idx = np.array([[i, j]]).T
-        r = dt[tuple(idx)][0]
+        r = dt[i, j]
         if mask[i, j]:
             im2 = _insert_disk_at_points(
                 im=im2, coords=idx, r=int(r), v=r, overwrite=True, smooth=smooth)
@@ -55,7 +63,25 @@ def local_thickness_bf(im, dt=None, mask=None, smooth=True):
 
 
 def local_thickness(im, dt=None):
+    r"""
+    Insert a maximally inscribed sphere at every pixel labelled by sphere radius
 
+    This version uses special logic to only insert spheres at locations which
+    are not fully overlapped by larger spheres to reduce the number of insertions
+
+    Parameters
+    ----------
+    im : ndarray
+        Boolean image of the porous material
+    dt : ndarray, optional
+        The distance transform of the image
+
+    Returns
+    -------
+    lt : ndarray
+        The local thickness of the image with each voxel labelled according to the
+        radius of the largest sphere which overlaps it
+    """
     if dt is None:
         dt = edt(im)
 
@@ -87,6 +113,7 @@ def local_thickness(im, dt=None):
     return lt
 
 
+# @njit(parallel=True)
 @njit(parallel=False)
 def _run(im, dt, ijk, mno, indptr):
     valid = np.copy(im)
@@ -102,6 +129,7 @@ def _run(im, dt, ijk, mno, indptr):
             rval = dt[i, j]
             r = int(rval)
             # Scan neighborhood around current pixel
+            # for ptr in prange(indptr[r-1], indptr[r]):  # Parallel seems slower!
             for ptr in range(indptr[r-1], indptr[r]):
                 m = mno[ptr, 0] - r
                 n = mno[ptr, 1] - r
