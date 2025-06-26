@@ -85,7 +85,7 @@ def local_thickness(im, dt=None):
     r"""
     Insert a maximally inscribed sphere at every pixel labelled by sphere radius
 
-    This version uses special logic to only insert spheres at locations which
+    This version uses some logic to only insert spheres at locations which
     are not fully overlapped by larger spheres to reduce the number of insertions
 
     Parameters
@@ -186,19 +186,26 @@ if __name__ == "__main__":
     import porespy as ps
     import matplotlib.pyplot as plt
 
-    im = ~ps.generators.random_spheres([100, 100, 100], r=10, clearance=10, seed=0)
-    lt, count = local_thickness(im)
-    im3 = local_thickness_bf(im, smooth=False)
-    print(f"Total steps: {count/im.sum()*100}%")
-    print(f"Error: {np.sum(im3 != lt)/im.sum()*100}% ")
+    im = ~ps.generators.random_spheres([200, 200, 200], r=10, clearance=10, seed=0)
+    dt = edt(im)
+    ps.tools.tic()
+    lt1, count = local_thickness(im)
+    t1 = ps.tools.toc()
+    # ps.tools.tic()
+    # lt2 = local_thickness_bf(im, smooth=False)
+    # t2 = ps.tools.toc()
+    ps.tools.tic()
+    lt3 = ps.filters.local_thickness(im, sizes=np.unique(dt[im].astype(int)))
+    t3 = ps.tools.toc()
+    print(f"Times are: {t1} and {t3}")
 
-    fig, ax = plt.subplots(1, 3)
-    ax[0].imshow(im3 / im)
-    ax[0].set_title('Reference')
-    ax[0].axis('off')
-    ax[1].imshow(lt / im)
-    ax[1].set_title('New Method')
-    ax[1].axis('off')
-    ax[2].imshow((im3 / lt)/im, vmin=1, vmax=1.1)
-    ax[2].set_title('Difference')
-    ax[2].axis('off')
+    # fig, ax = plt.subplots(1, 3)
+    # ax[0].imshow(lt2 / im)
+    # ax[0].set_title('Reference')
+    # ax[0].axis('off')
+    # ax[1].imshow(lt1 / im)
+    # ax[1].set_title('New Method')
+    # ax[1].axis('off')
+    # ax[2].imshow(lt3 / im)
+    # ax[2].set_title('PoreSpy')
+    # ax[2].axis('off')
