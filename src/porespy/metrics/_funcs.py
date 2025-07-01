@@ -38,7 +38,6 @@ __all__ = [
     "satn_profile",
     "two_point_correlation",
     "phase_fraction",
-    "pc_curve",
     "pc_map_to_pc_curve",
     "bond_number",
 ]
@@ -47,6 +46,188 @@ __all__ = [
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
+
+
+def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
+    R"""
+    Determines if a percolating path exists across the domain (in the specified
+    direction) or between given inlets and outlets.
+
+    Parameters
+    ----------
+    im : ndarray
+        Image of the void space with `True` indicating void space.
+    axis : int
+        The axis along which percolation is checked. If `None` (default) then
+        percolation is checked in all dimensions.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    percolating : bool or list of bools
+        A boolean value indicating if the domain percolates in the given direction.
+        If `axis=None` then all directions are checked and the result is returned
+        as a list like `[True, False, True]` indicating that the domain percolates
+        in the `x` and `z` directions, but not `y`.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/is_percolating.html>`_
+    to view online example.
+
+    """
+    if (inlets is not None) and (outlets is not None):
+        pass
+    elif axis is not None:
+        im = np.swapaxes(im, 0, axis) == 1
+        inlets = np.zeros_like(im)
+        inlets[0, ...] = True
+        inlets *= im
+        outlets = np.zeros_like(im)
+        outlets[-1, ...] = True
+        outlets *= im
+    else:
+        ans = []
+        for ax in range(im.ndim):
+            ans.append(is_percolating(im, axis=ax, conn=conn))
+        return ans
+
+    labels, N = spim.label(im, structure=strel[im.ndim][conn])
+    a = np.unique(labels[inlets])
+    a = a[a > 0]
+    b = np.unique(labels[outlets])
+    b = b[b > 0]
+    hits = np.isin(a, b)
+    return np.any(hits)
+
+
+def find_porosity_threshold(im, axis=0, conn='min'):
+    r"""
+    Finds the porosity of the image at the percolation threshold
+
+    This function progressively dilates the solid and reports the porosity at the
+    step just before there are no percolating paths (in the specified direction)
+
+    Parameters
+    ----------
+    im : ndarray
+        Image of the void space with `True` indicating void space
+    axis : int
+        The axis along which percolation is checked
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    results
+        A Results object with the following attributes:
+
+        ================ ===========================================================
+        Attribute        Description
+        ================ ===========================================================
+        eps_orig         The total porosity of the original image, including closed
+                         and surface pores
+        eps_orig_perc    The percolating porosity of the original image (i.e. with
+                         closed and surface pores filled)
+        eps_thresh       The total porosity of the image after eroding the void
+                         space results in no percolating paths
+        eps_thresh_perc  The percolating porosity of the eroded image (with closed
+                         and surface pores filled)
+        R                The threshold to apply to the distance transform to
+                         obtain the percolating image (i.e. im = dt >= R)
+        ================ ===========================================================
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/find_porosity_threshodl.html>`_
+    to view online example.
+
+    """
+    if axis is None:
+        raise Exception('axis must be specified')
+
+    def _check_percolation(dt, R, step, axis, conn):
+        while True:
+            im2 = dt >= R
+            check = np.array(is_percolating(im2, axis=axis, conn=conn))
+            if not np.all(check):
+                break
+            R += step
+        return R
+
+    dt = edt(im)
+
+    R = _check_percolation(dt, R=1, step=10, axis=axis, conn=conn)
+    R = _check_percolation(dt, R=max(1, R-10), step=4, axis=axis, conn=conn)
+    R = _check_percolation(dt, R=max(1, R-4), step=1, axis=axis, conn=conn)
+
+    im2 = dt >= (R - 1)
+    eps_thresh_total = porosity(im2)
+    eps_thresh_perc = percolating_porosity(im2, axis=axis)
+
+    from porespy.tools import Results
+    r = Results()
+    r.eps_orig = porosity(im)
+    r.eps_orig_perc = percolating_porosity(im, axis=axis)
+    r.eps_thresh = eps_thresh_total
+    r.eps_thresh_perc = eps_thresh_perc
+    r.R = R - 1
+    return r
+
+
+def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn='min'):
+    r"""
+    Finds volume fraction of void space which belongs to percolating paths
+    across the domain in the direction specified.
+
+    Parameters
+    ----------
+    im : ndarray
+        Image of the void space with `True` indicating void space
+    axis : int
+        The axis along which percolation is checked
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+    inlets, outlets : ndarray
+        Boolean arrays indicating the locations of the inlets and outlets. These
+        are useful if the domain is not cubic or if special inlet and outlet
+        locations are desired.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/percolating_porosity.html>`_
+    to view online example.
+    """
+    se = strel[im.ndim][conn]
+    if (inlets is None) and (outlets is None):
+        im2 = np.swapaxes(im, 0, axis)
+        inlets = np.zeros_like(im2, dtype=bool)
+        inlets[0, ...] = True
+        outlets = np.zeros_like(im2, dtype=bool)
+        outlets[-1, ...] = True
+    labels, N = spim.label(im2, structure=se)
+    a = np.unique(labels*inlets)
+    a = a[a > 0]
+    b = np.unique(labels*outlets)
+    b = b[b > 0]
+    hits = np.intersect1d(a, b)
+    im3 = np.isin(labels, hits)
+    eps = porosity(im3)
+    return eps
 
 
 def boxcount(im, bins=10):
@@ -223,7 +404,9 @@ def porosity_profile(im, axis=0, span=1, mode='tile'):
         Attribute     Description
         ============= =========================================================
         position      The position along the given axis at which porosity
-                      values are computed.  The units are in voxels.
+                      values are computed, corresponding to the middle of each
+                      slice, whether the mode was `'tile'` or `'slide'`.  
+                      The units are in voxels.
         porosity      The local porosity value at each position.
         ============= =========================================================
 
@@ -930,6 +1113,9 @@ def phase_fraction(im, normed=True):
     return results
 
 
+# NOTE: This function is not imported any more and will be removed
+from deprecated import deprecated
+@deprecated
 def pc_curve(im, pc, seq=None):
     r"""
     Produces a Pc-Snwp curve given a map of meniscus radii or capillary
@@ -1050,6 +1236,12 @@ def pc_map_to_pc_curve(
     To use this function with the results of `porosimetry` or `ibip` the sizes map
     must be converted to a capillary pressure map first.  `drainage` and `invasion`
     both return capillary pressure maps which can be passed directly as `pc`.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/pc_map_to_pc_curve.html>`_
+    to view online example.
     """
     pc = np.copy(pc)
 
@@ -1329,6 +1521,12 @@ def bond_number(
     use_diameter : bool (default is `False`)
         If `True` then the characteristic size obtaine from `source` is multiplied by
         2 to convert radius to diameter.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/bond_number.html>`_
+    to view online example.
     """
     if mask_source is True:
         mask = skeletonize(im)

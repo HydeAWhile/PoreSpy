@@ -17,7 +17,6 @@ from porespy import settings
 __all__ = [
     "rev_porosity",
     "rev_tortuosity",
-    "rev_plot"
 ]
 
 
@@ -77,7 +76,7 @@ def rev_porosity(im, n=1000, slices=None):
     # void voxels (1's) in each subdomain.
 
     # TODO: this function is a prime target for parallelization since the
-    # `n` points are calculated independenlty.
+    # `n` points are calculated independently.
     if slices is None:
         slices = get_slices_random(im=im, n=n)
 
@@ -108,7 +107,7 @@ def calc_g(im, axis, solver_args={}):
     axis : int
         0 for x-axis, 1 for y-axis, 2 for z-axis.
     solver_args : dict
-        Dicionary of keyword arguments to pass on to the solver.  The most
+        Dictionary of keyword arguments to pass on to the solver.  The most
         relevant one being `'tol'` which is 1e-6 by default. Using larger values
         might improve speed at the cost of accuracy.
 
@@ -117,10 +116,6 @@ def calc_g(im, axis, solver_args={}):
     results : dataclass-like
         An object with the results of the calculation as attributes
 
-    Notes
-    -----
-    This is intended to receive blocks of a larger image and is used by
-    `tortuosity_bt`
     """
     from porespy.simulations import tortuosity_fd
     solver_args = {'tol': 1e-6} | solver_args
@@ -148,7 +143,7 @@ def calc_g(im, axis, solver_args={}):
 
 def tortuosity_map(im, block_size: int = None, axis: int = None, slices=None, dask_on=True):
     """
-    Compute tortuosity and diffusive conductance on a series of blocks determined
+    Compute tortuosity and diffusive conductance on a set of blocks determined
     by the block size.
 
     Parameters
@@ -158,7 +153,8 @@ def tortuosity_map(im, block_size: int = None, axis: int = None, slices=None, da
     block_size : int
         The size of the blocks for the image to be subdivided into.
     slices : list
-        A list containing slice objects for the image to be analyzed.
+        A list containing slice objects for the image to be analyzed. If this is
+        given the `block_size` is ignored.
     axis : int
         The axis along which to simulate the diffusion. If `None` then all
         axes are considered.
@@ -250,10 +246,6 @@ def rev_tortuosity(im, n=100, axis=None, slices=None, dask_on=False):
         slice      The coordinates for the subdomain tested in the original image
         ========== ==================================================================
 
-    Notes
-    -----
-    If both `block_sizes` and `slices` are left empty, the default mode of block
-    generation is gridding the image.
     """
     if slices is None:
         slices = get_slices_random(im=im, n=n)
