@@ -843,7 +843,7 @@ def porosimetry(
     There are many ways to perform this filter, and PoreSpy offers 3,
     which users can choose between via the `mode` argument. These
     methods all work in a similar way by finding which foreground voxels
-    can accomodate a sphere of a given radius, then repeating for smaller
+    can accommodate a sphere of a given radius, then repeating for smaller
     radii.
 
     See Also
@@ -860,7 +860,7 @@ def porosimetry(
     # parse out divs, cores from parallel_kw, get from settings
     divs = parallel_kw.get("divs", settings.divs)
     cores = parallel_kw.get("cores", settings.ncores)
-    from porespy.filters import fftmorphology
+    from porespy.filters import fftmorphology, trim_disconnected_voxels
     from porespy.generators import borders
     im = np.squeeze(im)
     dt = edt(im > 0)

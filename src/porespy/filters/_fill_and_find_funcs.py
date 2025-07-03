@@ -390,7 +390,7 @@ def fill_invalid_pores(
 def trim_floating_solid(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
-    fill_surface: bool = False,
+    incl_surface: bool = False,
 ):
     r"""
     Removes all solid that that is not attached to main solid structure.
@@ -404,7 +404,7 @@ def trim_floating_solid(
         element used to determine voxel connectivity.  The default if `'min'` which
         imposes the strictest criteria, so that voxels must share a face to be
         considered connected.
-    fill_surface : bool
+    incl_surface : bool
         If `True`, any isolated solid regions that are connected to the
         surfaces of the image but not the main body of the solid are also
         removed.  Voxels are deemed to be surface voxels if they are part of a
@@ -430,7 +430,7 @@ def trim_floating_solid(
 
     """
     im = np.copy(im)
-    holes = find_floating_solid(~im, conn=conn, incl_surface=fill_surface)
+    holes = find_floating_solid(im, conn=conn, incl_surface=incl_surface)
     im[holes] = True
     return im
 

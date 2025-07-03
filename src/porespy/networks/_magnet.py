@@ -7,7 +7,7 @@ from porespy.filters import (
     trim_floating_solid,
     flood_func,
     region_size,
-    fill_closed_pores,
+    fill_invalid_pores,
     chunked_func,
 )
 from porespy.filters._snows import _estimate_overlap
@@ -242,7 +242,7 @@ def skeleton(im, surface=False, parallel_kw=None):
     """
     # trim floating solid from 3D images
     if im.ndim == 3:
-        im = trim_floating_solid(im, conn='min', surface=surface)
+        im = trim_floating_solid(im, conn='min', incl_surface=surface)
     # perform skeleton
     if parallel_kw is None:  # serial
         sk = skeletonize(im).astype('bool')
@@ -748,7 +748,7 @@ def skeletonize_magnet2(im):
     """
     if im.ndim == 2:
         pw = 5
-        im = fill_closed_pores(im, conn='max', surface=True)
+        im = fill_invalid_pores(im, conn='max')
         shape = np.array(im.shape)
         im = np.pad(im, pad_width=pw, mode='edge')
         im = np.pad(im, pad_width=shape, mode='symmetric')
@@ -759,7 +759,7 @@ def skeletonize_magnet2(im):
         shape = np.array(im.shape)  # Save for later
         dt3D = edt(im)
         # Tidy-up image so skeleton is clean
-        im2 = fill_closed_pores(im, conn='max', surface=True)
+        im2 = fill_invalid_pores(im, conn='max')
         im2 = trim_floating_solid(im2, conn='min')
         # Add one layer to outside where holes will be defined
         im2 = np.pad(im2, 1, mode='edge')

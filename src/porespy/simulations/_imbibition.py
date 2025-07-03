@@ -704,7 +704,7 @@ if __name__ == '__main__':
     # i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
     print(i)
     im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
-    im = ps.filters.fill_closed_pores(im, surface=True)
+    im = ps.filters.fill_invalid_pores(im)
 
     inlets = ps.generators.faces(im.shape, inlet=0)
     outlets = ps.generators.faces(im.shape, outlet=0)

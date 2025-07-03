@@ -13,8 +13,8 @@ from porespy import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
-    fill_closed_pores,
-    find_invalid_pores,
+    find_surface_pores,
+    find_closed_pores,
 )
 from porespy.tools import (
     Results,
@@ -361,8 +361,8 @@ def porosity(im, mask=None, fill_closed=False, fill_surface=False):
     if mask is not None:
         im = np.array(im, dtype=np.int64)*mask
     if fill_closed or fill_surface:
-        closed_pores = im * ~fill_closed_pores(im, surface=False)
-        surface_pores = im * ~fill_closed_pores(im, surface=True) * ~closed_pores
+        closed_pores = im * find_closed_pores(im)
+        surface_pores = im * find_surface_pores(im) * ~closed_pores
         if fill_closed:
             im[closed_pores] = 0
         if fill_surface:
