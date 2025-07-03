@@ -4,7 +4,7 @@ from porespy.filters import (
     find_trapped_clusters,
     find_small_clusters,
     seq_to_satn,
-    trim_disconnected_blobs,
+    trim_disconnected_voxels,
     fftmorphology,
     erode,
 )
@@ -125,7 +125,7 @@ def imbibition_dsi(
         nwp[seeds] = True
         wp = (~nwp)*im
         if inlets is not None:
-            wp = trim_disconnected_blobs(wp, inlets=inlets)
+            wp = trim_disconnected_voxels(wp, inlets=inlets)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
@@ -219,11 +219,11 @@ def imbibition_dt_fft(
         wp = im*~fftmorphology(seeds, se, mode='dilation')
         # Trimming disconnected wetting phase
         if inlets is not None:
-            wp = trim_disconnected_blobs(wp, inlets=inlets)
+            wp = trim_disconnected_voxels(wp, inlets=inlets)
         # TODO: Not sure this residual code works
         # if residual is not None:
-        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
         #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
@@ -325,11 +325,11 @@ def imbibition_dt(
         wp[~im] = 0
         # Trimming disconnected wetting phase
         if inlets is not None:
-            wp = trim_disconnected_blobs(wp, inlets=inlets)
+            wp = trim_disconnected_voxels(wp, inlets=inlets)
         # TODO: Not sure this residual code works
         # if residual is not None:
-        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
         #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
@@ -423,11 +423,11 @@ def imbibition_fft(
         wp = im*~fftmorphology(seeds, se, mode='dilation')
         # Trimming disconnected wetting phase
         if inlets is not None:
-            wp = trim_disconnected_blobs(wp, inlets=inlets)
+            wp = trim_disconnected_voxels(wp, inlets=inlets)
         # TODO: Not sure this residual code works
         # if residual is not None:
-        #     blobs = trim_disconnected_blobs(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
         #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
@@ -591,7 +591,7 @@ def imbibition(
             )
             nwp_mask += invadable
         if inlets is not None:
-            nwp_mask = ~trim_disconnected_blobs(
+            nwp_mask = ~trim_disconnected_voxels(
                 im=(~nwp_mask)*im,
                 inlets=inlets,
                 conn=conn,

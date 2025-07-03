@@ -228,7 +228,7 @@ class FilterTest():
             im=im, axis=0)
         assert np.all(h == h2)
 
-    def test_trim_disconnected_blobs(self):
+    def test_trim_disconnected_voxels(self):
         np.random.seed(0)
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.55875, blobiness=2, periodic=False,)
@@ -236,7 +236,7 @@ class FilterTest():
         inlets = np.zeros_like(im)
         inlets[0, ...] = 1
         n1 = spim.label(im)[1]
-        h = ps.filters.trim_disconnected_blobs(im=im, inlets=inlets, conn='min')
+        h = ps.filters.trim_disconnected_voxels(im=im, inlets=inlets, conn='min')
         n2 = spim.label(h)[1]
         assert n1 > n2
         assert spim.label(h + inlets)[1] == 1

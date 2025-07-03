@@ -12,15 +12,17 @@ from porespy.tools import (
 
 
 __all__ = [
+    "find_closed_pores",
     "fill_closed_pores",
     "find_disconnected_voxels",
-    "trim_disconnected_blobs",
+    "trim_disconnected_voxels",
     "find_surface_pores",
-    "find_closed_pores",
     "find_invalid_pores",
+    "fill_invalid_pores",
     "trim_floating_solid",
+    "find_floating_solid",
     "trim_nonpercolating_paths",
-    "trim_small_clusters",
+    "fill_surface_pores",
 ]
 
 
@@ -29,7 +31,7 @@ logger = logging.getLogger(__name__)
 strel = get_strel()
 
 
-def trim_disconnected_blobs(
+def trim_disconnected_voxels(
     im: npt.NDArray,
     inlets: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
@@ -40,11 +42,12 @@ def trim_disconnected_blobs(
     Parameters
     ----------
     im : ndarray
-        The image containing the blobs to be trimmed
+        The image to be processed with `True` values indicating the phase of
+        interest
     inlets : ndarray or tuple of indices
         The locations of the inlets.  Can either be a boolean mask the
         same shape as `im`, or a tuple of indices such as that returned
-        by the `where` function.  Any voxels *not* connected directly to
+        by the `np.where` function.  Any voxels *not* connected directly to
         the inlets will be trimmed.
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
@@ -66,7 +69,7 @@ def trim_disconnected_blobs(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`_
+    <https://porespy.org/examples/filters/reference/trim_disconnected_voxels.html>`_
     to view online example.
 
     """
@@ -85,44 +88,6 @@ def trim_disconnected_blobs(
     im2 = np.isin(labels, keep)
     im2 = im2 * im
     return im2
-
-
-def trim_small_clusters(
-    im: npt.NDArray,
-    min_size: int = 1,
-):
-    r"""
-    Removes clusters voxel of a given size or smaller
-
-    Parameters
-    ----------
-    im : ndarray
-        The binary image from which voxels are to be removed.
-    min_size : scalar
-        The threshold size of clusters to trim.  As clusters with this
-        many voxels or fewer will be trimmed.  The default is 1 so only
-        single voxels are removed.
-
-    Returns
-    -------
-    im : ndarray
-        A copy of `im` with clusters of voxels smaller than the given
-        `size` removed.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/trim_small_clusters.html>`_
-    to view online example.
-
-    """
-    se = strel[im.ndim]['min']
-    filtered_array = np.copy(im)
-    labels, N = spim.label(filtered_array, structure=se)
-    id_sizes = np.array(spim.sum(im, labels, range(N + 1)))
-    area_mask = id_sizes <= min_size
-    filtered_array[area_mask[labels]] = 0
-    return filtered_array
 
 
 def find_disconnected_voxels(
@@ -187,7 +152,7 @@ def find_closed_pores(
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
-    Finds closed pores that a not connected to any surface
+    Finds closed pores that a not connected to *any* surface
 
     Parameters
     ----------
@@ -218,130 +183,6 @@ def find_closed_pores(
     hits = np.unique(labels[mask])
     closed = np.isin(labels, hits, invert=True)
     return closed
-
-
-def find_surface_pores(
-    im: npt.NDArray,
-    axis: int = None,
-    conn: Literal['max', 'min'] = 'min',
-):
-    r"""
-    Finds surface pores that do not span the domain
-
-    Parameters
-    ----------
-    im : ndarray
-        A boolean array with `True` indicating the phase of interest
-    axis : int or list
-        The direction which defines the surfaces of interest. If not given then
-        all surfaces are considered.
-    conn : str
-        Can be either `'min'` or `'max'` and controls the shape of the structuring
-        element used to determine voxel connectivity.  The default if `'min'` which
-        imposes the strictest criteria, so that voxels must share a face to be
-        considered connected.
-
-    Returns
-    -------
-    surface : ndarray
-        A array containing boolean values indicating voxels which belong to surface
-        pores.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/find_surface_pores.html>`_
-    to view online example.
-    """
-    if axis is None:
-        axis = range(im.ndim)
-    elif isinstance(axis, int):
-        axis = [axis]
-    se = strel[im.ndim][conn].copy()
-    labels, N = spim.label(input=im, structure=se)
-    keep = set()
-    for ax in axis:
-        labels = np.swapaxes(labels, 0, ax)
-        s1 = set(np.unique(labels[0, ...]))
-        s2 = set(np.unique(labels[-1, ...]))
-        tmp = s1.intersection(s2)
-        keep.update(tmp)
-        labels = np.swapaxes(labels, 0, ax)
-    closed = find_closed_pores(im, conn=conn)
-    surface = np.isin(labels, list(keep), invert=True) * ~closed
-    return surface
-
-
-def fill_surface_pores(
-    im: npt.NDArray,
-    axis=None,
-    conn: Literal['max', 'min'] = 'min',
-):
-    r"""
-    Fill surface pores
-
-    Parameters
-    ----------
-    im : ndarray
-        A boolean array with `True` indicating the void phase (or phase of interest)
-    axis : int or list
-        The direction which defines the surfaces of interest. If not given then
-        all surfaces are considered.
-    conn : str
-        Can be either `'min'` or `'max'` and controls the shape of the structuring
-        element used to determine voxel connectivity.  The default if `'min'` which
-        imposes the strictest criteria, so that voxels must share a face to be
-        considered connected.
-
-    Returns
-    -------
-    im : ndarray
-        A copy of `im` with surface pores set to `False`.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/fill_surface_pores.html>`_
-    to view online example.
-    """
-    mask = find_surface_pores(im=im.copy(), axis=axis, conn=conn)
-    im[mask] = False
-    return im
-
-
-def find_invalid_pores(
-    im: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
-):
-    r"""
-    Finds invalid pores which are either closed or do not span the domain
-
-    Parameters
-    ----------
-    im : ndarray
-        A boolean array with `True` indicating the phase of interest
-    conn : str
-        Can be either `'min'` or `'max'` and controls the shape of the structuring
-        element used to determine voxel connectivity.  The default if `'min'` which
-        imposes the strictest criteria, so that voxels must share a face to be
-        considered connected.
-
-    Returns
-    -------
-    invalid : ndarray
-        A array containing `1` indicated closed pores and `2` indicating surface
-        pores.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/find_invalid_pores.html>`_
-    to view online example.
-    """
-    closed = find_closed_pores(im=im, conn=conn)
-    surface = find_surface_pores(im=im, conn=conn)
-    invalid = closed.astype(int) + 2*surface.astype(int)
-    return invalid
 
 
 def fill_closed_pores(
@@ -398,6 +239,172 @@ def fill_closed_pores(
     return im
 
 
+def find_surface_pores(
+    im: npt.NDArray,
+    axis: int = None,
+    conn: Literal['max', 'min'] = 'min',
+):
+    r"""
+    Finds surface pores that do not span the domain
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean array with `True` indicating the phase of interest
+    axis : int
+        The direction which defines the surfaces of interest. By default all
+        directions are considered.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    surface : ndarray
+        A array containing boolean values indicating voxels which belong to surface
+        pores.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_surface_pores.html>`_
+    to view online example.
+    """
+    if axis is None:
+        axis = range(im.ndim)
+    elif isinstance(axis, int):
+        axis = [axis]
+    se = strel[im.ndim][conn].copy()
+    labels, N = spim.label(input=im, structure=se)
+    keep = set()
+    for ax in axis:
+        labels = np.swapaxes(labels, 0, ax)
+        s1 = set(np.unique(labels[0, ...]))
+        s2 = set(np.unique(labels[-1, ...]))
+        tmp = s1.intersection(s2)
+        keep.update(tmp)
+        labels = np.swapaxes(labels, 0, ax)
+    closed = find_closed_pores(im, conn=conn)
+    surface = np.isin(labels, list(keep), invert=True) * ~closed
+    return surface
+
+
+def fill_surface_pores(
+    im: npt.NDArray,
+    axis=None,
+    conn: Literal['max', 'min'] = 'min',
+):
+    r"""
+    Fill surface pores
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean array with `True` indicating the void phase (or phase of interest)
+    axis : int
+        The direction which defines the surfaces of interest. By default all
+        directions are considered.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    im : ndarray
+        A copy of `im` with surface pores set to `False`.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/fill_surface_pores.html>`_
+    to view online example.
+    """
+    mask = find_surface_pores(im=im.copy(), axis=axis, conn=conn)
+    im[mask] = False
+    return im
+
+
+def find_invalid_pores(
+    im: npt.NDArray,
+    axis=None,
+    conn: Literal['max', 'min'] = 'min',
+):
+    r"""
+    Finds invalid pores which are either closed or do not span the domain
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean array with `True` indicating the phase of interest
+    axis : int
+        The direction which defines the surfaces of interest. By default all
+        directions are considered.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    invalid : ndarray
+        A array containing `1` indicated closed pores and `2` indicating surface
+        pores.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_invalid_pores.html>`_
+    to view online example.
+    """
+    closed = find_closed_pores(im=im, conn=conn)
+    surface = find_surface_pores(im=im, axis=axis, conn=conn)
+    invalid = closed.astype(int) + 2*surface.astype(int)
+    return invalid
+
+
+def fill_invalid_pores(
+    im: npt.NDArray,
+    axis=None,
+    conn: Literal['max', 'min'] = 'min',
+):
+    r"""
+    Fills invalid pores which are either closed or do not span the domain
+
+    Parameters
+    ----------
+    im : ndarray
+        A boolean array with `True` indicating the phase of interest
+    axis : int
+        The direction which defines the surfaces of interest. If not given then
+        all surfaces are considered.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    im : ndarray
+        A copy of `im` with invalid pores set to `False`
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/fill_invalid_pores.html>`_
+    to view online example.
+    """
+    im = im.copy()
+    invalid = find_invalid_pores(im=im, axis=axis, conn=conn)
+    im[invalid > 0] = False
+    return im
+
+
 def trim_floating_solid(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
@@ -446,6 +453,52 @@ def trim_floating_solid(
     return im
 
 
+def find_floating_solid(
+    im: npt.NDArray,
+    conn: Literal['max', 'min'] = 'min',
+    surface: bool = False,
+):
+    r"""
+    Finds all solid that that is not attached to main solid structure.
+
+    Parameters
+    ----------
+    im : ndarray
+        The image of the porous material
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+    fill_surface : bool
+        If `True`, any isolated solid regions that are connected to the
+        surfaces of the image but not the main body of the solid are also
+        removed.  Voxels are deemed to be surface voxels if they are part of a
+        cluster that does not span the domain. In other words, a cluster of voxels
+        touching the `x=0` face but not the `x=-1` face will be trimmed if this
+        is enabled.
+
+    Returns
+    -------
+    solid : ndarray
+        An image with `True` values indicating voxels which were floating solid
+
+    See Also
+    --------
+    find_disconnected_voxels
+    trim_nonpercolating_paths
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_floating_solid.html>`_
+    to view online example.
+
+    """
+    holes = find_disconnected_voxels(~im, conn=conn, surface=surface)
+    return holes
+
+
 def trim_nonpercolating_paths(
     im: npt.NDArray,
     axis: int = None,
@@ -466,13 +519,12 @@ def trim_nonpercolating_paths(
         should be applied.  For instance if `axis=0` then the inlets will be
         at `im[0, ...]` and the outlets will be at `im[-1, ...]`. If this argument
         is given then `inlets` and `outlets` are ignored.
-    inlets outlets : ndarray, optional
-        A boolean mask indicating locations of inlets and outlets, such as produced
-        by `porespy.generators.faces`. This can be used instead of `axis` to provide
-        more control. This is ignored if `axis` is provided.
+    inlets, outlets : ndarray, optional
+        Boolean masks indicating locations of inlets and outlets. This can be used 
+        instead of `axis` to provide more control.
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
-        element used to determine voxel connectivity.  The default if `'min'` which
+        element used to determine voxel connectivity.  The default is `'min'` which
         imposes the strictest criteria, so that voxels must share a face to be
         considered connected.
 

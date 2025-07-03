@@ -903,7 +903,7 @@ def porosimetry(
             else:
                 imtemp = fftmorphology(im=impad, strel=strel(r), mode='erosion')
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
+                imtemp = trim_disconnected_voxels(imtemp, inlets, conn='min')
             if parallel:
                 parallel_kw["overlap"] = int(r) + 1
                 imtemp = chunked_func(func=fftmorphology,
@@ -920,7 +920,7 @@ def porosimetry(
         for r in tqdm(sizes, desc=desc, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
+                imtemp = trim_disconnected_voxels(imtemp, inlets, conn='min')
             if np.any(imtemp):
                 if parallel:
                     parallel_kw["overlap"] = int(r) + 1
@@ -937,7 +937,7 @@ def porosimetry(
         for r in tqdm(sizes, desc=desc, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
+                imtemp = trim_disconnected_voxels(imtemp, inlets, conn='min')
             if np.any(imtemp):
                 if parallel:
                     parallel_kw["overlap"] = int(r) + 1

@@ -17,7 +17,7 @@ from porespy.tools import (
     get_edt,
 )
 from porespy.filters import (
-    trim_disconnected_blobs,
+    trim_disconnected_voxels,
     find_trapped_clusters,
     find_small_clusters,
     pc_to_satn,
@@ -118,7 +118,7 @@ def drainage_dsi(
             seeds = dt > r
             edges = (dt > r)*(dt_int <= (r + 1))
         if inlets is not None:
-            seeds = trim_disconnected_blobs(seeds, inlets=inlets)
+            seeds = trim_disconnected_voxels(seeds, inlets=inlets)
             edges *= seeds
         coords = np.vstack(np.where(edges))
         if coords.size > 0:
@@ -217,7 +217,7 @@ def drainage_dt_fft(
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         seeds = dt >= r if smooth else dt > r
         if inlets is not None:
-            seeds = trim_disconnected_blobs(seeds, inlets=inlets)
+            seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
         se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
@@ -305,7 +305,7 @@ def drainage_fft(
         se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
         seeds = ~fftmorphology(~im, se, 'dilation')
         if inlets is not None:
-            seeds = trim_disconnected_blobs(seeds, inlets=inlets)
+            seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
         se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
@@ -400,15 +400,15 @@ def drainage_dt(
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         seeds = dt >= r if smooth else dt > r
         if inlets is not None:
-            seeds = trim_disconnected_blobs(seeds, inlets=inlets)
+            seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
         tmp = edt(~seeds, parallel=settings.ncores)
         nwp = tmp < r if smooth else tmp <= r
         # if residual is not None:
-        #     blobs = trim_disconnected_blobs(residual, inlets=nwp)
+        #     blobs = trim_disconnected_voxels(residual, inlets=nwp)
         #     seeds = dt >= r
-        #     seeds = trim_disconnected_blobs(seeds, inlets=blobs + inlets)
+        #     seeds = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
         #     nwp = edt(~seeds, parallel=settings.ncores) < r
         mask = nwp*(im_seq == -1)
         im_size[mask] = r
@@ -595,7 +595,7 @@ def drainage(
         invadable = (pc <= p)*im  # Equivalent to erosion
         # Trim locations not connected to the inlets, if given
         if inlets is not None:
-            invadable = trim_disconnected_blobs(
+            invadable = trim_disconnected_voxels(
                 im=invadable,
                 inlets=inlets,
                 conn=conn,
@@ -618,11 +618,11 @@ def drainage(
         if residual is not None:
             if np.any(nwp_mask):
                 # Find invadable pixels connected to surviving residual
-                temp = trim_disconnected_blobs(
+                temp = trim_disconnected_voxels(
                     residual, nwp_mask, conn=conn)*~nwp_mask
                 if np.any(temp):
                     # Trim invadable pixels not connected to residual
-                    invadable = trim_disconnected_blobs(invadable, temp, conn=conn)
+                    invadable = trim_disconnected_voxels(invadable, temp, conn=conn)
                     coords = np.where(invadable)
                     radii = dt[coords].astype(int)
                     nwp_mask = _insert_disks_at_points_parallel(

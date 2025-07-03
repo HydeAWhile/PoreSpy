@@ -266,13 +266,13 @@ def boxcount(im, bins=10):
 
     References
     ----------
-    .. [1] See Boxcounting on `Wikipedia
+    .. [1] Read more about box counting on `Wikipedia
        <https://en.wikipedia.org/wiki/Box_counting>`_
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/box_counting.html>`_
+    <https://porespy.org/examples/metrics/reference/boxcount.html>`_
     to view online example.
 
     """

@@ -5,7 +5,7 @@ import numpy as np
 from typing import List, Literal
 from numba import njit
 from skimage.morphology import ball, disk
-from porespy.filters import trim_disconnected_blobs
+from porespy.filters import trim_disconnected_voxels
 from porespy.tools import (
     _insert_disk_at_point,
     ps_round,
@@ -227,7 +227,7 @@ def pseudo_gravity_packing(
     # Finalize the mask of valid insertion points
     inlets = np.zeros_like(im)
     inlets[-r:, ...] = True
-    mask = trim_disconnected_blobs(im=mask, inlets=inlets, conn='min')
+    mask = trim_disconnected_voxels(im=mask, inlets=inlets, conn='min')
 
     # Generate elevation values to initialize queue
     from porespy.generators import ramp
