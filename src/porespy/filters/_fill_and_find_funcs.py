@@ -33,7 +33,7 @@ strel = get_strel()
 
 def trim_disconnected_voxels(
     im: npt.NDArray,
-    inlets: npt.NDArray,
+    inlets: npt.NDArray = None,
     conn: Literal['max', 'min'] = 'min',
 ):
     r"""
@@ -73,51 +73,46 @@ def trim_disconnected_voxels(
     to view online example.
 
     """
-    se = strel[im.ndim][conn].copy()
+    im = im.copy()
     if isinstance(inlets, tuple):
         temp = np.copy(inlets)
         inlets = np.zeros_like(im, dtype=bool)
         inlets[temp] = True
-    elif (inlets.shape == im.shape) and (inlets.max() == 1):
-        inlets = inlets.astype(bool)
-    else:
-        raise Exception("inlets not valid, refer to docstring for info")
-    labels = spim.label(inlets + (im > 0), structure=se)[0]
-    keep = np.unique(labels[inlets])
-    keep = keep[keep > 0]
-    im2 = np.isin(labels, keep)
-    im2 = im2 * im
-    return im2
+    disconnected = find_disconnected_voxels(im=im, inlets=inlets, conn=conn)
+    im[disconnected] = False
+    return im
 
 
 def find_disconnected_voxels(
     im: npt.NDArray,
+    inlets: npt.NDArray = None,
     conn: Literal['min', 'max'] = "max",
-    surface: bool = False,
 ):
     r"""
-    Identifies all voxels that are not connected to an edge of the image.
+    Identifies all voxels that are not connected to specified inlets
 
     Parameters
     ----------
     im : ndarray
         A Boolean image, with `True` values indicating the phase for which
         disconnected voxels are sought.
+    inlets : ndarray or tuple of indices
+        The locations of the inlets.  Can either be a boolean mask the
+        same shape as `im`, or a tuple of indices such as that returned
+        by the `np.where` function.  Any voxels *not* connected directly to
+        the inlets will be trimmed.
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
         element used to determine voxel connectivity.  The default if `'min'` which
         imposes the strictest criteria, so that voxels must share a face to be
         considered connected.
-    fill_surface : bool
-        If `True` any isolated regions touching the edge of the image are
-        considered disconnected.
 
     Returns
     -------
     image : ndarray
         An ndarray the same size as `im`, with `True` values indicating
-        voxels of the phase of interest (i.e. `True` values in the original
-        image) that are not connected to the outer edges.
+        voxels of the phase of interest that are not connected to the given
+        inlets.
 
     See Also
     --------
@@ -130,20 +125,15 @@ def find_disconnected_voxels(
     <https://porespy.org/examples/filters/reference/find_disconnected_voxels.html>`_
     to view online example.
     """
-    _check_for_singleton_axes(im)
-
     se = strel[im.ndim][conn].copy()
     labels, N = spim.label(input=im, structure=se)
-    if not surface:
+    if inlets is None:
         holes = clear_border(labels=labels) > 0
     else:
-        keep = set(np.unique(labels))
-        for ax in range(labels.ndim):
-            labels = np.swapaxes(labels, 0, ax)
-            keep.intersection_update(set(np.unique(labels[0, ...])))
-            keep.intersection_update(set(np.unique(labels[-1, ...])))
-            labels = np.swapaxes(labels, 0, ax)
-        holes = np.isin(labels, list(keep), invert=True)
+        keep = np.unique(labels*inlets)
+        keep = keep[keep > 0]
+        holes = np.isin(labels, keep, invert=True)
+    holes = holes*im
     return holes
 
 
@@ -188,7 +178,6 @@ def find_closed_pores(
 def fill_closed_pores(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
-    surface: bool = False,
 ):
     r"""
     Fills all closed pores that are isolated from the main void space.
@@ -207,13 +196,6 @@ def fill_closed_pores(
         element used to determine voxel connectivity.  The default if `'min'` which
         imposes the strictest criteria, so that voxels must share a face to be
         considered connected.
-    fill_surface : bool
-        If `True`, any isolated pore regions that are connected to the
-        sufaces of the image are but not connected to the main percolating
-        path are also removed. When this is enabled, only the voxels
-        belonging to the largest region are kept. This can be
-        problematic if image contains non-intersecting tube-like structures,
-        for instance, since only the largest tube will be preserved.
 
     Returns
     -------
@@ -234,7 +216,7 @@ def fill_closed_pores(
 
     """
     im = np.copy(im)
-    holes = find_disconnected_voxels(im, conn=conn, surface=surface)
+    holes = find_disconnected_voxels(im, conn=conn)
     im[holes] = False
     return im
 
@@ -408,7 +390,7 @@ def fill_invalid_pores(
 def trim_floating_solid(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
-    surface: bool = False,
+    fill_surface: bool = False,
 ):
     r"""
     Removes all solid that that is not attached to main solid structure.
@@ -448,7 +430,7 @@ def trim_floating_solid(
 
     """
     im = np.copy(im)
-    holes = find_disconnected_voxels(~im, conn=conn, surface=surface)
+    holes = find_floating_solid(~im, conn=conn, incl_surface=fill_surface)
     im[holes] = True
     return im
 
@@ -456,7 +438,7 @@ def trim_floating_solid(
 def find_floating_solid(
     im: npt.NDArray,
     conn: Literal['max', 'min'] = 'min',
-    surface: bool = False,
+    incl_surface: bool = False,
 ):
     r"""
     Finds all solid that that is not attached to main solid structure.
@@ -470,7 +452,7 @@ def find_floating_solid(
         element used to determine voxel connectivity.  The default if `'min'` which
         imposes the strictest criteria, so that voxels must share a face to be
         considered connected.
-    fill_surface : bool
+    incl_surface : bool
         If `True`, any isolated solid regions that are connected to the
         surfaces of the image but not the main body of the solid are also
         removed.  Voxels are deemed to be surface voxels if they are part of a
@@ -495,7 +477,9 @@ def find_floating_solid(
     to view online example.
 
     """
-    holes = find_disconnected_voxels(~im, conn=conn, surface=surface)
+    holes = find_disconnected_voxels(~im, conn=conn)
+    if incl_surface:
+        holes += find_surface_pores(~im, conn=conn)
     return holes
 
 
