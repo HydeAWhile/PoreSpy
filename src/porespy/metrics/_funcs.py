@@ -5,10 +5,10 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
-from skimage.morphology import skeletonize
+from skimage.morphology import skeletonize, disk, square, ball, cube
+from skimage.measure import regionprops
 from numba import njit
 from scipy import fft as sp_ft
-from skimage.measure import regionprops
 from porespy import settings
 from porespy.filters import (
     local_thickness,
@@ -18,7 +18,6 @@ from porespy.filters import (
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
-    extend_slice,
     get_tqdm,
     get_slices_slabs,
     get_edt

@@ -549,8 +549,8 @@ class FilterTest():
                                  seed=0,
                                  periodic=False,)
         assert im.sum()/im.size == 0.4028
-        im5 = ps.filters.trim_small_clusters(im=im, size=5)
-        im10 = ps.filters.trim_small_clusters(im=im, size=10)
+        im5 = ps.filters.trim_small_clusters(im=im, min_size=5)
+        im10 = ps.filters.trim_small_clusters(im=im, min_size=10)
         assert im5.sum() > im10.sum()
         label, N = spim.label(im10)
         for i in range(N):

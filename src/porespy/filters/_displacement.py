@@ -18,9 +18,6 @@ from porespy.filters import (
     region_size,
     flood_func,
 )
-from porespy.generators import (
-    borders,
-)
 
 
 logger = logging.getLogger(__name__)
@@ -74,11 +71,17 @@ def find_small_clusters(
         ============= ==============================================================
         Attribute     Description
         ============= ==============================================================
+        `im_small`    A boolean image with `True` values indicating trapped clusters 
+                      which are smaller than `min_size`.
         `im_trapped`  An updated mask of trapped voxels with the small clusters of
                       trapped voxels removed (i.e. set to `False`).
-        `im_released` An image with `True` values indicating formerly trapped voxels
-                      which were smaller than `min_size` so set to untrapped.
         ============= ==============================================================
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_small_clusters.html>`_
+    to view online example.
 
     """
     cluster_size = region_size(trapped, conn=conn)
@@ -87,7 +90,7 @@ def find_small_clusters(
 
     results = Results()
     results.im_trapped = trapped
-    results.im_released = mask
+    results.im_small = mask
 
     return results
 
@@ -132,6 +135,7 @@ def fill_trapped_clusters(
         'max'     This corresponds to a square or cube with 8 neighbors in 2D and
                   26 neighbors in 3D.
         ========= ==================================================================
+
     """
     se = strel[im.ndim][conn].copy()
     results = Results()
@@ -196,7 +200,7 @@ def find_trapped_clusters(
         An image the same size as ``im`` with ``True`` indicating outlets
         and ``False`` elsewhere.
     conn : str
-        Controls the shape of the structuring element used to determin if voxels
+        Controls the shape of the structuring element used to determine if voxels
         are connected.  Options are:
 
         ========= ==================================================================
@@ -233,7 +237,6 @@ def find_trapped_clusters(
     `Click here
     <https://porespy.org/examples/filters/reference/find_trapped_clusters.html>`_
     to view online example.
-
     """
     if method == 'queue':
         seq = np.copy(seq)  # Need a copy since the queue method updates 'in-place'
@@ -309,7 +312,6 @@ def _find_trapped_clusters_queue(
 ):
     r"""
     This version is meant for IBIP or QBIP (ie. invasion) simulations.
-
     """
     im = im > 0
     # Make sure outlets are masked correctly and convert to 3d

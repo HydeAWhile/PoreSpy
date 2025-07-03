@@ -19,6 +19,7 @@ from porespy.tools import (
     ps_round,
     get_tqdm,
     get_edt,
+    get_strel,
 )
 from porespy import settings
 from typing import Literal
@@ -39,15 +40,14 @@ __all__ = [
     "porosimetry",
     "prune_branches",
     "region_size",
-    "trim_disconnected_blobs",
     "trim_extrema",
 ]
 
 
 edt = get_edt()
 tqdm = get_tqdm()
+strel = get_strel()
 logger = logging.getLogger(__name__)
-strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
 def apply_padded(
@@ -743,64 +743,6 @@ def local_thickness(
     im_new = porosimetry(im=im, sizes=sizes, access_limited=False, mode=mode,
                          parallel_kw=parallel_kw)
     return im_new
-
-
-def trim_disconnected_blobs(
-    im: npt.NDArray,
-    inlets: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
-):
-    r"""
-    Removes foreground voxels not connected to specified inlets.
-
-    Parameters
-    ----------
-    im : ndarray
-        The image containing the blobs to be trimmed
-    inlets : ndarray or tuple of indices
-        The locations of the inlets.  Can either be a boolean mask the
-        same shape as `im`, or a tuple of indices such as that returned
-        by the `where` function.  Any voxels *not* connected directly to
-        the inlets will be trimmed.
-    conn : str
-        Can be either `'min'` or `'max'` and controls the shape of the structuring
-        element used to determine voxel connectivity.  The default if `'min'` which
-        imposes the strictest criteria, so that voxels must share a face to be
-        considered connected.
-
-    Returns
-    -------
-    image : ndarray
-        An array of the same shape as `im`, but with all foreground
-        voxels not connected to the `inlets` removed.
-
-    See Also
-    --------
-    find_disconnected_voxels
-    find_nonpercolating_paths
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`_
-    to view online example.
-
-    """
-    se = strel[im.ndim][conn].copy()
-    if isinstance(inlets, tuple):
-        temp = np.copy(inlets)
-        inlets = np.zeros_like(im, dtype=bool)
-        inlets[temp] = True
-    elif (inlets.shape == im.shape) and (inlets.max() == 1):
-        inlets = inlets.astype(bool)
-    else:
-        raise Exception("inlets not valid, refer to docstring for info")
-    labels = spim.label(inlets + (im > 0), structure=se)[0]
-    keep = np.unique(labels[inlets])
-    keep = keep[keep > 0]
-    im2 = np.isin(labels, keep)
-    im2 = im2 * im
-    return im2
 
 
 def porosimetry(
