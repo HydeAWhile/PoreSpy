@@ -5,22 +5,24 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
-from skimage.morphology import skeletonize, disk, square, ball, cube
-from skimage.measure import regionprops
 from numba import njit
 from scipy import fft as sp_ft
+from skimage.measure import regionprops
+from skimage.morphology import skeletonize, ball, disk, square, cube
 from porespy import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
     fill_closed_pores,
+    find_invalid_pores,
 )
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
     get_tqdm,
     get_slices_slabs,
-    get_edt
+    get_edt,
+    ps_round,
 )
 
 
@@ -29,13 +31,16 @@ __all__ = [
     "chord_counts",
     "chord_length_distribution",
     "find_h",
+    "is_percolating",
     "lineal_path_distribution",
     "pore_size_distribution",
     "radial_density_distribution",
     "porosity",
+    "find_porosity_threshold",
     "porosity_profile",
     "satn_profile",
     "two_point_correlation",
+    "percolating_porosity",
     "phase_fraction",
     "pc_map_to_pc_curve",
     "bond_number",

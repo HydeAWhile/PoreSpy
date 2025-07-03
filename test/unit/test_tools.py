@@ -586,6 +586,23 @@ class ToolsTest():
             assert sl[1].start >= 0 and sl[1].stop <= im.shape[1]
             assert sl[2].start >= 0 and sl[2].stop <= im.shape[2]
 
+    def test_get_slices_random_w_aspect(self):
+        im = np.ones([50, 100], dtype=bool)
+        slices = ps.tools.get_slices_random(im, n=10, lims=[10, 40], aspect=None)
+        for s in slices:
+            assert im[s].shape[0]/im[s].shape[1] == 1
+        slices = ps.tools.get_slices_random(im, n=10, lims=[10, 40], aspect=True)
+        for s in slices:
+            assert im[s].shape[0]/im[s].shape[1] == 0.5
+        slices = ps.tools.get_slices_random(im, n=10, lims=[10, 40], aspect=[3, 1])
+        for s in slices:
+            assert im[s].shape[0]/im[s].shape[1] == 3
+        slices = ps.tools.get_slices_random(im, n=10, lims=[10, 40], aspect=[1, 4])
+        for s in slices:
+            assert im[s].shape[0]/im[s].shape[1] == 0.25
+        with pytest.raises(Exception):
+            slices = ps.tools.get_slices_random(im, n=10, lims=[10, 40], aspect=[1])
+
     def test_get_slices_multigrid_2D(self):
         im = np.ones([100, 100])
         s = ps.tools.get_slices_multigrid(im, block_size_range=[10, 50])

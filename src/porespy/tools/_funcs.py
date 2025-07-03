@@ -80,7 +80,7 @@ def tilde(im):
     return inv
 
 
-def get_slices_random(im, n=1000, lims=[10, 100]):
+def get_slices_random(im, n=1000, lims=[10, 100], aspect=None):
     r"""
     Generates a list of `slice` objects which can be used to obtain cubic subdomains
     of random size and location from the image
@@ -93,6 +93,10 @@ def get_slices_random(im, n=1000, lims=[10, 100]):
         The number of random subdomains to be generated
     lims : list
         The minimum and maximum size for the subdomains to be generated
+    aspect : array_like, optional
+        The aspect ratio of returned slices, with a value for each axis. If not
+        given the slices will be cubic (default). If `True` then they will have
+        the same aspect ratio as the image.
 
     Returns
     -------
@@ -100,25 +104,35 @@ def get_slices_random(im, n=1000, lims=[10, 100]):
         A list containing `slice` objects which can be iterated over
         to access the image slices.
     """
-
     ndim = im.ndim
-    shape = im.shape
+    shape = np.array(im.shape, dtype=int)
+
+    if aspect is None:
+        aspect = [1 for _ in range(ndim)]
+    elif aspect is True:
+        aspect = shape/np.amin(shape)
+    elif np.size(aspect) != ndim:
+        raise Exception('Aspect ratio must be provided for each dimension')
+    aspect = np.array(aspect)
+    aspect = (aspect/aspect.min())
+
     min_size, max_size = lims
-    max_size = min(max_size, *shape)
+    max_size = int(min(max_size, *(shape/aspect)))
 
     new_slices = []
-
     desc = inspect.currentframe().f_code.co_name  # Get current func name
-
     for _ in tqdm(range(n), desc=desc, **settings.tqdm):
         side_len = np.random.randint(min_size, max_size + 1)
+        side_len = np.array([side_len*a for a in aspect], dtype=int)
 
         # the only start points that are valid for the given side length range from
         # 0 to the image boundary minus the side length
-        starts = [np.random.randint(0, shape[dim] - side_len + 1) for dim in range(ndim)]
+        starts = [np.random.randint(0, shape[dim] - side_len[dim] + 1)
+                  for dim in range(ndim)]
 
         # create the slice objects for all dimensions
-        s = tuple(slice(start, start + side_len) for start in starts)
+        s = tuple(slice(start, start + side_len[i])
+                  for i, start in enumerate(starts))
         new_slices.append(s)
 
     return new_slices
@@ -289,6 +303,40 @@ def get_slices_grid(im, divs=2, block_size=None, overlap=0, mode='offset'):
 
 
 def get_slices_multigrid(im, block_size_range, overlap=0, mode='whole'):
+    r"""
+    Creates a set of grids spanning the request block size range
+
+    Parameters
+    ----------
+    im : ndarray
+        The image for which the grid should be generated.
+    block_size_range : list
+        The minimum and maximum size of blocks to generate. If more than 2 values
+        are received these are as block sizes directly.
+    overlap : scalar or array_like
+        The amount of overlap to use when dividing along each axis.  If a
+        scalar is given it is assumed this value applies in all dimensions.
+    mode : str
+        This argument is only used if `block_size` is given and it controls how
+        to handle the situation when given block sizes are not a clean multiple of
+        the image shape. The options are:
+
+        ========== ==================================================================
+        mode       description
+        ========== ==================================================================
+        'whole'    Blocks start at the beginning of each axis, and only "whole"
+                   blocks (that fit within the image) are included in the returned
+                   list of slice objects.
+        'partial'  Blocks start at the beginning of each axis, and any blocks which
+                   partially extend beyond the end of the image are returned.
+        'offset'   Only whole blocks are included, but an offset is applied to the
+                   start of each axis so that an equal amount of voxels are missed
+                   at the start and end of each axis.
+        'strict'   Raises an Exception if the image cannot be evenly divided by the
+                   given block size.
+        ========== ==================================================================
+
+    """
     if len(block_size_range) == 2:
         sizes = get_block_sizes(im=im, block_size_range=block_size_range)
     else:
