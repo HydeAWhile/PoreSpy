@@ -30,7 +30,7 @@ class IBOPTest(GenericTest):
             im=self.im2D, inlets=inlets, outlets=outlets, steps=None)
         assert np.sum(r1.im_seq == -1) == 0
         assert np.sum(r2.im_seq == -1) == 7170
-        temp = ps.filters.fill_closed_pores(self.im2D, surface=True)
+        temp = ps.filters.fill_invalid_pores(self.im2D)
         r3 = ps.simulations.drainage(im=temp, inlets=inlets, steps=None)
         assert np.sum(r3.im_seq == -1) == 0
 

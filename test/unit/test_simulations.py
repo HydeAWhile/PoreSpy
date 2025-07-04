@@ -49,7 +49,7 @@ class SimulationsTest():
         np.testing.assert_approx_equal(drn.im_pc.max(), np.inf)
 
         # After filling inaccessible voxels
-        im2 = ps.filters.fill_closed_pores(im, conn='min', surface=True)
+        im2 = ps.filters.fill_invalid_pores(im, conn='min')
         assert im2.sum()/im2.size < 0.7066
         dt2 = edt(im2)
         pc2 = ps.filters.capillary_transform(

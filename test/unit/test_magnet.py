@@ -23,7 +23,7 @@ class MagnetTest:
             periodic=False,
             seed=1,
         )
-        im2 = ps.filters.fill_closed_pores(im2, conn='max', surface=True)
+        im2 = ps.filters.fill_invalid_pores(im2, conn='max')
         # Define 3D image
         im3 = ps.generators.blobs(
             [100, 100, 100],
@@ -31,8 +31,8 @@ class MagnetTest:
             blobiness=1,
             periodic=False,
         )
-        im3 = ps.filters.fill_closed_pores(im3, conn='max', surface=True)
-        im3 = ps.filters.trim_floating_solid(im3, conn='min', surface=False)
+        im3 = ps.filters.fill_invalid_pores(im3, conn='max')
+        im3 = ps.filters.trim_floating_solid(im3, conn='min', incl_surface=False)
         # assign to self
         self.blobs2D = im2
         self.blobs3D = im3
