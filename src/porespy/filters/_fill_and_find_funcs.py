@@ -1,15 +1,15 @@
 import logging
+from typing import Literal
+
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
-from typing import Literal
 from skimage.segmentation import clear_border
+
 from porespy.tools import (
-    _check_for_singleton_axes,
     get_edt,
     get_strel,
 )
-
 
 __all__ = [
     "find_closed_pores",
@@ -34,7 +34,7 @@ strel = get_strel()
 def trim_disconnected_voxels(
     im: npt.NDArray,
     inlets: npt.NDArray = None,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Removes foreground voxels not connected to specified inlets.
@@ -86,7 +86,7 @@ def trim_disconnected_voxels(
 def find_disconnected_voxels(
     im: npt.NDArray,
     inlets: npt.NDArray = None,
-    conn: Literal['min', 'max'] = "max",
+    conn: Literal["min", "max"] = "max",
 ):
     r"""
     Identifies all voxels that are not connected to specified inlets
@@ -130,16 +130,16 @@ def find_disconnected_voxels(
     if inlets is None:
         holes = clear_border(labels=labels) > 0
     else:
-        keep = np.unique(labels*inlets)
+        keep = np.unique(labels * inlets)
         keep = keep[keep > 0]
         holes = np.isin(labels, keep, invert=True)
-    holes = holes*im
+    holes = holes * im
     return holes
 
 
 def find_closed_pores(
     im: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Finds closed pores that a not connected to *any* surface
@@ -167,9 +167,10 @@ def find_closed_pores(
     to view online example.
     """
     from porespy.generators import borders
+
     se = strel[im.ndim][conn].copy()
     labels, N = spim.label(input=im, structure=se)
-    mask = borders(im.shape, mode='faces')
+    mask = borders(im.shape, mode="faces")
     hits = np.unique(labels[mask])
     closed = np.isin(labels, hits, invert=True)
     return closed
@@ -177,7 +178,7 @@ def find_closed_pores(
 
 def fill_closed_pores(
     im: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Fills all closed pores that are isolated from the main void space.
@@ -224,7 +225,7 @@ def fill_closed_pores(
 def find_surface_pores(
     im: npt.NDArray,
     axis: int = None,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Finds surface pores that do not span the domain
@@ -276,7 +277,7 @@ def find_surface_pores(
 def fill_surface_pores(
     im: npt.NDArray,
     axis=None,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Fill surface pores
@@ -313,7 +314,7 @@ def fill_surface_pores(
 def find_invalid_pores(
     im: npt.NDArray,
     axis=None,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Finds invalid pores which are either closed or do not span the domain
@@ -345,14 +346,14 @@ def find_invalid_pores(
     """
     closed = find_closed_pores(im=im, conn=conn)
     surface = find_surface_pores(im=im, axis=axis, conn=conn)
-    invalid = closed.astype(int) + 2*surface.astype(int)
+    invalid = closed.astype(int) + 2 * surface.astype(int)
     return invalid
 
 
 def fill_invalid_pores(
     im: npt.NDArray,
     axis=None,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Fills invalid pores which are either closed or do not span the domain
@@ -389,7 +390,7 @@ def fill_invalid_pores(
 
 def trim_floating_solid(
     im: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
     incl_surface: bool = False,
 ):
     r"""
@@ -437,7 +438,7 @@ def trim_floating_solid(
 
 def find_floating_solid(
     im: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
     incl_surface: bool = False,
 ):
     r"""
@@ -488,7 +489,7 @@ def trim_nonpercolating_paths(
     axis: int = None,
     inlets: npt.NDArray = None,
     outlets: npt.NDArray = None,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Remove all nonpercolating pores between specified locations
@@ -504,7 +505,7 @@ def trim_nonpercolating_paths(
         at `im[0, ...]` and the outlets will be at `im[-1, ...]`. If this argument
         is given then `inlets` and `outlets` are ignored.
     inlets, outlets : ndarray, optional
-        Boolean masks indicating locations of inlets and outlets. This can be used 
+        Boolean masks indicating locations of inlets and outlets. This can be used
         instead of `axis` to provide more control.
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
@@ -538,6 +539,7 @@ def trim_nonpercolating_paths(
     """
     if axis is not None:
         from porespy.generators import faces
+
         inlets = faces(im.shape, inlet=axis)
         outlets = faces(im.shape, outlet=axis)
     se = strel[im.ndim][conn].copy()
