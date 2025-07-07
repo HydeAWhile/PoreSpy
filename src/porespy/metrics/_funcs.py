@@ -6,6 +6,7 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
+from deprecated import deprecated
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
@@ -1115,10 +1116,6 @@ def phase_fraction(im, normed=True):
             1 / im.size if normed else 1
         )
     return results
-
-
-# NOTE: This function is not imported any more and will be removed
-from deprecated import deprecated
 
 
 @deprecated
