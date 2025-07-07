@@ -15,6 +15,7 @@ jobs:
             **.py
 
       - name: Run ruff on changed files only
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: astral-sh/ruff-action@v3
         with:
           src: ${{ steps.changed-files.outputs.all_changed_files }}
