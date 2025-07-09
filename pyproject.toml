@@ -60,16 +60,7 @@ test = [
     "pytest-custom-exit-code",
     "pytest-split",
 ]
-extras = [
-    "pyevtk",
-    "scikit-learn",
-    "trimesh",
-]
-extras-macos = [
-    "pyevtk",
-    "scikit-learn",
-    "trimesh",
-]
+extras = ["pyevtk", "scikit-learn", "trimesh"]
 docs = [
     "mock",
     "myst-nb",
