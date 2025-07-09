@@ -1,12 +1,12 @@
-import math
 import inspect
+import math
+
 import numpy as np
 import scipy.ndimage as spim
 from scipy.ndimage import zoom as zm
 from skimage.morphology import ball
-from porespy.tools import settings
-from porespy.tools import extend_slice, get_tqdm
 
+from porespy.tools import extend_slice, get_tqdm, settings
 
 tqdm = get_tqdm()
 

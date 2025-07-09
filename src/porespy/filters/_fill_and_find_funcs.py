@@ -1,15 +1,16 @@
 import logging
+from typing import Literal
+
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
-from typing import Literal
+from skimage.morphology import ball, cube, disk, square
 from skimage.segmentation import clear_border
-from skimage.morphology import ball, disk, square, cube
+
 from porespy.tools import (
     _check_for_singleton_axes,
     get_edt,
 )
-
 
 __all__ = [
     "fill_closed_pores",

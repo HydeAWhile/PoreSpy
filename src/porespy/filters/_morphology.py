@@ -1,9 +1,6 @@
 from scipy.signal import fftconvolve
-from porespy.tools import (
-    ps_round,
-    get_edt
-)
 
+from porespy.tools import get_edt, ps_round
 
 __all__ = [
     'erode',
@@ -106,8 +103,9 @@ def dilate(im, r, method='dt', smooth=True):
 
 
 if __name__ == "__main__":
-    import porespy as ps
     import matplotlib.pyplot as plt
+
+    import porespy as ps
 
     im = ps.generators.blobs([200, 200], porosity=0.6, seed=5)
 

@@ -2,10 +2,11 @@ import sys
 
 import numpy as np
 import pandas as pd
-import porespy as ps
 import pytest
 import scipy.ndimage as spim
 import scipy.stats as spst
+
+import porespy as ps
 
 ps.settings.tqdm['disable'] = True
 
@@ -596,6 +597,7 @@ class GeneratorTest():
 
     def test_polydisperse_cylinders(self):
         import scipy.stats as spst
+
         from porespy import beta
         params = (5.0, 0.0, 7.0)
         dist = spst.gamma(*params)

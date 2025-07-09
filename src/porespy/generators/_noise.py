@@ -1,8 +1,9 @@
-import psutil
-import numpy as np
 from typing import Literal
-from porespy.tools import all_to_uniform, parse_shape
 
+import numpy as np
+import psutil
+
+from porespy.tools import all_to_uniform, parse_shape
 
 __all__ = [
     'fractal_noise',

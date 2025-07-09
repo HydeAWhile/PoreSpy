@@ -1,28 +1,29 @@
 import inspect
 import logging
 from typing import List, Literal
+
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
 from numba import njit
+
 from porespy import metrics
 from porespy.filters import chunked_func
 from porespy.tools import (
-    settings,
     _insert_disk_at_points,
     _insert_disk_at_points_parallel,
     all_to_uniform,
     extract_subsection,
+    get_edt,
     get_tqdm,
     insert_sphere,
+    parse_shape,
     ps_ball,
     ps_disk,
-    get_edt,
-    parse_shape
+    settings,
 )
-
 
 __all__ = [
     "blobs",

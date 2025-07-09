@@ -1,6 +1,7 @@
 import numpy as np
-import porespy as ps
 from edt import edt
+
+import porespy as ps
 
 ps.settings.tqdm['disable'] = True
 
@@ -28,16 +29,16 @@ class SeqTest():
 
     def test_satn_to_seq(self):
         satn = np.tile(np.atleast_2d(np.arange(0, 21)), [21, 1])/20
-        seq = ps.filters.satn_to_seq(satn, im=(satn!=0))
+        seq = ps.filters.satn_to_seq(satn, im=(satn != 0))
         assert seq.max() == 20
 
     def test_satn_to_seq_uninvaded(self):
         satn = (np.tile(np.atleast_2d(np.arange(0, 21)), [21, 1]) - 1)/20
         satn[satn < 0] = -1
-        seq = ps.filters.satn_to_seq(satn, im=(satn!=0), mode='drainage')
+        seq = ps.filters.satn_to_seq(satn, im=(satn != 0), mode='drainage')
         assert seq.max() == 19
         assert seq.min() == -1
-        seq = ps.filters.satn_to_seq(satn, im=(satn!=0), mode='imbibition')
+        seq = ps.filters.satn_to_seq(satn, im=(satn != 0), mode='imbibition')
         assert seq[-1, -1] == 1
         assert seq.max() == 19
         # Ensure 0's remain 0's, and -1's remain -1's
@@ -46,12 +47,12 @@ class SeqTest():
 
     def test_satn_to_seq_modes(self):
         satn = np.tile(np.atleast_2d(np.arange(0, 21)), [21, 1])/20
-        seq = ps.filters.satn_to_seq(satn, im=(satn!=0), mode='drainage')
+        seq = ps.filters.satn_to_seq(satn, im=(satn != 0), mode='drainage')
         assert seq.max() == 20
         assert satn[-1, -1] == 1.0
         assert seq[-1, -1] == 20
         assert seq[0, 0] == 0
-        seq = ps.filters.satn_to_seq(satn, im=(satn!=0), mode='imbibition')
+        seq = ps.filters.satn_to_seq(satn, im=(satn != 0), mode='imbibition')
         assert seq[-1, -1] == 1
         assert seq.max() == 20
         # Ensure 0's remain 0's
@@ -121,12 +122,12 @@ class SeqTest():
 
     def test_seq_to_satn_modes(self):
         seq = np.tile(np.atleast_2d(np.arange(0, 21)), [21, 1])
-        satn = ps.filters.seq_to_satn(seq, im=seq!=0, mode='drainage')
+        satn = ps.filters.seq_to_satn(seq, im=seq != 0, mode='drainage')
         assert satn.max() == 1.0
         assert satn[-1, -1] == 1.0
         assert satn[0, 0] == 0
         assert satn[0, 1] == 0.05
-        satn = ps.filters.seq_to_satn(seq, im=seq!=0, mode='imbition')
+        satn = ps.filters.seq_to_satn(seq, im=seq != 0, mode='imbition')
         # assert satn[-1, -1] == 0.05
         # assert satn.max() == 1.0
         assert satn[0, 0] == 0
@@ -135,14 +136,14 @@ class SeqTest():
         seq = np.tile(np.atleast_2d(np.arange(0, 21)), [21, 1]) - 1
         seq[:, 0] = 0
         seq[:, 1] = -1
-        satn = ps.filters.seq_to_satn(seq, im=seq!=0, mode='drainage')
+        satn = ps.filters.seq_to_satn(seq, im=seq != 0, mode='drainage')
         assert satn.max() == 0.95
         assert satn[-1, -1] == 0.95
         assert satn[0, 0] == 0.0
         assert satn[0, 1] == -1
         assert satn[0, 2] == 0.05
 
-        satn = ps.filters.seq_to_satn(seq, im=seq!=0, mode='imbibition')
+        satn = ps.filters.seq_to_satn(seq, im=seq != 0, mode='imbibition')
         assert satn.max() == 0.95
         # assert satn[-1, -1] == 0.05
         assert satn[0, 0] == 0.0

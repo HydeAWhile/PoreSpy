@@ -1,11 +1,12 @@
-from copy import copy
 import inspect
+from copy import copy
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
 from tqdm import tqdm
-from porespy.tools import settings
 
+from porespy.tools import settings
 
 __all__ = [
     'set_mpl_style',

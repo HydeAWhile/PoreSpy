@@ -3,12 +3,12 @@ import inspect
 import logging
 import sys
 import time
-import psutil
-import numpy as np
-from functools import partial
-from dataclasses import dataclass
 import warnings
+from dataclasses import dataclass
+from functools import partial
 
+import numpy as np
+import psutil
 
 __all__ = [
     "sanitize_filename",

@@ -1,27 +1,28 @@
 import inspect
+
 import numpy as np
+from edt import edt
+from numba import njit, prange
+
 from porespy.filters import (
-    find_trapped_clusters,
+    erode,
+    fftmorphology,
     find_small_clusters,
+    find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_blobs,
-    fftmorphology,
-    erode,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     Results,
-    get_tqdm,
-    _insert_disks_at_points_parallel,
-    _insert_disk_at_points_parallel,
     _insert_disk_at_points,
-    ps_round,
+    _insert_disk_at_points_parallel,
+    _insert_disks_at_points_parallel,
+    get_tqdm,
     make_contiguous,
+    ps_round,
+    settings,
 )
-from porespy.tools import settings
-from edt import edt
-from numba import njit, prange
-
 
 tqdm = get_tqdm()
 
@@ -685,11 +686,13 @@ def _insert_disks_npoints_nradii_1value_parallel(
 # %%
 
 if __name__ == '__main__':
-    import porespy as ps
+    from copy import copy
+
     import matplotlib.pyplot as plt
     import numpy as np
     from edt import edt
-    from copy import copy
+
+    import porespy as ps
     ps.visualization.set_mpl_style()
 
     cm = copy(plt.cm.turbo)

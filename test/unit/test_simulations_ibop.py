@@ -1,7 +1,8 @@
 import numpy as np
-import porespy as ps
 from GenericTest import GenericTest
-import matplotlib.pyplot as plt
+
+import porespy as ps
+
 ps.visualization.set_mpl_style()
 
 

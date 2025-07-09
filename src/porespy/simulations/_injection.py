@@ -1,27 +1,25 @@
+import heapq as hq
 import inspect
 import logging
+from typing import Literal
+
 import numpy as np
 import numpy.typing as npt
-import heapq as hq
-from typing import Literal
 from numba import njit
-from porespy.tools import settings
-from porespy.tools import (
-    get_tqdm,
-    make_contiguous,
-    _insert_disk_at_points,
-    Results,
-    get_edt,
-)
+
 from porespy.filters import (
-    find_trapped_clusters,
     find_small_clusters,
+    find_trapped_clusters,
     seq_to_satn,
 )
-from porespy.generators import (
-    borders,
+from porespy.tools import (
+    Results,
+    _insert_disk_at_points,
+    get_edt,
+    get_tqdm,
+    make_contiguous,
+    settings,
 )
-
 
 logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
@@ -604,9 +602,10 @@ def injection(
 
 
 if __name__ == "__main__":
-    import porespy as ps
+
     import matplotlib.pyplot as plt
-    from copy import copy
+
+    import porespy as ps
     from porespy.simulations import drainage
 
     ps.settings.tqdm['disable'] = False

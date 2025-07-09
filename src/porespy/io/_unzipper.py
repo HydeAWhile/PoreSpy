@@ -3,14 +3,12 @@ import os
 import shutil
 from pathlib import Path
 from zipfile import ZipFile
-from skimage.io import imread_collection
+
 import imageio
 import numpy as np
-from pathlib import Path
-from zipfile import ZipFile
-from porespy.tools import get_tqdm
-from porespy.tools import settings
+from skimage.io import imread_collection
 
+from porespy.tools import get_tqdm, settings
 
 tqdm = get_tqdm()
 

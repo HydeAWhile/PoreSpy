@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+
 import porespy as ps
 
 # Generate an image of spheres using the imgen class

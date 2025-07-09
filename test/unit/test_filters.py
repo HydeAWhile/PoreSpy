@@ -1,11 +1,11 @@
+import matplotlib.pyplot as plt
 import numpy as np
-import porespy as ps
 import pytest
 import scipy.ndimage as spim
-from skimage.morphology import disk, ball, skeletonize
+from skimage.morphology import ball, disk, skeletonize
 from skimage.util import random_noise
-import matplotlib.pyplot as plt
 
+import porespy as ps
 
 edt = ps.tools.get_edt()
 ps.settings.tqdm['disable'] = True

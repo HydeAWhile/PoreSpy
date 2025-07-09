@@ -1,17 +1,17 @@
-import logging
 import inspect
+import logging
+
 import numpy as np
 import scipy.ndimage as spim
 from edt import edt
 from skimage.morphology import ball, disk
-from porespy.tools import settings
+
 from porespy.metrics import (
     region_interface_areas,
     region_surface_areas,
     region_volumes,
 )
-from porespy.tools import extend_slice, get_tqdm, make_contiguous
-
+from porespy.tools import extend_slice, get_tqdm, make_contiguous, settings
 
 __all__ = [
     "regions_to_network",

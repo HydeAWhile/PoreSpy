@@ -1,9 +1,10 @@
-import logging
 import inspect
+import logging
+
 import numpy as np
 import scipy.ndimage as spim
 from skimage import measure
-from porespy.tools import settings
+
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
@@ -11,8 +12,8 @@ from porespy.tools import (
     get_tqdm,
     mesh_region,
     ps_round,
+    settings,
 )
-
 
 __all__ = [
     "mesh_surface_area",

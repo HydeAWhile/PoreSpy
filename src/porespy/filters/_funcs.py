@@ -1,28 +1,27 @@
 import inspect
 import logging
+import operator
+from typing import Literal
+
 import dask
 import numpy as np
 import numpy.typing as npt
-import operator
 import scipy.ndimage as spim
-from skimage.morphology import reconstruction
+from skimage.morphology import ball, cube, disk, reconstruction, square
 from skimage.segmentation import clear_border
-from skimage.morphology import ball, disk, square, cube, diamond, octahedron
+
 from porespy.tools import (
     _check_for_singleton_axes,
-    get_slices_grid,
-    recombine,
-    unpad,
     extract_subsection,
-    ps_disk,
-    ps_ball,
-    ps_round,
-    get_tqdm,
     get_edt,
+    get_slices_grid,
+    get_tqdm,
+    ps_ball,
+    ps_disk,
+    recombine,
+    settings,
+    unpad,
 )
-from porespy.tools import settings
-from typing import Literal
-
 
 __all__ = [
     "apply_chords",
@@ -282,7 +281,7 @@ def flood(
     im: npt.NDArray,
     labels: npt.NDArray,
     mode: Literal['maximum', 'minimum', 'median', 'mean', 'size',
-                  'standard_deviations',  'variance'] = "max",
+                  'standard_deviations', 'variance'] = "max",
 ):
     r"""
     Floods/fills each region in an image with a single value based on the
@@ -1200,7 +1199,7 @@ def prune_branches(
 
 def chunked_func(
     func,
-    parallel_kw = {"divs": 2, "overlap": None, "cores": None},
+    parallel_kw={"divs": 2, "overlap": None, "cores": None},
     im_arg=["input", "image", "im"],
     strel_arg=["strel", "structure", "footprint"],
     **kwargs,

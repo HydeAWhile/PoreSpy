@@ -1,12 +1,8 @@
-import pytest
 import numpy as np
-from scipy import stats as spst
-import scipy.ndimage as spim
-import porespy as ps
 import openpnm as op
-import skimage as ski
-from scipy.linalg import norm
+from scipy import stats as spst
 
+import porespy as ps
 
 ws = op.Workspace()
 ws.settings['loglevel'] = 50

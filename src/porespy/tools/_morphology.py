@@ -1,6 +1,6 @@
 import numpy as np
-from ._utils import get_edt
 
+from ._utils import get_edt
 
 __all__ = [
     'get_conns',

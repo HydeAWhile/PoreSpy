@@ -6,9 +6,8 @@ import scipy.ndimage as spim
 from skimage.morphology import ball, cube
 from skimage.segmentation import find_boundaries
 
-from porespy.tools import settings
 from porespy.generators import borders
-from porespy.tools import get_tqdm, insert_cylinder, make_contiguous, overlay
+from porespy.tools import get_tqdm, insert_cylinder, make_contiguous, overlay, settings
 
 __all__ = [
     "add_boundary_regions",

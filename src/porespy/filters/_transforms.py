@@ -1,8 +1,8 @@
 import numpy as np
 import numpy.typing as npt
+
 from porespy.generators import ramp
 from porespy.tools import get_edt
-
 
 __all__ = [
     'capillary_transform',

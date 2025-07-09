@@ -2,7 +2,6 @@ import numpy as np
 import scipy.ndimage as spim
 from numba import njit, prange
 
-
 __all__ = [
     "show_3D",
     "show_planes",

@@ -1,14 +1,15 @@
-import logging
 import inspect
+import logging
+
 import numpy as np
-from porespy.tools import settings
+
 from porespy.tools import (
     Results,
     get_border,
-    get_tqdm,
     get_edt,
+    get_tqdm,
+    settings,
 )
-
 
 __all__ = [
     "ibip_gpu",

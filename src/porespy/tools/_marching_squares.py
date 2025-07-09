@@ -1,7 +1,6 @@
 import numpy as np
 from numba import njit
 
-
 __all__ = [
     'jit_marching_squares_perimeter_and_area',
 ]

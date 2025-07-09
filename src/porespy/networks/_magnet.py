@@ -1,36 +1,37 @@
+import logging
+
 import dask.array as da
+import numpy as np
 import scipy.ndimage as spim
 import scipy.signal as spsg
-import logging
-import numpy as np
+from numba import jit
+from scipy.ndimage import maximum_position
+from skimage.morphology import cube, square
+
 from porespy.filters import (
-    trim_floating_solid,
+    chunked_func,
+    fill_closed_pores,
     flood_func,
     region_size,
-    fill_closed_pores,
-    chunked_func,
+    trim_floating_solid,
 )
 from porespy.filters._snows import _estimate_overlap
+from porespy.generators import borders
 from porespy.tools import (
-    ps_rect,
     Results,
-    extend_slice,
-    make_contiguous,
     _insert_disks_at_points,
-    ps_round,
+    extend_slice,
     extract_subsection,
-    get_tqdm,
-    ps_ball,
-    ps_disk,
     get_edt,
     get_skel,
+    get_tqdm,
+    make_contiguous,
+    ps_ball,
+    ps_disk,
+    ps_rect,
+    ps_round,
+    settings,
 )
-from porespy.generators import borders
-from skimage.morphology import square, cube
-from scipy.ndimage import maximum_position
-from porespy.tools import settings
-from numba import jit
-
 
 tqdm = get_tqdm()
 edt = get_edt()

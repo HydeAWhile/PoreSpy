@@ -1,30 +1,29 @@
+import inspect
+from typing import Literal
+
 import numpy as np
 import numpy.typing as npt
-import inspect
-import scipy.ndimage as spim
-from typing import Literal
-from skimage.morphology import ball, disk, cube, square
-from porespy.tools import settings
+from skimage.morphology import ball, cube, disk, square
+
+from porespy.filters import (
+    fftmorphology,
+    find_small_clusters,
+    find_trapped_clusters,
+    pc_to_satn,
+    trim_disconnected_blobs,
+)
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
-    _insert_disks_at_points_parallel,
+    Results,
     _insert_disk_at_points,
     _insert_disk_at_points_parallel,
-    get_tqdm,
-    Results,
-    ps_round,
-    make_contiguous,
+    _insert_disks_at_points_parallel,
     get_edt,
+    get_tqdm,
+    make_contiguous,
+    ps_round,
+    settings,
 )
-from porespy.filters import (
-    trim_disconnected_blobs,
-    find_trapped_clusters,
-    find_small_clusters,
-    pc_to_satn,
-    fftmorphology,
-    erode,
-)
-
 
 __all__ = [
     'drainage',
@@ -697,9 +696,11 @@ def drainage(
 
 
 if __name__ == "__main__":
-    import porespy as ps
-    import matplotlib.pyplot as plt
     from copy import copy
+
+    import matplotlib.pyplot as plt
+
+    import porespy as ps
     ps.visualization.set_mpl_style()
 
     cm = copy(plt.cm.turbo)

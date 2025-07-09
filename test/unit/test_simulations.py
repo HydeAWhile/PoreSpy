@@ -1,12 +1,7 @@
-import pytest
 import numpy as np
-import porespy as ps
-import scipy.ndimage as spim
-from skimage.morphology import disk, ball, skeletonize
-from skimage.util import random_noise
-from scipy.stats import norm
-from porespy.tools import get_edt
 
+import porespy as ps
+from porespy.tools import get_edt
 
 edt = get_edt()
 ps.settings.tqdm['disable'] = True

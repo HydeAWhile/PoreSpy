@@ -1,10 +1,11 @@
 import os
 import subprocess
+
 import numpy as np
 import scipy.ndimage as nd
 import skimage.measure as ms
-from porespy.tools import sanitize_filename, get_edt
 
+from porespy.tools import get_edt, sanitize_filename
 
 edt = get_edt()
 

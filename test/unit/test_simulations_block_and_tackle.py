@@ -1,9 +1,9 @@
 import numpy as np
-from porespy.tools import get_slices_grid
 import openpnm as op
-from porespy import beta
-from porespy import generators
 from GenericTest import GenericTest
+
+from porespy import beta, generators
+from porespy.tools import get_slices_grid
 
 
 class TestBlockAndTackle(GenericTest):

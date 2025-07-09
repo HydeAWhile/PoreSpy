@@ -1,5 +1,6 @@
-import logging
 import inspect
+import logging
+
 import dask.array as da
 import numpy as np
 import scipy.ndimage as spim
@@ -7,18 +8,18 @@ import scipy.spatial as sptl
 from numba import njit, prange
 from skimage.morphology import cube, square
 from skimage.segmentation import watershed
-from porespy.tools import settings
+
 from porespy.filters import chunked_func
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
     extend_slice,
+    get_edt,
     get_tqdm,
     ps_rect,
     ps_round,
-    get_edt,
+    settings,
 )
-
 
 __all__ = [
     "snow_partitioning",
@@ -711,7 +712,7 @@ def snow_partitioning_parallel(im,
     # Get overlap thickness from distance transform
     chunk_shape = (np.array(shape) / np.array(divs)).astype(int)
     logger.info('Beginning parallel SNOW algorithm...')
-    
+
     if overlap is None:
         overlap = _estimate_overlap(im, mode='dt')
     overlap = overlap / 2.0

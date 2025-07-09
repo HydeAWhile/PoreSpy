@@ -1,5 +1,7 @@
 import logging
+
 import numpy as np
+
 from porespy.filters import (
     snow_partitioning,
     snow_partitioning_parallel,
@@ -11,7 +13,6 @@ from porespy.networks import (
     regions_to_network,
 )
 from porespy.tools import Results, get_edt
-
 
 __all__ = [
     "snow2",

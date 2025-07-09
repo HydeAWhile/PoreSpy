@@ -1,8 +1,6 @@
-import pytest
 import numpy as np
+
 import porespy as ps
-from edt import edt
-import matplotlib.pyplot as plt
 
 
 class TestDisplacementRefs():

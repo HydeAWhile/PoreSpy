@@ -1,12 +1,12 @@
 import itertools
 import math
 import os
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 from numba import njit
 from scipy import spatial
 from skimage import measure
-
 
 __all__ = [
     'face_orientation',

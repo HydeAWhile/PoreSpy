@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.stats import rankdata
 
 from porespy.tools import make_contiguous
 
@@ -459,9 +458,9 @@ def size_to_pc(im, size, f=None, **kwargs):
 
 
 if __name__ == "__main__":
-    import porespy as ps
     import numpy as np
-    import matplotlib.pyplot as plt
+
+    import porespy as ps
 
     im = np.ones([20, 20], dtype=bool)
     im[-1, :] = False

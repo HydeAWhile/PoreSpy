@@ -1,5 +1,6 @@
-import logging
 import inspect
+import logging
+
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
@@ -8,24 +9,21 @@ import scipy.stats as spst
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
-from skimage.morphology import skeletonize, ball, disk, square, cube
-from porespy.tools import settings
+from skimage.morphology import ball, cube, disk, skeletonize, square
+
 from porespy.filters import (
+    fill_closed_pores,
     local_thickness,
     pc_to_seq,
-    fill_closed_pores,
-    find_invalid_pores,
 )
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
-    extend_slice,
-    get_tqdm,
-    get_slices_slabs,
     get_edt,
-    ps_round,
+    get_slices_slabs,
+    get_tqdm,
+    settings,
 )
-
 
 __all__ = [
     "boxcount",

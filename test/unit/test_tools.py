@@ -1,11 +1,12 @@
 import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
-import porespy as ps
 import pytest
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 
+import porespy as ps
 
 edt = ps.tools.get_edt()
 ps.settings.tqdm['disable'] = True

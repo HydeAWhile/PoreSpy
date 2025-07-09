@@ -1,18 +1,19 @@
-import logging
 import inspect
+import logging
 import time
+
 import dask
 import numpy as np
-import pandas as pd
 import openpnm as op
+import pandas as pd
+
 from porespy.tools import (
     Results,
-    get_tqdm,
     get_slices_grid,
     get_slices_random,
+    get_tqdm,
+    settings,
 )
-from porespy.tools import settings
-
 
 __all__ = [
     "rev_porosity",
@@ -300,6 +301,7 @@ def rev_plot(df: pd.DataFrame, size: int, figsize: list = [10, 7]):
     '''
 
     import matplotlib.pyplot as plt
+
     from porespy.visualization import set_mpl_style
     set_mpl_style()
 
@@ -343,9 +345,10 @@ def rev_plot(df: pd.DataFrame, size: int, figsize: list = [10, 7]):
 
 
 if __name__ == "__main__":
-    import porespy as ps
-    import numpy as np
     import matplotlib.pyplot as plt
+    import numpy as np
+
+    import porespy as ps
     ps.settings.tqdm['disable'] = False
     ps.settings.tqdm['leave'] = True
 
@@ -361,8 +364,8 @@ if __name__ == "__main__":
     # %%
     fig, ax = plt.subplots(1, 3)
     ax[0].scatter(poro.volume, poro.porosity, marker='.', alpha=0.25, fc='tab:red', ec='none')
-    ax[1].scatter(rev.volume[rev.axis==0], rev.tau[rev.axis==0], marker='.', alpha=0.25, fc='tab:blue', ec='none')
-    ax[2].scatter(rev.porosity_perc[rev.axis==0], rev.tau[rev.axis==0], marker='.', alpha=0.25, fc='tab:green', ec='none')
+    ax[1].scatter(rev.volume[rev.axis == 0], rev.tau[rev.axis == 0], marker='.', alpha=0.25, fc='tab:blue', ec='none')
+    ax[2].scatter(rev.porosity_perc[rev.axis == 0], rev.tau[rev.axis == 0], marker='.', alpha=0.25, fc='tab:green', ec='none')
     ax[0].set_ylim([0, 1])
     ax[0].set_xlim([0, im.size])
     ax[0].set_ylabel('Porosity')

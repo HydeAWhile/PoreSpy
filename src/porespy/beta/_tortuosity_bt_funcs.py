@@ -1,12 +1,13 @@
-import time
 import logging
+import time
+
 import dask
-import porespy as ps
 import numpy as np
 import openpnm as op
 import pandas as pd
-from porespy.tools import Results, get_edt, get_tqdm
 
+import porespy as ps
+from porespy.tools import Results, get_edt, get_tqdm
 
 __all__ = [
     'tortuosity_bt',
@@ -98,7 +99,7 @@ def get_block_sizes(im, block_size_range=[10, 100]):
     return block_sizes
 
 
-def tortuosity_map(im, block_size:int, dask_on=True):
+def tortuosity_map(im, block_size: int, dask_on=True):
     """
     Compute tortuosity and diffusive conductance on a series
     of blocks determined by the block size.
@@ -219,7 +220,7 @@ def block_size_to_divs(shape, block_size):
     divs = np.clip(divs, a_min=2, a_max=shape)
     return divs
 
-def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
+def rev_plot(df: pd.DataFrame, size: int, figsize: list = [10, 7]):
     '''
     Creates REV plot from the output of `rev_tortuosity`.
 
@@ -257,13 +258,13 @@ def rev_plot(df:pd.DataFrame, size:int, figsize:list=[10,7]):
         fig, axes = plt.subplots(figsize=figsize)
 
         # filter for one axis
-        tmp = df[df['axis']==axis]
+        tmp = df[df['axis'] == axis]
 
         data = []
         vol_frac = []
 
         for vol in np.unique(tmp['volume']):
-            taus = tmp[tmp['volume']==vol]["tau"]
+            taus = tmp[tmp['volume'] == vol]["tau"]
 
             unique_tau = sorted(set(taus), reverse=True)
 
@@ -316,9 +317,9 @@ def df_to_tortuosity(im, df):
 
     net = op.network.Cubic(shape=divs)
     air = op.phase.Phase(network=net)
-    gx = df['g'][df['axis']==0]
-    gy = df['g'][df['axis']==1]
-    gz = df['g'][df['axis']==2]
+    gx = df['g'][df['axis'] == 0]
+    gy = df['g'][df['axis'] == 1]
+    gz = df['g'][df['axis'] == 2]
 
     g = np.hstack([gz, gy, gx])
 
@@ -377,9 +378,10 @@ def tortuosity_bt(im, block_size=None, method="chords", use_dask=True):
     return tau
 
 
-if __name__ =="__main__":
-    import porespy as ps
+if __name__ == "__main__":
     import numpy as np
+
+    import porespy as ps
 
     np.random.seed(1)
 

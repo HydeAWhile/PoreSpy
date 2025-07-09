@@ -1,7 +1,8 @@
-import numpy as np
 import inspect
-from porespy.tools import settings
-from porespy.tools import get_tqdm
+
+import numpy as np
+
+from porespy.tools import get_tqdm, settings
 
 tqdm = get_tqdm()
 

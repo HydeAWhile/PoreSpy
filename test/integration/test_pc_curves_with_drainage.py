@@ -1,7 +1,7 @@
-import numpy as np
-import porespy as ps
 import matplotlib.pyplot as plt
+import numpy as np
 
+import porespy as ps
 
 edt = ps.tools.get_edt()
 
@@ -122,7 +122,7 @@ def test_drainage(plot=False):
     assert Snwp.max() < 1.0
 
     # Residual, no trapping
-    Pc, Snwp = ps.metrics.pc_map_to_pc_curve(im=im,  pc=drn3.im_pc, seq=drn3.im_seq)
+    Pc, Snwp = ps.metrics.pc_map_to_pc_curve(im=im, pc=drn3.im_pc, seq=drn3.im_seq)
     assert Pc.min() == -np.inf
     assert Pc.max() < np.inf
     assert Snwp.min() == snwp_r

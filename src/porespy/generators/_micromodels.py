@@ -1,18 +1,16 @@
 from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as spim
 import scipy.stats as spst
-from porespy.generators import (
-    lattice_spheres,
-    spheres_from_coords
-)
+
+from porespy.generators import lattice_spheres, spheres_from_coords
 from porespy.tools import (
     _insert_disks_at_points_parallel,
     extend_slice,
     parse_shape,
 )
-
 
 __all__ = [
     'rectangular_pillars_array',

@@ -1,10 +1,10 @@
 import numpy as np
-import porespy as ps
 import scipy.ndimage as spim
-from skimage.morphology import square
 from GenericTest import GenericTest
-from porespy.tools import get_edt
+from skimage.morphology import square
 
+import porespy as ps
+from porespy.tools import get_edt
 
 edt = get_edt()
 ps.settings.tqdm['disable'] = True

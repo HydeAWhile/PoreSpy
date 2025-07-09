@@ -1,19 +1,19 @@
 import logging
+from typing import List, Literal
+
+import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
-import numpy as np
-from typing import List, Literal
 from numba import njit
-from skimage.morphology import ball, disk
+
 from porespy.filters import trim_disconnected_blobs
 from porespy.tools import (
     _insert_disk_at_point,
-    ps_round,
-    unpad,
     get_edt,
     parse_shape,
+    ps_round,
+    unpad,
 )
-
 
 __all__ = [
     "pseudo_gravity_packing",
