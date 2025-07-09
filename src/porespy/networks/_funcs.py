@@ -6,7 +6,7 @@ import scipy.ndimage as spim
 from skimage.morphology import ball, cube
 from skimage.segmentation import find_boundaries
 
-from porespy import settings
+from porespy.tools import settings
 from porespy.generators import borders
 from porespy.tools import get_tqdm, insert_cylinder, make_contiguous, overlay
 
@@ -47,7 +47,7 @@ def map_to_regions(regions, values):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/map_to_regions.html>`_
+    <https://porespy.org/examples/networks/reference/map_to_regions.html>`__
     to view online example.
 
     """
@@ -88,7 +88,7 @@ def add_boundary_regions(regions, pad_width=3):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/add_boundary_regions.html>`_
+    <https://porespy.org/examples/networks/reference/add_boundary_regions.html>`__
     to view online example.
 
     """
@@ -253,7 +253,7 @@ def generate_voxel_image(network, pore_shape="sphere", throat_shape="cylinder",
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/generator_voxel_image.html>`_
+    <https://porespy.org/examples/networks/reference/generator_voxel_image.html>`__
     to view online example.
 
     """
@@ -306,7 +306,7 @@ def label_phases(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/label_phases.html>`_
+    <https://porespy.org/examples/networks/reference/label_phases.html>`__
     to view online example.
 
     """
@@ -355,7 +355,7 @@ def label_boundaries(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/label_boundaries.html>`_
+    <https://porespy.org/examples/networks/reference/label_boundaries.html>`__
     to view online example.
 
     """

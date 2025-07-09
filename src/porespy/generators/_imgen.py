@@ -7,9 +7,10 @@ import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
 from numba import njit
-from porespy import metrics, settings
+from porespy import metrics
 from porespy.filters import chunked_func
 from porespy.tools import (
+    settings,
     _insert_disk_at_points,
     _insert_disk_at_points_parallel,
     all_to_uniform,
@@ -78,7 +79,7 @@ def faces(shape, inlet: int = None, outlet: int = None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/faces.html>`_
+    <https://porespy.org/examples/generators/reference/faces.html>`__
     to view online example.
 
     """
@@ -130,7 +131,7 @@ def borders(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/borders.html>`_
+    <https://porespy.org/examples/generators/reference/borders.html>`__
     to view online example.
 
     """
@@ -246,7 +247,7 @@ def ramp(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/ramp.html>`_
+    <https://porespy.org/examples/generators/reference/ramp.html>`__
     to view online example.
     """
     shape = parse_shape(shape)
@@ -283,7 +284,7 @@ def cylindrical_plug(shape, r=None, axis=2):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/cylindrical_plug.html>`_
+    <https://porespy.org/examples/generators/reference/cylindrical_plug.html>`__
     to view online example.
 
     """
@@ -349,7 +350,7 @@ def insert_shape(im, element, center=None, corner=None, value=1, mode="overwrite
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/insert_shape.html>`_
+    <https://porespy.org/examples/generators/reference/insert_shape.html>`__
     to view online example.
 
     """
@@ -495,7 +496,7 @@ def random_spheres(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/random_spheres.html>`_
+    <https://porespy.org/examples/generators/reference/random_spheres.html>`__
     to view online example.
 
     """
@@ -681,7 +682,7 @@ def bundle_of_tubes(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/bundle_of_tubes.html>`_
+    <https://porespy.org/examples/generators/reference/bundle_of_tubes.html>`__
     to view online example.
 
     """
@@ -762,7 +763,7 @@ def polydisperse_spheres(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/polydisperse_spheres.html>`_
+    <https://porespy.org/examples/generators/reference/polydisperse_spheres.html>`__
     to view online example.
 
     """
@@ -824,7 +825,7 @@ def voronoi_edges(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/voronoi_edges.html>`_
+    <https://porespy.org/examples/generators/reference/voronoi_edges.html>`__
     to view online example.
 
     """
@@ -952,7 +953,7 @@ def lattice_spheres(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/lattice_spheres.html>`_
+    <https://porespy.org/examples/generators/reference/lattice_spheres.html>`__
     to view online example.
 
     """
@@ -1079,7 +1080,7 @@ def overlapping_spheres(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/overlapping_spheres.html>`_
+    <https://porespy.org/examples/generators/reference/overlapping_spheres.html>`__
     to view online example.
 
     """
@@ -1207,7 +1208,7 @@ def blobs(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/blobs.html>`_
+    <https://porespy.org/examples/generators/reference/blobs.html>`__
     to view online example.
 
     """
@@ -1435,7 +1436,7 @@ def cylinders(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/cylinders.html>`_
+    <https://porespy.org/examples/generators/reference/cylinders.html>`__
     to view online example.
 
     """
@@ -1524,7 +1525,7 @@ def line_segment(X0, X1):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/line_segment.html>`_
+    <https://porespy.org/examples/generators/reference/line_segment.html>`__
     to view online example.
 
     """

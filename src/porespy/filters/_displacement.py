@@ -7,7 +7,7 @@ import scipy.ndimage as spim
 from skimage.morphology import ball, disk, square, cube
 from typing import Literal
 from numba import njit
-from porespy import settings
+from porespy.tools import settings
 from porespy.filters import flood, find_disconnected_voxels
 from porespy.tools import (
     make_contiguous,
@@ -231,7 +231,7 @@ def find_trapped_clusters(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_trapped_clusters.html>`_
+    <https://porespy.org/examples/filters/reference/find_trapped_clusters.html>`__
     to view online example.
 
     """

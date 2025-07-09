@@ -51,7 +51,7 @@ def tortuosity_fd(im, axis, solver=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/simulations/reference/tortuosity_fd.html>`_
+    <https://porespy.org/examples/simulations/reference/tortuosity_fd.html>`__
     to view online example.
 
     """

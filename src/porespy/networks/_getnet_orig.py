@@ -4,7 +4,7 @@ import numpy as np
 import scipy.ndimage as spim
 from edt import edt
 from skimage.morphology import ball, disk
-from porespy import settings
+from porespy.tools import settings
 from porespy.metrics import (
     region_interface_areas,
     region_surface_areas,
@@ -133,7 +133,7 @@ def regions_to_network(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/regions_to_network.html>`_
+    <https://porespy.org/examples/networks/reference/regions_to_network.html>`__
     to view online example.
 
     """

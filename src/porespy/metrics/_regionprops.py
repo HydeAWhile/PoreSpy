@@ -57,7 +57,7 @@ def props_to_DataFrame(regionprops):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/props_to_DataFrame.html>`_
+    <https://porespy.org/examples/metrics/reference/props_to_DataFrame.html>`__
     to view online example.
 
     """
@@ -116,7 +116,7 @@ def prop_to_image(regionprops, shape, prop):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/prop_to_image.html>`_
+    <https://porespy.org/examples/metrics/reference/prop_to_image.html>`__
     to view online example.
 
     """
@@ -212,7 +212,7 @@ def regionprops_3D(im):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/regionprops_3D.html>`_
+    <https://porespy.org/examples/metrics/reference/regionprops_3D.html>`__
     to view online example.
 
     """

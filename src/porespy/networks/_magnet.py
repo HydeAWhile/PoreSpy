@@ -28,7 +28,7 @@ from porespy.tools import (
 from porespy.generators import borders
 from skimage.morphology import square, cube
 from scipy.ndimage import maximum_position
-from porespy import settings
+from porespy.tools import settings
 from numba import jit
 
 

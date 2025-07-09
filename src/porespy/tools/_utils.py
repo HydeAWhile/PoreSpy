@@ -20,6 +20,7 @@ __all__ = [
     "get_edt",
     "get_skel",
     "parse_shape",
+    "Settings",
 ]
 
 

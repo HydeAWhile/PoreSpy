@@ -4,7 +4,7 @@ import numpy as np
 import scipy.ndimage as spim
 from scipy.ndimage import zoom as zm
 from skimage.morphology import ball
-from porespy import settings
+from porespy.tools import settings
 from porespy.tools import extend_slice, get_tqdm
 
 
@@ -46,7 +46,7 @@ def diffusive_size_factor_AI(regions, throat_conns, model,
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/diffusive_size_factor_AI.html>`_
+    <https://porespy.org/examples/networks/reference/diffusive_size_factor_AI.html>`__
     to view online example.
 
     """

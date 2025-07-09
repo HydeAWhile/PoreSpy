@@ -196,7 +196,7 @@ def snow2(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/snow2.html>`_
+    <https://porespy.org/examples/networks/reference/snow2.html>`__
     to view online example.
 
     """

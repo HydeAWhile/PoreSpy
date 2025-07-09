@@ -2,7 +2,7 @@ import logging
 import inspect
 import numpy as np
 import scipy.ndimage as spim
-from porespy import settings
+from porespy.tools import settings
 from porespy.tools import get_tqdm, parse_shape
 
 
@@ -49,7 +49,7 @@ def random_cantor_dust(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/randon_cantor_dust.html>`_
+    <https://porespy.org/examples/generators/reference/randon_cantor_dust.html>`__
     to view online example.
 
     """
@@ -110,7 +110,7 @@ def sierpinski_foam(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/sierpinski_foam.html>`_
+    <https://porespy.org/examples/generators/reference/sierpinski_foam.html>`__
     to view online example.
 
     """

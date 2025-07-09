@@ -18,7 +18,7 @@ from porespy.tools import (
     ps_round,
     make_contiguous,
 )
-from porespy import settings
+from porespy.tools import settings
 from edt import edt
 from numba import njit, prange
 

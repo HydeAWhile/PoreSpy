@@ -80,12 +80,12 @@ def fractal_noise(
     called `FastNoiseSIMD <https://github.com/Auburn/FastNoiseSIMD>`_.
     To access the more elaborate functionality and options of these
     packages, explore the `pyfastnoisesimd documentation
-    <https://pyfastnoisesimd.readthedocs.io/en/latest/overview.html>`_.
+    <https://pyfastnoisesimd.readthedocs.io/en/latest/overview.html>`__.
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/fractal_noise.html>`_
+    <https://porespy.org/examples/generators/reference/fractal_noise.html>`__
     to view online example.
 
     """

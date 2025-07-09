@@ -79,7 +79,7 @@ def bar(results, h='pdf', **kwargs):  # pragma: no cover
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/bar.html>`_
+    <https://porespy.org/examples/visualization/reference/bar.html>`__
     to view online example.
     """
     if 'edgecolor' not in kwargs:
@@ -130,7 +130,7 @@ def imshow(im, ind=None, axis=None, **kwargs):  # pragma: no cover
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/imshow.html>`_
+    <https://porespy.org/examples/visualization/reference/imshow.html>`__
     to view online example.
     """
     if 'origin' not in kwargs.keys():
@@ -167,7 +167,7 @@ def show_mesh(mesh):  # pragma: no cover
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/show_mesh.html>`_
+    <https://porespy.org/examples/visualization/reference/show_mesh.html>`__
     to view online example.
     """
     try:

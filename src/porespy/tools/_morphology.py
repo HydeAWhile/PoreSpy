@@ -71,7 +71,7 @@ def ps_disk(r, smooth=True):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/tools/reference/ps_disk.html>`_
+    <https://porespy.org/examples/tools/reference/ps_disk.html>`__
     to view online example.
 
     """
@@ -99,7 +99,7 @@ def ps_ball(r, smooth=True):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/tools/reference/ps_ball.html>`_
+    <https://porespy.org/examples/tools/reference/ps_ball.html>`__
     to view online example.
 
     """
@@ -129,7 +129,7 @@ def ps_round(r, ndim, smooth=True):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/tools/reference/ps_round.html>`_
+    <https://porespy.org/examples/tools/reference/ps_round.html>`__
     to view online example.
 
     """
@@ -163,7 +163,7 @@ def ps_rect(w, ndim):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/tools/reference/ps_rect.html>`_
+    <https://porespy.org/examples/tools/reference/ps_rect.html>`__
     to view online example.
 
     """

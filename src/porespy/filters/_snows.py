@@ -7,7 +7,7 @@ import scipy.spatial as sptl
 from numba import njit, prange
 from skimage.morphology import cube, square
 from skimage.segmentation import watershed
-from porespy import settings
+from porespy.tools import settings
 from porespy.filters import chunked_func
 from porespy.tools import (
     Results,
@@ -101,7 +101,7 @@ def snow_partitioning(im, dt=None, r_max=4, sigma=0.4, peaks=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/snow_partitioning.html>`_
+    <https://porespy.org/examples/filters/reference/snow_partitioning.html>`__
     to view online example.
 
     """
@@ -212,7 +212,7 @@ def snow_partitioning_n(im, r_max=4, sigma=0.4, peaks=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/snow_partitioning_n.html>`_
+    <https://porespy.org/examples/filters/reference/snow_partitioning_n.html>`__
     to view online example.
 
     """
@@ -312,7 +312,7 @@ def find_peaks(dt, r_max=4, strel=None, sigma=None, parallel_kw={"divs": 1}):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_peaks.html>`_
+    <https://porespy.org/examples/filters/reference/find_peaks.html>`__
     to view online example.
 
     """
@@ -371,7 +371,7 @@ def reduce_peaks(peaks):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/reduce_peaks.html>`_
+    <https://porespy.org/examples/filters/reference/reduce_peaks.html>`__
     to view online example.
 
     """
@@ -421,7 +421,7 @@ def trim_saddle_points(peaks, dt, maxiter=20):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_saddle_points.html>`_
+    <https://porespy.org/examples/filters/reference/trim_saddle_points.html>`__
     to view online example.
 
     """
@@ -497,7 +497,7 @@ def trim_saddle_points_legacy(peaks, dt, maxiter=10):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_saddle_points_legacy.html>`_
+    <https://porespy.org/examples/filters/reference/trim_saddle_points_legacy.html>`__
     to view online example.
     """
     new_peaks = np.zeros_like(peaks, dtype=bool)
@@ -580,7 +580,7 @@ def trim_nearby_peaks(peaks, dt, f=1):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_nearby_peaks.html>`_
+    <https://porespy.org/examples/filters/reference/trim_nearby_peaks.html>`__
     to view online example.
 
     """
@@ -685,7 +685,7 @@ def snow_partitioning_parallel(im,
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/snow_partitioning_parallel.html>`_
+    <https://porespy.org/examples/filters/reference/snow_partitioning_parallel.html>`__
     to view online example.
 
     """

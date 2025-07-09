@@ -24,3 +24,5 @@ def _get_version():
     if ver.endswith(suffix):
         ver = ver[:-len(suffix)]
     return ver
+
+settings = Settings()

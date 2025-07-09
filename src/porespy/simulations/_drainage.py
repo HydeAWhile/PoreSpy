@@ -4,7 +4,7 @@ import inspect
 import scipy.ndimage as spim
 from typing import Literal
 from skimage.morphology import ball, disk, cube, square
-from porespy import settings
+from porespy.tools import settings
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     _insert_disks_at_points_parallel,
@@ -550,7 +550,7 @@ def drainage(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/simulations/reference/drainage.html>`_
+    <https://porespy.org/examples/simulations/reference/drainage.html>`__
     to view online example.
     """
     if (residual is not None) and (outlets is not None):

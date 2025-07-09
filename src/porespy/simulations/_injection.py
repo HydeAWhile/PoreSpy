@@ -5,7 +5,7 @@ import numpy.typing as npt
 import heapq as hq
 from typing import Literal
 from numba import njit
-from porespy import settings
+from porespy.tools import settings
 from porespy.tools import (
     get_tqdm,
     make_contiguous,
@@ -571,7 +571,7 @@ def injection(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/injection.html>`_
+    <https://porespy.org/examples/filters/reference/injection.html>`__
     to view an online example.
 
 

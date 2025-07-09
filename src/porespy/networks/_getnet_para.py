@@ -194,7 +194,7 @@ def regions_to_network_parallel(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/regions_to_network.html>`_
+    <https://porespy.org/examples/networks/reference/regions_to_network.html>`__
     to view online example.
 
     """

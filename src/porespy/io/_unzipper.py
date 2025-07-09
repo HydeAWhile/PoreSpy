@@ -9,7 +9,7 @@ import numpy as np
 from pathlib import Path
 from zipfile import ZipFile
 from porespy.tools import get_tqdm
-from porespy import settings
+from porespy.tools import settings
 
 
 tqdm = get_tqdm()

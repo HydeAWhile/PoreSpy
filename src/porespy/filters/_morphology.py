@@ -50,7 +50,7 @@ def erode(im, r, dt=None, method='dt', smooth=True):
         An image the same size as `im` with the foreground eroded by the specified
         amount.
     """
-    from porespy import settings
+    from porespy.tools import settings
     if method == 'dt':
         if dt is None:
             dt = edt(im, parallel=settings.ncores)
@@ -93,7 +93,7 @@ def dilate(im, r, method='dt', smooth=True):
         An image the same size as `im` with the foreground eroded by the specified
         amount.
     """
-    from porespy import settings
+    from porespy.tools import settings
     im = im == 1
     if method == 'dt':
         dt = edt(~im, parallel=settings.ncores)

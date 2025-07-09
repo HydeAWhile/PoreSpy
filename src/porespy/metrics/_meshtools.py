@@ -3,7 +3,7 @@ import inspect
 import numpy as np
 import scipy.ndimage as spim
 from skimage import measure
-from porespy import settings
+from porespy.tools import settings
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
@@ -57,7 +57,7 @@ def region_volumes(regions, method='marching_cubes', voxel_size=(1, 1, 1)):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/mesh_volumes.html>`_
+    <https://porespy.org/examples/metrics/reference/mesh_volumes.html>`__
     to view online example.
 
     """
@@ -96,7 +96,7 @@ def mesh_volume(region, voxel_size=(1., 1., 1.)):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/mesh_volume.html>`_
+    <https://porespy.org/examples/metrics/reference/mesh_volume.html>`__
     to view online example.
 
     """
@@ -147,7 +147,7 @@ def region_surface_areas(regions, voxel_size=(1, 1, 1), strel=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/region_surface_areas.html>`_
+    <https://porespy.org/examples/metrics/reference/region_surface_areas.html>`__
     to view online example.
 
     """
@@ -205,7 +205,7 @@ def mesh_surface_area(mesh=None, verts=None, faces=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/mesh_surface_area.html>`_
+    <https://porespy.org/examples/metrics/reference/mesh_surface_area.html>`__
     to view online example.
 
     """
@@ -261,7 +261,7 @@ def region_interface_areas(regions, areas, voxel_size=1, strel=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/region_interface_areas.html>`_
+    <https://porespy.org/examples/metrics/reference/region_interface_areas.html>`__
     to view online example.
 
     """

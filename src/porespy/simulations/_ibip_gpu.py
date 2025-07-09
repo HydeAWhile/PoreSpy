@@ -1,7 +1,7 @@
 import logging
 import inspect
 import numpy as np
-from porespy import settings
+from porespy.tools import settings
 from porespy.tools import (
     Results,
     get_border,

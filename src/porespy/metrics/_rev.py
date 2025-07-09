@@ -11,7 +11,7 @@ from porespy.tools import (
     get_slices_grid,
     get_slices_random,
 )
-from porespy import settings
+from porespy.tools import settings
 
 
 __all__ = [
@@ -69,7 +69,7 @@ def rev_porosity(im, n=1000, slices=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/rev_porosity.html>`_
+    <https://porespy.org/examples/metrics/reference/rev_porosity.html>`__
     to view online example.
     """
     # TODO: This function is frustratingly slow.  Profiling indicates that all the

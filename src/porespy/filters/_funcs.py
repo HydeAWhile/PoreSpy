@@ -20,7 +20,7 @@ from porespy.tools import (
     get_tqdm,
     get_edt,
 )
-from porespy import settings
+from porespy.tools import settings
 from typing import Literal
 
 
@@ -84,7 +84,7 @@ def apply_padded(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/apply_padded.html>`_
+    <https://porespy.org/examples/filters/reference/apply_padded.html>`__
     to view online example.
 
     """
@@ -127,7 +127,7 @@ def hold_peaks(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/hold_peaks.html>`_
+    <https://porespy.org/examples/filters/reference/hold_peaks.html>`__
     to view online example.
 
     """
@@ -193,7 +193,7 @@ def distance_transform_lin(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/distance_transform_lin.html>`_
+    <https://porespy.org/examples/filters/reference/distance_transform_lin.html>`__
     to view online example.
 
     """
@@ -262,7 +262,7 @@ def trim_extrema(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_extrema.html>`_
+    <https://porespy.org/examples/filters/reference/trim_extrema.html>`__
     to view online example.
 
     """
@@ -338,7 +338,7 @@ def flood(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/flood.html>`_
+    <https://porespy.org/examples/filters/reference/flood.html>`__
     to view online example.
 
     """
@@ -400,7 +400,7 @@ def flood_func(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/flood_func.html>`_
+    <https://porespy.org/examples/filters/reference/flood_func.html>`__
     to view online example.
 
     """
@@ -445,7 +445,7 @@ def find_dt_artifacts(dt: npt.NDArray):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_dt_artifacts.html>`_
+    <https://porespy.org/examples/filters/reference/find_dt_artifacts.html>`__
     to view online example.
 
     """
@@ -497,7 +497,7 @@ def region_size(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/region_size.html>`_
+    <https://porespy.org/examples/filters/reference/region_size.html>`__
     to view online example.
 
     """
@@ -551,7 +551,7 @@ def apply_chords(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/apply_chords.html>`_
+    <https://porespy.org/examples/filters/reference/apply_chords.html>`__
     to view online example.
 
     """
@@ -620,7 +620,7 @@ def apply_chords_3D(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/apply_chords_3D.html>`_
+    <https://porespy.org/examples/filters/reference/apply_chords_3D.html>`__
     to view online example.
 
     """
@@ -736,7 +736,7 @@ def local_thickness(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/local_thickness.html>`_
+    <https://porespy.org/examples/filters/reference/local_thickness.html>`__
     to view online example.
 
     """
@@ -782,7 +782,7 @@ def trim_disconnected_blobs(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`_
+    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`__
     to view online example.
 
     """
@@ -911,7 +911,7 @@ def porosimetry(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/porosimetry.html>`_
+    <https://porespy.org/examples/filters/reference/porosimetry.html>`__
     to view online example.
 
     """
@@ -1094,7 +1094,7 @@ def nphase_border(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/nphase_border.html>`_
+    <https://porespy.org/examples/filters/reference/nphase_border.html>`__
     to view online example.
 
     """
@@ -1154,7 +1154,7 @@ def prune_branches(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/prune_branches.html>`_
+    <https://porespy.org/examples/filters/reference/prune_branches.html>`__
     to view online example.
 
     """
@@ -1282,7 +1282,7 @@ def chunked_func(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/chunked_func.html>`_
+    <https://porespy.org/examples/filters/reference/chunked_func.html>`__
     to view online example.
 
     """

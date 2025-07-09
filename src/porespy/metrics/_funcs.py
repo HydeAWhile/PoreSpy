@@ -9,7 +9,7 @@ from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from skimage.morphology import skeletonize, ball, disk, square, cube
-from porespy import settings
+from porespy.tools import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
@@ -255,7 +255,7 @@ def boxcount(im, bins=10):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/box_counting.html>`_
+    <https://porespy.org/examples/metrics/reference/box_counting.html>`__
     to view online example.
 
     """
@@ -336,7 +336,7 @@ def porosity(im, mask=None, fill_closed=False, fill_surface=False):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/porosity.html>`_
+    <https://porespy.org/examples/metrics/reference/porosity.html>`__
     to view online example.
 
     """
@@ -403,7 +403,7 @@ def porosity_profile(im, axis=0, span=1, mode='tile'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/porosity_profile.html>`_
+    <https://porespy.org/examples/metrics/reference/porosity_profile.html>`__
     to view online example.
 
     """
@@ -501,7 +501,7 @@ def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/radial_density.html>`_
+    <https://porespy.org/examples/metrics/reference/radial_density.html>`__
     to view online example.
 
     """
@@ -581,7 +581,7 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/linearl_path_distribution.html>`_
+    <https://porespy.org/examples/metrics/reference/linearl_path_distribution.html>`__
     to view online example.
 
     """
@@ -670,7 +670,7 @@ def chord_length_distribution(im, bins=10, log=False, voxel_size=1,
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/chord_length_distribution.html>`_
+    <https://porespy.org/examples/metrics/reference/chord_length_distribution.html>`__
     to view online example.
 
     """
@@ -749,7 +749,7 @@ def pore_size_distribution(im, bins=10, log=True, voxel_size=1):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/pore_size_distribution.html>`_
+    <https://porespy.org/examples/metrics/reference/pore_size_distribution.html>`__
     to view online example.
 
     """
@@ -808,7 +808,7 @@ def two_point_correlation_bf(im, spacing=10):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/two_point_correlation_bf.html>`_
+    <https://porespy.org/examples/metrics/reference/two_point_correlation_bf.html>`__
     to view online example.
 
     """
@@ -971,7 +971,7 @@ def two_point_correlation(im, voxel_size=1, bins=100):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/two_point_correlation.html>`_
+    <https://porespy.org/examples/metrics/reference/two_point_correlation.html>`__
     to view online example.
 
     """
@@ -1048,7 +1048,7 @@ def chord_counts(im):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/reference/metrics/chord_counts.html>`_
+    <https://porespy.org/examples/reference/metrics/chord_counts.html>`__
     to view online example.
 
     """
@@ -1084,7 +1084,7 @@ def phase_fraction(im, normed=True):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/phase_fraction.html>`_
+    <https://porespy.org/examples/metrics/reference/phase_fraction.html>`__
     to view online example.
 
     """
@@ -1135,7 +1135,7 @@ def pc_curve(im, pc, seq=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/pc_curve.html>`_
+    <https://porespy.org/examples/metrics/reference/pc_curve.html>`__
     to view online example.
 
     """
@@ -1326,7 +1326,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/satn_profile.html>`_
+    <https://porespy.org/examples/metrics/reference/satn_profile.html>`__
     to view online example.
     """
     span = max(1, span)
@@ -1402,7 +1402,7 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/find_h.html>`_
+    <https://porespy.org/examples/metrics/reference/find_h.html>`__
     to view online example.
 
     """

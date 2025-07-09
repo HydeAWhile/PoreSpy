@@ -112,7 +112,7 @@ def rectangular_pillars_array(
     Examples
     --------
         `Click here
-        <https://porespy.org/examples/generators/reference/rectangular_pillars_array.html>`_
+        <https://porespy.org/examples/generators/reference/rectangular_pillars_array.html>`__
         to view online example.
     """
     shape = parse_shape(shape)
@@ -210,7 +210,7 @@ def cylindrical_pillars_array(
     Examples
     --------
         `Click here
-        <https://porespy.org/examples/generators/reference/cylindrical_pillars_array.html>`_
+        <https://porespy.org/examples/generators/reference/cylindrical_pillars_array.html>`__
         to view online example.
     """
     shape = parse_shape(shape)
@@ -288,7 +288,7 @@ def cylindrical_pillars_mesh(
     Examples
     --------
         `Click here
-        <https://porespy.org/examples/generators/reference/cylindrical_pillars_mesh.html>`_
+        <https://porespy.org/examples/generators/reference/cylindrical_pillars_mesh.html>`__
         to view online example.
 
     """
