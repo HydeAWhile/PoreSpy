@@ -1,4 +1,3 @@
-import inspect
 import logging
 import dask
 import numpy as np
@@ -7,18 +6,14 @@ import operator
 import scipy.ndimage as spim
 from skimage.morphology import reconstruction
 from skimage.segmentation import clear_border
-from skimage.morphology import ball, disk, square, cube, diamond, octahedron
 from porespy.tools import (
     _check_for_singleton_axes,
     get_slices_grid,
     recombine,
     unpad,
-    extract_subsection,
-    ps_disk,
-    ps_ball,
-    ps_round,
     get_tqdm,
     get_edt,
+    get_strel,
 )
 from porespy import settings
 from typing import Literal
@@ -34,9 +29,7 @@ __all__ = [
     "flood",
     "flood_func",
     "hold_peaks",
-    "local_thickness",
     "nphase_border",
-    "porosimetry",
     "prune_branches",
     "region_size",
     "trim_disconnected_blobs",
@@ -46,8 +39,8 @@ __all__ = [
 
 edt = get_edt()
 tqdm = get_tqdm()
+strel = get_strel()
 logger = logging.getLogger(__name__)
-strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
 def apply_padded(
@@ -640,111 +633,6 @@ def apply_chords_3D(
     return chords
 
 
-def local_thickness(
-    im: npt.NDArray,
-    sizes: int = 25,
-    mode: Literal['hybrid', 'dt', 'mio'] = "hybrid",
-    parallel_kw: dict = {"divs": 1}
-):
-    r"""
-    For each voxel, this function calculates the radius of the largest
-    sphere that both engulfs the voxel and fits entirely within the
-    foreground.
-
-    This is not the same as a simple distance transform, which finds the
-    largest sphere that could be *centered* on each voxel.
-
-    Parameters
-    ----------
-    im : ndarray
-        A binary image with the phase of interest set to True
-    sizes : array_like or scalar
-        The sizes to invade.  If a list of values of provided they are
-        used directly. If a scalar is provided then that number of points
-        spanning the min and max of the distance transform are used.
-    mode : str
-        Controls with method is used to compute the result. Options are:
-
-        ============ ===============================================================
-        Mode         Description
-        ============ ===============================================================
-        'hybrid'     (default) Performs a distance transform of the void space,
-                     thresholds to find voxels larger than `sizes[i]`, trims
-                     the resulting mask if `access_limitations` is `True`, then
-                     dilates it using the efficient fft-method to obtain the
-                     non-wetting fluid configuration.
-        'dt'         Same as 'hybrid', except uses a second distance transform,
-                     relative to the thresholded mask, to find the invading fluid
-                     configuration. The choice of 'dt' or 'hybrid' depends on speed,
-                     which is system and installation specific.
-        'mio'        Using a single morphological image opening step to obtain
-                     the invading fluid confirguration directly, *then* trims if
-                     `access_limitations` is `True`. This method is not ideal
-                     and is included for comparison purposes.
-        ============ ===============================================================
-
-    divs : int or array_like
-        The number of times to divide the image for parallel processing.  If `1`
-        then parallel processing does not occur.  `2` is equivalent to
-        `[2, 2, 2]` for a 3D image.  The number of cores used is specified in
-        `porespy.settings.ncores` and defaults to all cores.
-
-    parallel_kw : dict
-        Dictionary containing the settings for parallelization by chunking. The
-        optional settings include divs (scalar or list of scalars,
-        default = 1), overlap (scalar or list of scalars, unused in this func),
-        and cores (scalar, default is all available cores).
-
-        Divs is the number of times to divide the image for parallel
-        processing. If `1` then parallel processing does not occur. `2` is
-        equivalent to `[2, 2, 2]` for a 3D image.
-
-        Overlap is the amount of overlap to apply between chunks. In this
-        function, the overlap is controlled by the distance transform and
-        cannot be altered in any way.
-
-        Cores is the number of cores that will be used to parallel process all
-        domains. If ``None`` then all cores will be used but user can specify
-        any integer values to control the memory usage. Setting value to 1 will
-        effectively process the chunks in serial to minimize memory usage.
-
-    Returns
-    -------
-    image : ndarray
-        A copy of `im` with the pore size values in each voxel.
-
-    See Also
-    --------
-    porosimetry
-
-    Notes
-    -----
-    The term *foreground* is used since this function can be applied to
-    both pore space or the solid, whichever is set to `True`.
-
-    This function is identical to `porosimetry` with `access_limited`
-    set to `False`.
-
-    The way local thickness is found in PoreSpy differs from the
-    traditional method (i.e. used in ImageJ
-    `<https://imagej.net/Local_Thickness>`_). Our approach is probably
-    slower, but it allows for the same code to be used for
-    `local_thickness` and `porosimetry`, since we can 'trim' invaded
-    regions that are not connected to the inlets in the `porosimetry`
-    function. This is not needed in `local_thickness` however.
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/local_thickness.html>`_
-    to view online example.
-
-    """
-    im_new = porosimetry(im=im, sizes=sizes, access_limited=False, mode=mode,
-                         parallel_kw=parallel_kw)
-    return im_new
-
-
 def trim_disconnected_blobs(
     im: npt.NDArray,
     inlets: npt.NDArray,
@@ -801,214 +689,6 @@ def trim_disconnected_blobs(
     im2 = np.isin(labels, keep)
     im2 = im2 * im
     return im2
-
-
-def porosimetry(
-    im: npt.NDArray,
-    sizes: int = 25,
-    inlets=None,
-    access_limited: bool = True,
-    mode: Literal['hybrid', 'dt', 'mio'] = 'hybrid',
-    parallel_kw: dict = {"divs": 1}
-):
-    r"""
-    Performs a porosimetry simulution on an image.
-
-    Parameters
-    ----------
-    im : ndarray
-        An ND image of the porous material containing `True` values in the
-        pore space.
-    sizes : array_like or scalar
-        The sizes to invade.  If a list of values of provided they are
-        used directly.  If a scalar is provided then that number of points
-        spanning the min and max of the distance transform are used.
-    inlets : ndarray, boolean
-        A boolean mask with `True` values indicating where the invasion
-        enters the image.  By default all faces are considered inlets,
-        akin to a mercury porosimetry experiment.  Users can also apply
-        solid boundaries to their image externally before passing it in,
-        allowing for complex inlets like circular openings, etc.
-        This argument is only used if `access_limited` is `True`.
-    access_limited : bool
-        This flag indicates if the intrusion should only occur from the
-        surfaces (`access_limited` is `True`, which is the default),
-        or if the invading phase should be allowed to appear in the core
-        of the image.  The former simulates experimental tools like
-        mercury intrusion porosimetry, while the latter is useful for
-        comparison to gauge the extent of shielding effects in the sample.
-    mode : str
-        Controls with method is used to compute the result. Options are:
-
-        ============ ===============================================================
-        Mode         Description
-        ============ ===============================================================
-        'hybrid'     (default) Performs a distance tranform of the void
-                     space, thresholds to find voxels larger than `sizes[i]`,
-                     trims the resulting mask if `access_limitations` is `True`,
-                     then dilates it using the efficient fft-method to obtain the
-                     non-wetting fluid configuration.
-        'dt'         Same as 'hybrid', except uses a second distance
-                     transform relative to the thresholded mask, to find the
-                     invading fluid configuration. The choice of 'dt' or 'hybrid'
-                     depends on speed, which is system and installation specific.
-        'mio'        Uses binary erosion followed by dilation to obtain the invading
-                     fluid configuration directly. If `access_limitated` is
-                     `True` then disconnected blobs are trimmmed before the
-                     dilation. This is the only method that can be parallelized by
-                     chunking (see `divs` and `cores`).
-        ============ ===============================================================
-
-    divs : int or array_like
-        The number of times to divide the image for parallel processing.
-        If `1` then parallel processing does not occur.  `2` is
-        equivalent to `[2, 2, 2]` for a 3D image.  The number of cores
-        used is specified in `porespy.settings.ncores` and defaults to
-        all cores.
-
-    parallel_kw : dict
-        Dictionary containing the settings for parallelization by chunking. The
-        optional settings include divs (scalar or list of scalars,
-        default = 1), overlap (scalar or list of scalars, unused in this func),
-        and cores (scalar, default is all available cores).
-
-        Divs is the number of times to divide the image for parallel
-        processing. If `1` then parallel processing does not occur. `2` is
-        equivalent to `[2, 2, 2]` for a 3D image.
-
-        Overlap is the amount of overlap to apply between chunks. In this
-        function, the overlap is controlled by the distance transform and
-        cannot be altered in any way.
-
-        Cores is the number of cores that will be used to parallel process all
-        domains. If ``None`` then all cores will be used but user can specify
-        any integer values to control the memory usage. Setting value to 1 will
-        effectively process the chunks in serial to minimize memory usage.
-
-    Returns
-    -------
-    image : ndarray
-        A copy of `im` with voxel values indicating the sphere radius at
-        which it becomes accessible from the `inlets`.  This image can be
-        used to find invading fluid configurations as a function of
-        applied capillary pressure by applying a boolean comparison:
-        `inv_phase = im > r` where `r` is the radius (in voxels) of
-        the invading sphere.  Of course, `r` can be converted to
-        capillary pressure using a preferred model.
-
-    Notes
-    -----
-    There are many ways to perform this filter, and PoreSpy offers 3,
-    which users can choose between via the `mode` argument. These
-    methods all work in a similar way by finding which foreground voxels
-    can accomodate a sphere of a given radius, then repeating for smaller
-    radii.
-
-    See Also
-    --------
-    local_thickness
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/porosimetry.html>`_
-    to view online example.
-
-    """
-    # parse out divs, cores from parallel_kw, get from settings
-    divs = parallel_kw.get("divs", settings.divs)
-    cores = parallel_kw.get("cores", settings.ncores)
-    from porespy.filters import fftmorphology
-    from porespy.generators import borders
-    im = np.squeeze(im)
-    dt = edt(im > 0)
-
-    if inlets is None:
-        inlets = borders(im.shape, mode="faces")
-
-    if isinstance(sizes, int):
-        sizes = np.logspace(start=np.log10(np.amax(dt)), stop=0, num=sizes)
-    else:
-        sizes = np.unique(sizes)[-1::-1]
-
-    if im.ndim == 2:
-        strel = ps_disk
-        strel_2 = disk
-    else:
-        strel = ps_ball
-        strel_2 = ball
-
-    parallel = False
-    if isinstance(divs, int):
-        divs = [divs]*im.ndim
-    if max(divs) > 1:
-        logger.info(f'Performing {inspect.currentframe().f_code.co_name} in parallel')
-        parallel = True
-
-    if mode == "mio":
-        pw = int(np.floor(dt.max()))
-        impad = np.pad(im, mode="symmetric", pad_width=pw)
-        inlets = np.pad(inlets, mode="symmetric", pad_width=pw)
-        # sizes = np.unique(np.around(sizes, decimals=0).astype(int))[-1::-1]
-        imresults = np.zeros(np.shape(impad))
-        desc = inspect.currentframe().f_code.co_name  # Get current func name
-        for r in tqdm(sizes, desc=desc, **settings.tqdm):
-            if parallel:
-                parallel_kw["overlap"] = int(r) + 1
-                imtemp = chunked_func(func=fftmorphology,
-                                      im=impad, strel=strel(r),
-                                      mode='erosion', parallel_kw=parallel_kw)
-            else:
-                imtemp = fftmorphology(im=impad, strel=strel(r), mode='erosion')
-            if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
-            if parallel:
-                parallel_kw["overlap"] = int(r) + 1
-                imtemp = chunked_func(func=fftmorphology,
-                                      im=imtemp, strel=strel(r),
-                                      mode='dilation', parallel_kw=parallel_kw)
-            else:
-                imtemp = fftmorphology(im=imtemp, strel=strel(r), mode='dilation')
-            if np.any(imtemp):
-                imresults[(imresults == 0) * imtemp] = r
-        imresults = extract_subsection(imresults, shape=im.shape)
-    elif mode == "dt":
-        imresults = np.zeros(np.shape(im))
-        desc = inspect.currentframe().f_code.co_name  # Get current func name
-        for r in tqdm(sizes, desc=desc, **settings.tqdm):
-            imtemp = dt >= r
-            if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
-            if np.any(imtemp):
-                if parallel:
-                    parallel_kw["overlap"] = int(r) + 1
-                    imtemp = chunked_func(func=lambda x: edt(x),
-                                          data=~imtemp, im_arg='data',
-                                          parallel=0,
-                                          parallel_kw=parallel_kw) < r
-                else:
-                    imtemp = edt(~imtemp) < r
-                imresults[(imresults == 0) * imtemp] = r
-    elif mode == "hybrid":
-        imresults = np.zeros(np.shape(im))
-        desc = inspect.currentframe().f_code.co_name  # Get current func name
-        for r in tqdm(sizes, desc=desc, **settings.tqdm):
-            imtemp = dt >= r
-            if access_limited:
-                imtemp = trim_disconnected_blobs(imtemp, inlets, conn='min')
-            if np.any(imtemp):
-                if parallel:
-                    parallel_kw["overlap"] = int(r) + 1
-                    imtemp = chunked_func(func=fftmorphology, mode='dilation',
-                                          im=imtemp, strel=strel(r),
-                                          parallel_kw=parallel_kw)
-                else:
-                    imtemp = fftmorphology(imtemp, strel(r),
-                                           mode="dilation")
-                imresults[(imresults == 0) * imtemp] = r
-    else:
-        raise Exception("Unrecognized mode " + mode)
-    return imresults
 
 
 def _get_axial_shifts(ndim=2, conn='min'):
@@ -1200,7 +880,7 @@ def prune_branches(
 
 def chunked_func(
     func,
-    parallel_kw = {"divs": 2, "overlap": None, "cores": None},
+    parallel_kw={"divs": 2, "overlap": None, "cores": None},
     im_arg=["input", "image", "im"],
     strel_arg=["strel", "structure", "footprint"],
     **kwargs,

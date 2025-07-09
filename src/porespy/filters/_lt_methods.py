@@ -1,16 +1,30 @@
+import logging
+import inspect
 import numpy as np
+import numpy.typing as npt
+from porespy import settings
 from porespy.tools import (
     get_edt,
     _insert_disk_at_points,
+    get_tqdm,
+    get_strel,
+    ps_round,
 )
+
 from numba import njit, prange
 
 
 edt = get_edt()
+tqdm = get_tqdm()
+logger = logging.getLogger(__name__)
+strel = get_strel()
+
 
 __all__ = [
     "local_thickness_bf",
-    "local_thickness",
+    "local_thickness_imj",
+    "local_thickness_dt",
+    "local_thickness_conv",
 ]
 
 
@@ -40,8 +54,9 @@ def local_thickness_bf(im, dt=None, mask=None, smooth=True):
     Notes
     -----
     This function uses brute force, meaning that is inserts spheres at every single
-    pixel or voxel without making any attempt to reduce the number of insertion
-    sites. This should probably be considered a reference implementation.
+    pixel or voxel in the void phase without making any attempt to reduce the number
+    of insertion sites. This provides a reference implementation for comparing
+    accuracy of other methods.
     """
     if dt is None:
         dt = edt(im)
@@ -86,12 +101,9 @@ def _run3D_bf(im, dt, mask, inds, smooth):
     return im3
 
 
-def local_thickness(im, dt=None, smooth=False, approx=False):
+def local_thickness_imj(im, dt=None, smooth=False, approx=False):
     r"""
     Insert a maximally inscribed sphere at every pixel labelled by sphere radius
-
-    This version uses some logic to only insert spheres at locations which
-    are not fully overlapped by larger spheres to reduce the number of insertions
 
     Parameters
     ----------
@@ -113,6 +125,11 @@ def local_thickness(im, dt=None, smooth=False, approx=False):
     lt : ndarray
         The local thickness of the image with each voxel labelled according to the
         radius of the largest sphere which overlaps it
+
+    Notes
+    -----
+    This version uses some logic to only insert spheres at locations which
+    are not fully overlapped by larger spheres to reduce the number of insertions
     """
     if dt is None:
         dt = edt(im)
@@ -249,31 +266,172 @@ def r_to_inds_2d(r):
     return xx, yy
 
 
+def local_thickness_conv(
+    im: npt.NDArray,
+    dt: npt.NDArray = None,
+    sizes: int = 25,
+    smooth: bool = True,
+):
+    r"""
+    Calculates the radius of the largest sphere that overlaps each voxel while
+    fitting entirely within the void space.
+
+    Parameters
+    ----------
+    im : ndarray
+        A binary image with the phase of interest set to `True`
+    dt : ndarray
+        The distance transform of the void space. If not provided it will be computed
+        but providing it saves time. Note that rounding and/or converting the values
+        to integers and using `sizes=None` can save time by limiting the number of
+        sizes that are used.
+    sizes : array_like or scalar
+        The sizes to insert. If a list of values of provided they are
+        used directly. If a scalar is provided then that number of points
+        spanning the min and max of the distance transform are used. If `None`, the
+        all the unique values in the distance transform are used, which may become
+        time consuming.
+    smooth : bool, optional
+        Indicates if protrusions should be removed from the faces of the spheres
+        or not. Default is `True`.
+
+    Returns
+    -------
+    image : ndarray
+        A copy of `im` with the pore size values in each voxel
+
+    Notes
+    -----
+    The way local thickness is found in PoreSpy differs from the
+    traditional method (i.e. used in ImageJ
+    `<https://imagej.net/Local_Thickness>`_).
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/local_thickness_conv.html>`_
+    to view online example.
+
+    """
+    from porespy.filters import fftmorphology
+
+    im = np.squeeze(im)
+
+    if dt is None:
+        dt = edt(im > 0)
+
+    if sizes is None:
+        sizes = np.unique(dt[im])
+    elif isinstance(sizes, int):
+        sizes = np.logspace(start=np.log10(np.amax(dt)), stop=0, num=sizes)
+    else:
+        sizes = np.unique(sizes)[-1::-1]
+
+    imresults = np.zeros(np.shape(im))
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for r in tqdm(sizes, desc=desc, **settings.tqdm):
+        imtemp = dt >= r
+        if np.any(imtemp):
+            se = ps_round(r, ndim=im.ndim, smooth=smooth)
+            imtemp = fftmorphology(imtemp, se, mode="dilation")
+            imresults[(imresults == 0) * imtemp] = r
+
+    return imresults
+
+
+def local_thickness_dt(
+    im: npt.NDArray,
+    dt: npt.NDArray = None,
+    sizes: int = 25,
+    smooth: bool = True,
+):
+    r"""
+    Calculates the radius of the largest sphere that overlaps each voxel while
+    fitting entirely within the void space.
+
+    Parameters
+    ----------
+    im : ndarray
+        A binary image with the phase of interest set to `True`
+    dt : ndarray
+        The distance transform of the void space. If not provided it will be computed
+        but providing it saves time. Note that rounding and/or converting the values
+        to integers and using `sizes=None` can save time by limiting the number of
+        sizes that are used.
+    sizes : array_like or scalar
+        The sizes to insert. If a list of values of provided they are
+        used directly. If a scalar is provided then that number of points
+        spanning the min and max of the distance transform are used. If `None`, then
+        all the unique values in the distance transform are used, which may become
+        time consuming.
+    smooth : bool, optional
+        Indicates if protrusions should be removed from the faces of the spheres
+        or not. Default is `True`.
+
+    Returns
+    -------
+    image : ndarray
+        A copy of `im` with the pore size values in each voxel
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/local_thickness_dt.html>`_
+    to view online example.
+
+    """
+    im = np.squeeze(im)
+
+    if dt is None:
+        dt = edt(im > 0)
+
+    # Parse given sizes
+    if sizes is None:
+        sizes = np.unique(dt[im])
+    elif isinstance(sizes, int):
+        sizes = np.logspace(start=np.log10(np.amax(dt)), stop=0, num=sizes)
+    else:
+        sizes = np.unique(sizes)[-1::-1]
+
+    im_results = np.zeros(np.shape(im))
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for r in tqdm(sizes, desc=desc, **settings.tqdm):
+        im_temp = dt >= r  # Perform erosion
+        if np.any(im_temp):
+            # Perform dilation
+            im_temp = edt(~im_temp) < r if smooth else edt(~im_temp) <= r
+            # Add values to im_results
+            im_results[(im_results == 0) * im_temp] = r
+
+    return im_results
+
+
 if __name__ == "__main__":
+
     import porespy as ps
     import matplotlib.pyplot as plt
     from localthickness import local_thickness as loct
 
-    im = ~ps.generators.random_spheres([50, 50, 50], r=10, clearance=10, seed=0)
+    im = ~ps.generators.random_spheres([150, 150, 150], r=10, clearance=10, seed=0)
     dt = edt(im)
     ps.tools.tic()
-    lt1, count, used = local_thickness(im, dt=dt, smooth=True, approx=True)
+    lt1, count, used = local_thickness_imj(im, dt=dt, smooth=True, approx=True)
     t1 = ps.tools.toc(quiet=True)
     ps.tools.tic()
-    lt2, count, used = local_thickness(im, dt=dt, smooth=True, approx=False)
+    lt2, count, used = local_thickness_imj(im, dt=dt, smooth=True, approx=False)
     t2 = ps.tools.toc(quiet=True)
     ps.tools.tic()
-    lt3 = ps.filters.local_thickness(im, sizes=np.unique(dt[im].astype(int)), mode='dt')
+    lt3 = local_thickness_dt(im, dt=dt, sizes=np.unique(dt[im].astype(int)))
     t3 = ps.tools.toc(quiet=True)
     ps.tools.tic()
     lt4 = loct(im)
     t4 = ps.tools.toc(quiet=True)
-    print(f"Times are:")
+    print("Times are:")
     print(f" Reference: {t2}")
     print(f" New Method: {t1}")
     print(f" PoreSpy: {t3}")
     print(f" Dahl: {t4}")
-    print(f"Errors are:")
+    print("Errors are:")
     print(f" New Method: {np.sum(lt2 != lt1)/im.sum()}")
     print(f" PoreSpy: {np.sum(lt2 != lt3)/im.sum()}")
     print(f" Dahl: {np.sum(lt2 != lt4)/im.sum()}")

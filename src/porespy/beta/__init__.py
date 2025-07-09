@@ -3,4 +3,3 @@ from ._tortuosity_bt_funcs import *
 from ._generators import *
 from ._poly_cylinders import *
 from ._walker import *
-from ._lt_methods import *
