@@ -3,12 +3,13 @@ import inspect
 import logging
 import sys
 import time
-import psutil
-import numpy as np
-from functools import partial
-from dataclasses import dataclass
 import warnings
+from dataclasses import dataclass
+from functools import partial
+from pathlib import Path
 
+import numpy as np
+import psutil
 
 __all__ = [
     "sanitize_filename",
@@ -20,6 +21,7 @@ __all__ = [
     "get_edt",
     "get_skel",
     "parse_shape",
+    "get_fixtures_path",
 ]
 
 
@@ -44,7 +46,7 @@ def parse_shape(im_or_shape):
     """
     s = np.array(im_or_shape)
     if len(s) == 1:
-        s = np.array([s]*3).flatten()
+        s = np.array([s] * 3).flatten()
     elif s.ndim > 1:  # if arg is an image
         s = s.squeeze()
         s = np.shape(s)
@@ -326,7 +328,8 @@ def show_docstring(func):  # pragma: no cover
     # Although the markdown conversion is not numpydoc specific so is less pretty
     try:
         from npdoc_to_md import render_obj_docstring
-        name = func.__module__.rsplit('.', 1)[0] + '.' + func.__name__
+
+        name = func.__module__.rsplit(".", 1)[0] + "." + func.__name__
         txt = render_obj_docstring(name)
     except ModuleNotFoundError:
         txt = func.__doc__
@@ -413,5 +416,18 @@ class Results:
         return "\n".join(lines)
 
 
-if __name__ == "__main__":
-    pass
+def get_fixtures_path():
+    r"""
+    Get the path to the test fixtures directory.
+
+    Returns
+    -------
+    Path
+        Path object pointing to the test/fixtures directory relative to the
+        package root.
+    """
+    # Get the package root directory (where porespy package is)
+    # This file is at src/porespy/tools/_utils.py, so we go up 3 levels
+    pkg_root = Path(__file__).parent.parent.parent.parent
+    fixtures_path = pkg_root / "test" / "fixtures"
+    return fixtures_path

@@ -1,29 +1,28 @@
 import inspect
 import logging
+import operator
+from typing import Literal
+
 import dask
 import numpy as np
 import numpy.typing as npt
-import operator
 import scipy.ndimage as spim
-from skimage.morphology import reconstruction
+from skimage.morphology import ball, disk, reconstruction
 from skimage.segmentation import clear_border
-from skimage.morphology import ball, disk, square, cube, diamond, octahedron
+
+from porespy import settings
 from porespy.tools import (
     _check_for_singleton_axes,
+    extract_subsection,
+    get_edt,
     get_slices_grid,
+    get_strel,
+    get_tqdm,
+    ps_ball,
+    ps_disk,
     recombine,
     unpad,
-    extract_subsection,
-    ps_disk,
-    ps_ball,
-    ps_round,
-    get_tqdm,
-    get_edt,
-    get_strel,
 )
-from porespy import settings
-from typing import Literal
-
 
 __all__ = [
     "apply_chords",
@@ -88,8 +87,7 @@ def apply_padded(
     to view online example.
 
     """
-    padded = np.pad(im, pad_width=pad_width,
-                    mode='constant', constant_values=pad_val)
+    padded = np.pad(im, pad_width=pad_width, mode="constant", constant_values=pad_val)
     temp = func(padded, **kwargs)
     result = unpad(im=temp, pad_width=pad_width)
     return result
@@ -155,7 +153,7 @@ def hold_peaks(
 def distance_transform_lin(
     im: npt.NDArray,
     axis: int = 0,
-    mode: Literal['forward', 'backward', 'both'] = "both",
+    mode: Literal["forward", "backward", "both"] = "both",
 ):
     r"""
     Replaces each void voxel with the linear distance to the nearest solid
@@ -268,21 +266,22 @@ def trim_extrema(
     """
     mask = np.copy(im)
     im = np.copy(im)
-    if mode == 'maxima':
-        result = reconstruction(seed=im - h, mask=mask, method='dilation')
-    elif mode == 'minima':
-        result = reconstruction(seed=im + h, mask=mask, method='erosion')
-    elif mode == 'extrema':
-        result = reconstruction(seed=im - h, mask=mask, method='dilation')
-        result = reconstruction(seed=result + h, mask=result, method='erosion')
+    if mode == "maxima":
+        result = reconstruction(seed=im - h, mask=mask, method="dilation")
+    elif mode == "minima":
+        result = reconstruction(seed=im + h, mask=mask, method="erosion")
+    elif mode == "extrema":
+        result = reconstruction(seed=im - h, mask=mask, method="dilation")
+        result = reconstruction(seed=result + h, mask=result, method="erosion")
     return result
 
 
 def flood(
     im: npt.NDArray,
     labels: npt.NDArray,
-    mode: Literal['maximum', 'minimum', 'median', 'mean', 'size',
-                  'standard_deviations',  'variance'] = "max",
+    mode: Literal[
+        "maximum", "minimum", "median", "mean", "size", "standard_deviations", "variance"
+    ] = "max",
 ):
     r"""
     Floods/fills each region in an image with a single value based on the
@@ -348,7 +347,7 @@ def flood(
     mode = "maximum" if mode == "max" else mode
     mode = "minimum" if mode == "min" else mode
     f = getattr(spim, mode)
-    vals = f(input=im*mask, labels=labels, index=range(0, N + 1))
+    vals = f(input=im * mask, labels=labels, index=range(0, N + 1))
     flooded = vals[labels]
     flooded = flooded * mask
     return flooded
@@ -411,7 +410,7 @@ def flood_func(
     for i, s in enumerate(slices):
         sub_im = labels[s] == (i + 1)
         val = func(im[s][sub_im])
-        flooded[s] += sub_im*val
+        flooded[s] += sub_im * val
     return flooded
 
 
@@ -451,8 +450,9 @@ def find_dt_artifacts(dt: npt.NDArray):
     """
     temp = np.ones(shape=dt.shape) * np.inf
     for ax in range(dt.ndim):
-        dt_lin = distance_transform_lin(np.ones_like(temp, dtype=bool),
-                                        axis=ax, mode="both")
+        dt_lin = distance_transform_lin(
+            np.ones_like(temp, dtype=bool), axis=ax, mode="both"
+        )
         temp = np.minimum(temp, dt_lin)
     result = np.clip(dt - temp, a_min=0, a_max=np.inf)
     return result
@@ -460,7 +460,7 @@ def find_dt_artifacts(dt: npt.NDArray):
 
 def region_size(
     im: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Replace each voxel with the size of the region to which it belongs
@@ -565,8 +565,12 @@ def apply_chords(
     slices = tuple(slxyz[: im.ndim])
     s = [[0, 1, 0], [0, 1, 0], [0, 1, 0]]  # Straight-line structuring element
     if im.ndim == 3:  # Make structuring element 3D if necessary
-        s = np.pad(np.atleast_3d(s), pad_width=((0, 0), (0, 0), (1, 1)),
-                   mode="constant", constant_values=0)
+        s = np.pad(
+            np.atleast_3d(s),
+            pad_width=((0, 0), (0, 0), (1, 1)),
+            mode="constant",
+            constant_values=0,
+        )
     im = im[slices]
     s = np.swapaxes(s, 0, axis)
     chords = spim.label(im, structure=s)[0]
@@ -630,9 +634,9 @@ def apply_chords_3D(
     if spacing < 0:
         raise Exception("Spacing cannot be less than 0")
     ch = np.zeros_like(im, dtype=int)
-    ch[:, :: 4 + 2 * spacing, :: 4 + 2 * spacing] = 1   # X-direction
-    ch[:: 4 + 2 * spacing, :, 2::4 + 2 * spacing] = 2   # Y-direction
-    ch[2::4 + 2 * spacing, 2::4 + 2 * spacing, :] = 3   # Z-direction
+    ch[:, :: 4 + 2 * spacing, :: 4 + 2 * spacing] = 1  # X-direction
+    ch[:: 4 + 2 * spacing, :, 2 :: 4 + 2 * spacing] = 2  # Y-direction
+    ch[2 :: 4 + 2 * spacing, 2 :: 4 + 2 * spacing, :] = 3  # Z-direction
     chords = ch * im
     if trim_edges:
         temp = clear_border(spim.label(chords > 0)[0]) > 0
@@ -643,8 +647,8 @@ def apply_chords_3D(
 def local_thickness(
     im: npt.NDArray,
     sizes: int = 25,
-    mode: Literal['hybrid', 'dt', 'mio'] = "hybrid",
-    parallel_kw: dict = {"divs": 1}
+    mode: Literal["hybrid", "dt", "mio"] = "hybrid",
+    parallel_kw: dict = {"divs": 1},
 ):
     r"""
     For each voxel, this function calculates the radius of the largest
@@ -740,8 +744,9 @@ def local_thickness(
     to view online example.
 
     """
-    im_new = porosimetry(im=im, sizes=sizes, access_limited=False, mode=mode,
-                         parallel_kw=parallel_kw)
+    im_new = porosimetry(
+        im=im, sizes=sizes, access_limited=False, mode=mode, parallel_kw=parallel_kw
+    )
     return im_new
 
 
@@ -750,8 +755,8 @@ def porosimetry(
     sizes: int = 25,
     inlets=None,
     access_limited: bool = True,
-    mode: Literal['hybrid', 'dt', 'mio'] = 'hybrid',
-    parallel_kw: dict = {"divs": 1}
+    mode: Literal["hybrid", "dt", "mio"] = "hybrid",
+    parallel_kw: dict = {"divs": 1},
 ):
     r"""
     Performs a porosimetry simulution on an image.
@@ -862,6 +867,7 @@ def porosimetry(
     cores = parallel_kw.get("cores", settings.ncores)
     from porespy.filters import fftmorphology, trim_disconnected_voxels
     from porespy.generators import borders
+
     im = np.squeeze(im)
     dt = edt(im > 0)
 
@@ -882,9 +888,9 @@ def porosimetry(
 
     parallel = False
     if isinstance(divs, int):
-        divs = [divs]*im.ndim
+        divs = [divs] * im.ndim
     if max(divs) > 1:
-        logger.info(f'Performing {inspect.currentframe().f_code.co_name} in parallel')
+        logger.info(f"Performing {inspect.currentframe().f_code.co_name} in parallel")
         parallel = True
 
     if mode == "mio":
@@ -897,20 +903,28 @@ def porosimetry(
         for r in tqdm(sizes, desc=desc, **settings.tqdm):
             if parallel:
                 parallel_kw["overlap"] = int(r) + 1
-                imtemp = chunked_func(func=fftmorphology,
-                                      im=impad, strel=strel(r),
-                                      mode='erosion', parallel_kw=parallel_kw)
+                imtemp = chunked_func(
+                    func=fftmorphology,
+                    im=impad,
+                    strel=strel(r),
+                    mode="erosion",
+                    parallel_kw=parallel_kw,
+                )
             else:
-                imtemp = fftmorphology(im=impad, strel=strel(r), mode='erosion')
+                imtemp = fftmorphology(im=impad, strel=strel(r), mode="erosion")
             if access_limited:
-                imtemp = trim_disconnected_voxels(imtemp, inlets, conn='min')
+                imtemp = trim_disconnected_voxels(imtemp, inlets, conn="min")
             if parallel:
                 parallel_kw["overlap"] = int(r) + 1
-                imtemp = chunked_func(func=fftmorphology,
-                                      im=imtemp, strel=strel(r),
-                                      mode='dilation', parallel_kw=parallel_kw)
+                imtemp = chunked_func(
+                    func=fftmorphology,
+                    im=imtemp,
+                    strel=strel(r),
+                    mode="dilation",
+                    parallel_kw=parallel_kw,
+                )
             else:
-                imtemp = fftmorphology(im=imtemp, strel=strel(r), mode='dilation')
+                imtemp = fftmorphology(im=imtemp, strel=strel(r), mode="dilation")
             if np.any(imtemp):
                 imresults[(imresults == 0) * imtemp] = r
         imresults = extract_subsection(imresults, shape=im.shape)
@@ -920,14 +934,20 @@ def porosimetry(
         for r in tqdm(sizes, desc=desc, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
-                imtemp = trim_disconnected_voxels(imtemp, inlets, conn='min')
+                imtemp = trim_disconnected_voxels(imtemp, inlets, conn="min")
             if np.any(imtemp):
                 if parallel:
                     parallel_kw["overlap"] = int(r) + 1
-                    imtemp = chunked_func(func=lambda x: edt(x),
-                                          data=~imtemp, im_arg='data',
-                                          parallel=0,
-                                          parallel_kw=parallel_kw) < r
+                    imtemp = (
+                        chunked_func(
+                            func=lambda x: edt(x),
+                            data=~imtemp,
+                            im_arg="data",
+                            parallel=0,
+                            parallel_kw=parallel_kw,
+                        )
+                        < r
+                    )
                 else:
                     imtemp = edt(~imtemp) < r
                 imresults[(imresults == 0) * imtemp] = r
@@ -937,23 +957,26 @@ def porosimetry(
         for r in tqdm(sizes, desc=desc, **settings.tqdm):
             imtemp = dt >= r
             if access_limited:
-                imtemp = trim_disconnected_voxels(imtemp, inlets, conn='min')
+                imtemp = trim_disconnected_voxels(imtemp, inlets, conn="min")
             if np.any(imtemp):
                 if parallel:
                     parallel_kw["overlap"] = int(r) + 1
-                    imtemp = chunked_func(func=fftmorphology, mode='dilation',
-                                          im=imtemp, strel=strel(r),
-                                          parallel_kw=parallel_kw)
+                    imtemp = chunked_func(
+                        func=fftmorphology,
+                        mode="dilation",
+                        im=imtemp,
+                        strel=strel(r),
+                        parallel_kw=parallel_kw,
+                    )
                 else:
-                    imtemp = fftmorphology(imtemp, strel(r),
-                                           mode="dilation")
+                    imtemp = fftmorphology(imtemp, strel(r), mode="dilation")
                 imresults[(imresults == 0) * imtemp] = r
     else:
         raise Exception("Unrecognized mode " + mode)
     return imresults
 
 
-def _get_axial_shifts(ndim=2, conn='min'):
+def _get_axial_shifts(ndim=2, conn="min"):
     r"""
     Helper function to generate the axial shifts that will be performed on
     the image to identify bordering pixels/voxels
@@ -974,7 +997,7 @@ def _get_axial_shifts(ndim=2, conn='min'):
         return np.vstack((x, y, z)).T
 
 
-def _make_stack(im, conn='min'):
+def _make_stack(im, conn="min"):
     r"""
     Creates a stack of images with one extra dimension to the input image
     with length equal to the number of borders to search + 1.
@@ -1008,7 +1031,7 @@ def _make_stack(im, conn='min'):
 
 def nphase_border(
     im: npt.NDArray,
-    conn: Literal['min', 'max'] = 'min',
+    conn: Literal["min", "max"] = "min",
 ):
     r"""
     Identifies the voxels in regions that border *N* other regions.
@@ -1101,7 +1124,7 @@ def prune_branches(
 
     """
     skel = skel > 0
-    cube = strel[skel.ndim]['max']
+    cube = strel[skel.ndim]["max"]
     # Create empty image to house results
     im_result = np.zeros_like(skel)
     # If branch points are not supplied, attempt to find them
@@ -1132,9 +1155,9 @@ def prune_branches(
     if iterations > 1:
         iterations -= 1
         im_temp = np.copy(im_result)
-        im_result = prune_branches(skel=im_result,
-                                   branch_points=None,
-                                   iterations=iterations)
+        im_result = prune_branches(
+            skel=im_result, branch_points=None, iterations=iterations
+        )
         if np.all(im_temp == im_result):
             iterations = 0
     return im_result
@@ -1142,7 +1165,7 @@ def prune_branches(
 
 def chunked_func(
     func,
-    parallel_kw = {"divs": 2, "overlap": None, "cores": None},
+    parallel_kw={"divs": 2, "overlap": None, "cores": None},
     im_arg=["input", "image", "im"],
     strel_arg=["strel", "structure", "footprint"],
     **kwargs,
@@ -1273,7 +1296,7 @@ def chunked_func(
         res.append(apply_func(func=func, **kwargs))
     # Have dask actually compute the function on each subsection in parallel
     # with ProgressBar():
-        # ims = dask.compute(res, num_workers=cores)[0]
+    # ims = dask.compute(res, num_workers=cores)[0]
     ims = dask.compute(res, num_workers=cores)[0]
     # Finally, put the pieces back together into a single master image, im2
     im2 = recombine(ims=ims, slices=slices, overlap=overlap)

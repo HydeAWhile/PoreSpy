@@ -1,18 +1,19 @@
-import logging
 import inspect
+import logging
 import time
+
 import dask
 import numpy as np
-import pandas as pd
 import openpnm as op
+import pandas as pd
+
+from porespy import settings
 from porespy.tools import (
     Results,
-    get_tqdm,
     get_slices_grid,
     get_slices_random,
+    get_tqdm,
 )
-from porespy import settings
-
 
 __all__ = [
     "rev_porosity",
@@ -118,8 +119,9 @@ def calc_g(im, axis, solver_args={}):
 
     """
     from porespy.simulations import tortuosity_fd
-    solver_args = {'tol': 1e-6} | solver_args
-    solver = solver_args.pop('solver', None)
+
+    solver_args = {"tol": 1e-6} | solver_args
+    solver = solver_args.pop("solver", None)
     t0 = time.perf_counter()
 
     try:
@@ -128,11 +130,11 @@ def calc_g(im, axis, solver_args={}):
     except Exception:
         results = Results()
         results.effective_porosity = 0.0
-        results.original_porosity = im.sum()/im.size
+        results.original_porosity = im.sum() / im.size
         results.tortuosity = np.inf
         results.time = time.perf_counter() - t0
     L = im.shape[axis]
-    A = np.prod(im.shape)/im.shape[axis]
+    A = np.prod(im.shape) / im.shape[axis]
     g = (results.effective_porosity * A) / (results.tortuosity * (L - 1))
     results.diffusive_conductance = g
     results.volume = np.prod(im.shape)
@@ -194,15 +196,15 @@ def tortuosity_map(im, block_size: int = None, axis: int = None, slices=None, da
             results.append(tau_obj)
 
     df_out = pd.DataFrame()
-    df_out['eps_orig'] = [r.original_porosity for r in results]
-    df_out['eps_perc'] = [r.effective_porosity for r in results]
-    df_out['g'] = [r.diffusive_conductance for r in results]
-    df_out['tau'] = [r.tortuosity for r in results]
-    df_out['volume'] = [r.volume for r in results]
-    df_out['length'] = [block_size for r in results]
-    df_out['axis'] = [r.axis for r in results]
-    df_out['time'] = [r.time for r in results]
-    df_out['slice'] = [r.slice for r in results]
+    df_out["eps_orig"] = [r.original_porosity for r in results]
+    df_out["eps_perc"] = [r.effective_porosity for r in results]
+    df_out["g"] = [r.diffusive_conductance for r in results]
+    df_out["tau"] = [r.tortuosity for r in results]
+    df_out["volume"] = [r.volume for r in results]
+    df_out["length"] = [block_size for r in results]
+    df_out["axis"] = [r.axis for r in results]
+    df_out["time"] = [r.time for r in results]
+    df_out["slice"] = [r.slice for r in results]
 
     return df_out
 
@@ -252,20 +254,20 @@ def rev_tortuosity(im, n=100, axis=None, slices=None, dask_on=False):
     df = tortuosity_map(im, block_size=None, axis=axis, slices=slices, dask_on=dask_on)
 
     profile = Results()
-    profile.porosity_orig = df['eps_orig']
-    profile.porosity_perc = df['eps_perc']
-    profile.g = df['g']
-    profile.tau = df['tau']
-    profile.volume = df['volume']
-    profile.length = df['length']
-    profile.axis = df['axis']
-    profile.time = df['time']
-    profile.slice = df['slice']
+    profile.porosity_orig = df["eps_orig"]
+    profile.porosity_perc = df["eps_perc"]
+    profile.g = df["g"]
+    profile.tau = df["tau"]
+    profile.volume = df["volume"]
+    profile.length = df["length"]
+    profile.axis = df["axis"]
+    profile.time = df["time"]
+    profile.slice = df["slice"]
     return profile
 
 
 def rev_plot(df: pd.DataFrame, size: int, figsize: list = [10, 7]):
-    '''
+    """
     Creates REV plot from the output of `rev_tortuosity`.
 
     Parameters
@@ -289,26 +291,28 @@ def rev_plot(df: pd.DataFrame, size: int, figsize: list = [10, 7]):
     All values of "np.inf" are treated as the next highest tortuosity within that bin
     purely for the sake of plotting. The original dataset is not altered.
 
-    '''
+    """
 
     import matplotlib.pyplot as plt
+
     from porespy.visualization import set_mpl_style
+
     set_mpl_style()
 
     all_fig = []
     all_ax = []
 
-    for i, axis in enumerate(np.unique(df['axis'])):
+    for i, axis in enumerate(np.unique(df["axis"])):
         fig, axes = plt.subplots(figsize=figsize)
 
         # filter for one axis
-        tmp = df[df['axis'] == axis]
+        tmp = df[df["axis"] == axis]
 
         data = []
         vol_frac = []
 
-        for vol in np.unique(tmp['volume']):
-            taus = tmp[tmp['volume'] == vol]["tau"]
+        for vol in np.unique(tmp["volume"]):
+            taus = tmp[tmp["volume"] == vol]["tau"]
 
             unique_tau = sorted(set(taus), reverse=True)
 
@@ -321,7 +325,7 @@ def rev_plot(df: pd.DataFrame, size: int, figsize: list = [10, 7]):
             taus = taus.replace([np.inf], highest)
 
             data.append(np.log10(taus))
-            vol_frac.append(np.log10(vol / (size**(len(np.unique(df['axis']))))))
+            vol_frac.append(np.log10(vol / (size ** (len(np.unique(df["axis"]))))))
 
         axes.violinplot(data, vol_frac, widths=0.1)
         axes.set_title(f"REV: Axis {axis}")
@@ -335,13 +339,15 @@ def rev_plot(df: pd.DataFrame, size: int, figsize: list = [10, 7]):
 
 
 if __name__ == "__main__":
-    import porespy as ps
-    import numpy as np
     import matplotlib.pyplot as plt
-    ps.settings.tqdm['disable'] = False
-    ps.settings.tqdm['leave'] = True
+    import numpy as np
 
-    im = ps.generators.blobs([300]*2, porosity=0.7, blobiness=2, seed=1)
+    import porespy as ps
+
+    ps.settings.tqdm["disable"] = False
+    ps.settings.tqdm["leave"] = True
+
+    im = ps.generators.blobs([300] * 2, porosity=0.7, blobiness=2, seed=1)
     # im = ps.generators.random_cantor_dust([500, 500])
 
     # slices = ps.tools.get_slices_multigrid(im, [40, 300])
@@ -352,18 +358,34 @@ if __name__ == "__main__":
 
     # %%
     fig, ax = plt.subplots(1, 3)
-    ax[0].scatter(poro.volume, poro.porosity, marker='.', alpha=0.25, fc='tab:red', ec='none')
-    ax[1].scatter(rev.volume[rev.axis==0], rev.tau[rev.axis==0], marker='.', alpha=0.25, fc='tab:blue', ec='none')
-    ax[2].scatter(rev.porosity_perc[rev.axis==0], rev.tau[rev.axis==0], marker='.', alpha=0.25, fc='tab:green', ec='none')
+    ax[0].scatter(
+        poro.volume, poro.porosity, marker=".", alpha=0.25, fc="tab:red", ec="none"
+    )
+    ax[1].scatter(
+        rev.volume[rev.axis == 0],
+        rev.tau[rev.axis == 0],
+        marker=".",
+        alpha=0.25,
+        fc="tab:blue",
+        ec="none",
+    )
+    ax[2].scatter(
+        rev.porosity_perc[rev.axis == 0],
+        rev.tau[rev.axis == 0],
+        marker=".",
+        alpha=0.25,
+        fc="tab:green",
+        ec="none",
+    )
     ax[0].set_ylim([0, 1])
     ax[0].set_xlim([0, im.size])
-    ax[0].set_ylabel('Porosity')
-    ax[0].set_xlabel('Subdomain Volume')
+    ax[0].set_ylabel("Porosity")
+    ax[0].set_xlabel("Subdomain Volume")
     ax[1].set_ylim([0, None])
     ax[1].set_xlim([0, im.size])
-    ax[1].set_ylabel('log(Tortuosity)')
-    ax[1].set_xlabel('Subdomain Volume')
+    ax[1].set_ylabel("log(Tortuosity)")
+    ax[1].set_xlabel("Subdomain Volume")
     ax[2].set_xlim([0, 1])
     ax[2].set_ylim([0, None])
-    ax[2].set_xlabel('Porosity')
-    ax[2].set_ylabel('log(Tortuosity)')
+    ax[2].set_xlabel("Porosity")
+    ax[2].set_ylabel("log(Tortuosity)")
