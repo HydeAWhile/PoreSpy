@@ -38,13 +38,13 @@ shutil.copytree("../examples", "examples", dirs_exist_ok=True)
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
-    "sphinx.ext.autosummary",
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "sphinx_copybutton",
     "sphinx_design",
     "myst_nb",
+    "autoapi.extension",
 ]
 
 myst_enable_extensions = [
@@ -56,15 +56,37 @@ myst_enable_extensions = [
 ]
 
 # Force notebook execution during documentation build
-nb_execution_mode = "force"
+nb_execution_mode = "off"
 
 # So that 'sphinx-copybutton' only copies the actual code, not the prompt
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
 copybutton_prompt_is_regexp = True
 
 add_module_names = False  # porespy.generators --> generators
-autosummary_generate = True
 globaltoc_maxdepth = 2
+
+# AutoAPI Configuration
+autoapi_dirs = ["../src"]
+autoapi_type = "python"
+autoapi_options = [
+    "members",
+    "undoc-members", 
+    "show-inheritance",
+    "imported-members",
+]
+autoapi_ignore = [
+    "*/tests/*", 
+    "*/test_*", 
+    "*/__pycache__/*",
+    "*/dns/*",  # Exclude deprecated dns module
+]
+autoapi_python_class_content = "both"  # Include both class and __init__ docstrings
+autoapi_member_order = "alphabetical"  # Simple alphabetical order
+autoapi_root = "autoapi"  # Root directory for generated docs
+autoapi_generate_api_docs = True  # Generate individual API docs for each item
+autoapi_keep_files = False  # Don't keep the generated RST files
+autoapi_add_toctree_entry = False  # Don't add to main toctree automatically
+autoapi_template_dir = "_templates"  # Use custom templates
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -121,6 +143,7 @@ html_theme_options = {
     "use_edit_page_button": False,
     "search_bar_position": "sidebar",
     "navbar_align": "left",
+    "show_toc_level": 3,  # Show deeper levels in the sidebar
 }
 
 html_sidebars = {}
