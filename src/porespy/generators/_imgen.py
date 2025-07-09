@@ -1160,18 +1160,18 @@ def blobs(
         optional settings include `divs` (scalar or list of scalars,
         default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
         and `cores` (scalar, default is all available cores).
-        
+
         `divs` is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
         respective axis will be divided by its corresponding number in the
         list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
         and 4 respectively.
-        
+
         `overlap` is the amount of overlap to include when dividing up the
         image. This value is controlled by the blobiness and shape of the
         image by default but can be controlled using parallel_kw!
-        
+
         `cores` is the number of cores that will be used to parallel process all
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will
@@ -1301,6 +1301,8 @@ def _cylinders(
     if seed is not None:
         np.random.seed(seed)
     shape = parse_shape(shape)
+    # pad shape slightly
+    shape = shape + 40
     if np.size(shape) == 2:
         raise Exception("2D cylinders don't make sense")
     # Find hypotenuse of domain from [0,0,0] to [Nx,Ny,Nz]
@@ -1343,6 +1345,7 @@ def _cylinders(
                                                 smooth=True, overwrite=False)
                 n += 1
                 pbar.update()
+    im = im[20:-20, 20:-20, 20:-20]  # Remove padding
     return ~im
 
 
