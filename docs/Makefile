@@ -28,7 +28,7 @@ help:
 clean:
 	rm -rf $(BUILDDIR)/
 	rm -rf examples/
-	find . -name "generated" | xargs rm -rf
+	rm -rf autoapi/
 
 html:
 	$(UV_RUN_CMD) $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html -j auto
