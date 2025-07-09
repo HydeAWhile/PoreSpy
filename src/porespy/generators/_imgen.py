@@ -672,7 +672,7 @@ def bundle_of_tubes(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -753,7 +753,7 @@ def polydisperse_spheres(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -815,7 +815,7 @@ def voronoi_edges(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -1064,7 +1064,7 @@ def overlapping_spheres(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -1177,10 +1177,11 @@ def blobs(
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will
         effectively process the chunks in serial to minimize memory usage.
+
     seed : int, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
     periodic : bool, default = `True`
         If `True` the blobs will be periodic, meaning that the image can be tiled
         and the phases will be continuous. `False` will provide the "legacy" version
@@ -1199,8 +1200,7 @@ def blobs(
     -----
     This function generates random noise, the applies a gaussian blur to
     the noise with a sigma controlled by the blobiness argument as:
-
-        $$ np.mean(shape) / (40 * blobiness) $$
+    ``np.mean(shape) / (40 * blobiness)``
 
     The value of 40 was chosen so that a ``blobiness`` of 1 gave a
     reasonable result.
@@ -1293,7 +1293,7 @@ def _cylinders(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -1409,7 +1409,7 @@ def cylinders(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------

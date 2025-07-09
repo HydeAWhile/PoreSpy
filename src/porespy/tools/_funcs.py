@@ -18,9 +18,11 @@ except ImportError:
 
 __all__ = [
     '_check_for_singleton_axes',
+    'all_to_uniform',
     'align_image_with_openpnm',
     'bbox_to_slices',
     'block_size_to_divs',
+    'center_of_mass',
     'extend_slice',
     'extract_cylinder',
     'extract_subsection',
@@ -37,17 +39,16 @@ __all__ = [
     'insert_sphere',
     'in_hull',
     'isolate_object',
+    'jit_extend_slice',
     'marching_map',
     'make_contiguous',
     'mesh_region',
-    'all_to_uniform',
     'overlay',
     'randomize_colors',
     'recombine',
     'results_to_df',
-    'unpad',
-    'jit_extend_slice',
     'pad',
+    'unpad',
 ]
 
 

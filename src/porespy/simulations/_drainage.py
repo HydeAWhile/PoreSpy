@@ -77,19 +77,19 @@ def drainage_dsi(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
-        `im_seq`    The sequence map indicating the sequence or step number at which
+        =========== ================================================================
+        ``im_seq``  The sequence map indicating the sequence or step number at which
                     each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
+        ``im_size`` The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
 
     Notes
     -----
-    The sphere insert stesps will be executed in parallel if
-    `porespy.settings.ncores > 1`
+    The sphere insert steps will be executed in parallel if
+    ``porespy.settings.ncores > 1``
     """
     if settings.ncores > 1:
         func = _insert_disk_at_points_parallel
@@ -187,14 +187,14 @@ def drainage_dt_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         `im_seq`    The sequence map indicating the sequence or step number at which
                     each voxels was first invaded.
         `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
 
     Notes
     -----
@@ -279,14 +279,14 @@ def drainage_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         `im_seq`    The sequence map indicating the sequence or step number at which
                     each voxels was first invaded.
         `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
     """
     im = np.array(im, dtype=bool)
     dt = edt(im, parallel=settings.ncores)
@@ -447,7 +447,7 @@ def drainage(
 ):
     r"""
     Simulate drainage using image-based sphere insertion, optionally including
-    gravity
+    gravity [4]_.
 
     Parameters
     ----------
@@ -491,14 +491,14 @@ def drainage(
         Controls the shape of the structuring element used to find neighboring
         voxels when looking at connectivity of invading blobs.  Options are:
 
-        ========= ==================================================================
+        ========= =============================================================
         Option    Description
-        ========= ==================================================================
-        'min'     This corresponds to a cross with 4 neighbors in 2D and 6 neighbors
-                  in 3D.
-        'max'     This corresponds to a square or cube with 8 neighbors in 2D and
-                  26 neighbors in 3D.
-        ========= ==================================================================
+        ========= =============================================================
+        'min'     This corresponds to a cross with 4 neighbors in 2D and 6
+                  neighbors in 3D.
+        'max'     This corresponds to a square or cube with 8 neighbors in 2D
+                  and 26 neighbors in 3D.
+        ========= =============================================================
 
     min_size : int
         Any clusters of trapped voxels smaller than this size will be set to not
@@ -540,10 +540,10 @@ def drainage(
 
     References
     ----------
-    .. [1]  Chadwick EA, Hammen LH, Schulz VP, Bazylak A, Ioannidis MA, Gostick JT.
+    .. [4] Chadwick EA, Hammen LH, Schulz VP, Bazylak A, Ioannidis MA, Gostick JT.
        Incorporating the effect of gravity into image-based drainage simulations on
        volumetric images of porous media.
-       `Water Resources Research. <https://doi.org/10.1029/2021WR031509>`_.
+       `Water Resources Research. <https://doi.org/10.1029/2021WR031509>`__.
        58(3), e2021WR031509 (2022)
 
     Examples
@@ -567,7 +567,7 @@ def drainage(
 
     if pc is None:
         pc = 2.0/dt
-    pc[~im] = 0  # Remove any infs or nans from pc computation
+        pc[~im] = 0  # Remove any infs or nans from pc computation
 
     if isinstance(steps, int):  # Use values in pc for invasion steps
         mask = np.isfinite(pc)*im

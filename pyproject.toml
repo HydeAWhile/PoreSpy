@@ -64,6 +64,7 @@ extras = ["pyevtk", "scikit-learn", "trimesh"]
 docs = [
     "mock",
     "myst-nb",
+    "nbstripout>=0.8.1",
     "pandoc",
     "pydata-sphinx-theme",
     "sphinx",
@@ -180,7 +181,7 @@ exclude = [
 ]
 
 # Same as Black.
-line-length = 92
+line-length = 96
 indent-width = 4
 
 # Assume Python 3.10

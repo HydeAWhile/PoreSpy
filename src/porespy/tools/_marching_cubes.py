@@ -93,9 +93,12 @@ def mc_templates_generator(override=False):
 
 def create_mc_template_list(spacing=(1, 1, 1)):
     '''
-    Return area and volume lists for the marching cubes templates
-    Reads the templates file
-    Input:
+    Return area and volume lists for the marching cubes templates. Reads the
+    templates file.
+
+    Parameters
+    ----------
+    spacing : tuple, optional
         Tuple with three values for x, y, and z lengths of the voxel edges
     '''
     mc_templates_generator()

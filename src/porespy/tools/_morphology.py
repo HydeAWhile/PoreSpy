@@ -157,7 +157,7 @@ def ps_rect(w, ndim):
 
     Returns
     -------
-    strel : D-aNrray
+    strel : ndarray
         A numpy array of the structuring element
 
     Examples

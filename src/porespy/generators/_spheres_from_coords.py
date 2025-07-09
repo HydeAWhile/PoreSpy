@@ -64,7 +64,7 @@ def spheres_from_coords(df, mode='contained', smooth=False):
         d['Z'] = np.array([1, 1, 1])
         d['R'] = np.array([0.5, 0.7, 0.6])
 
-    Or a *pandas* ``DataFrame` like this:
+    Or a *pandas* ``DataFrame`` like this:
 
     ==== ==== ==== ==== ====
     ID   'X'  'Y'  'Z'  'R'

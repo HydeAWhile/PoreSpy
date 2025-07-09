@@ -91,18 +91,17 @@ def snow2(
         the analysis of regions in the ``regions_to_network`` function.
         Options are:
 
-        ------------ --------------------------------------------------------
-        Value        Description
-        ------------ --------------------------------------------------------
-        'standard'   Computes the surface areas and perimeters by simply
-                     counting voxels. This is *much* faster but does not
-                     properly account for the rough voxelated nature of the
-                     surfaces.
-        'high'       Computes surface areas using the marching cube method,
-                     and perimeters using the fast marching method. These
-                     are substantially slower but better account for the
-                     voxelated nature of the images.
-        ------------ --------------------------------------------------------
+        ========== ============================================================
+        Value      Description
+        ========== ============================================================
+        'standard' Computes the surface areas and perimeters by simply counting
+                   voxels. This is *much* faster but does not properly account
+                   for the rough voxelated nature of the surfaces.
+        'high'     Computes surface areas using the marching cube method, and
+                   perimeters using the fast marching method. These are
+                   substantially slower but better account for the voxelated
+                   nature of the images.
+        ========== ============================================================
 
     voxel_size : tuple (default = (1, 1, 1))
         The resolution of the image, expressed as the length of the sides of a
@@ -131,24 +130,25 @@ def snow2(
         optional settings include `divs` (scalar or list of scalars,
         default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
         and `cores` (scalar, default is all available cores).
-        
-        `divs` is the number of times to divide the image for parallel
-        processing. If `1` then parallel processing does not occur. `2` is
-        equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
-        respective axis will be divided by its corresponding number in the
-        list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
-        and 4 respectively.
-        
-        `overlap` is the amount of overlap to include when dividing up the image.
-        This value will almost always be the size (i.e. raduis) of the
-        structuring element. If not specified then the amount of overlap
-        is inferred from the size of the structuring element, in which
-        case the `strel_arg` must be specified.
-        
-        `cores` is the number of cores that will be used to parallel process all
-        domains. If ``None`` then all cores will be used but user can specify
-        any integer values to control the memory usage. Setting value to 1 will
-        effectively process the chunks in serial to minimize memory usage.
+
+        ========== ============================================================
+        Key        Description
+        ========== ============================================================
+        'divs'     The number of divisions to make along each axis of the image.
+                   If a scalar is provided, it is applied to all axes.
+                   If a list is provided, each axis will be divided by its
+                   corresponding number in the list.
+        'overlap'  The amount of overlap to include when dividing up the image.
+                   This value will almost always be the size (i.e. radius) of
+                   the structuring element. If not specified then the amount
+                   of overlap is inferred from the size of the structuring
+                   element, in which case the `strel_arg` must be specified.
+        'cores'    The number of cores that will be used to parallel process all
+                   domains. If ``None`` then all cores will be used but user can
+                   specify any integer values to control the memory usage.
+                   Setting value to 1 will effectively process the chunks in
+                   serial to minimize memory usage.
+        ========== ============================================================
 
     Returns
     -------

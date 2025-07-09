@@ -40,11 +40,8 @@ def tortuosity_fd(im, axis, solver=None):
         effective_porosity  Porosity of the image after applying
                             ``trim_nonpercolating_paths``.  This removes
                             disconnected voxels which cause singular matrices.
-
         original_porosity   Porosity of the as-received the image
-
         formation_factor    Found as :math:`D_{AB}/D_{eff}`.
-
         im_conc             An image containing the concentration values from
                             the simulation.
         =================== ===================================================

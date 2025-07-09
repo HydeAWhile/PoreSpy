@@ -359,9 +359,10 @@ def tortuosity_bt(im, block_size=None, method="chords", use_dask=True):
         The boolean image of the materials with `True` indicating the void space
     block_size : int
         The size of the blocks which the image will be split into. If not provided,
-    it will be determined by the provided method in `method`
+        it will be determined by the provided method in `method`
     method : str
-        The method to use to determine block sizes if `block_size` is not provided.
+        The method to use to determine block sizes if `block_size` is not provided
+
         =========== ==================================================================
         method      description
         =========== ==================================================================
@@ -369,7 +370,8 @@ def tortuosity_bt(im, block_size=None, method="chords", use_dask=True):
                     possible in the image as the length of each block.
         'dt'        Uses the maximum length of the distance transform to determine
                     the length of each block.
-        ========== ==================================================================
+        =========== ==================================================================
+
     use_dask : bool
         A boolean determining the usage of `dask` for parallel processing.
     """
