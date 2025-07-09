@@ -2,22 +2,13 @@ import logging
 
 import numpy as np
 
-from porespy.filters import (
-    snow_partitioning,
-    snow_partitioning_parallel,
-)
-from porespy.networks import (
-    add_boundary_regions,
-    label_boundaries,
-    label_phases,
-    regions_to_network,
-)
+from porespy.filters import snow_partitioning, snow_partitioning_parallel
 from porespy.tools import Results, get_edt
 
-__all__ = [
-    "snow2",
-    "_parse_pad_width",
-]
+from ._funcs import add_boundary_regions, label_boundaries, label_phases
+from ._getnet_orig import regions_to_network
+
+__all__ = ["snow2", "_parse_pad_width"]
 
 
 edt = get_edt()

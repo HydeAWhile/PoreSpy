@@ -70,13 +70,13 @@ autoapi_dirs = ["../src"]
 autoapi_type = "python"
 autoapi_options = [
     "members",
-    "undoc-members", 
+    "undoc-members",
     "show-inheritance",
     "imported-members",
 ]
 autoapi_ignore = [
-    "*/tests/*", 
-    "*/test_*", 
+    "*/tests/*",
+    "*/test_*",
     "*/__pycache__/*",
     "*/dns/*",  # Exclude deprecated dns module
 ]
@@ -141,7 +141,6 @@ html_theme_options = {
     "show_prev_next": False,
     "icon_links_label": "Quick Links",
     "use_edit_page_button": False,
-    "search_bar_position": "sidebar",
     "navbar_align": "left",
     "show_toc_level": 3,  # Show deeper levels in the sidebar
 }

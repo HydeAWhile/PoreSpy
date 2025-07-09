@@ -9,8 +9,10 @@ import scipy.ndimage as spim
 from numba import njit
 from skimage.morphology import ball, cube, disk, square
 
-from porespy.filters import find_disconnected_voxels, flood, flood_func, region_size
 from porespy.tools import Results, get_tqdm, make_contiguous, settings
+
+from ._fill_and_find import find_disconnected_voxels
+from ._funcs import flood, flood_func, region_size
 
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)

@@ -782,6 +782,7 @@ def find_outer_region(im, r=None):
     # reasons for importing locally.  In this case it is needed to avoid circular
     # imports.
     from porespy.generators import borders
+
     if r is None:
         dt = edt(im)
         r = int(np.amax(dt)) * 2

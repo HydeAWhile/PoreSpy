@@ -9,7 +9,7 @@ from numba import njit, prange
 from skimage.morphology import cube, square
 from skimage.segmentation import watershed
 
-from porespy.filters import chunked_func
+from ._funcs import chunked_func
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
@@ -657,20 +657,20 @@ def snow_partitioning_parallel(im,
         optional settings include `divs` (scalar or list of scalars,
         default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
         and `cores` (scalar, default is all available cores).
-        
+
         `divs` is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
         respective axis will be divided by its corresponding number in the
         list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
         and 4 respectively.
-        
+
         `overlap` is the amount of overlap to include when dividing up the image.
         This value will almost always be the size (i.e. raduis) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
         case the `strel_arg` must be specified.
-        
+
         `cores` is the number of cores that will be used to parallel process all
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will

@@ -1,12 +1,9 @@
 import numpy as np
 import numpy.typing as npt
 
-from porespy.generators import ramp
 from porespy.tools import get_edt
 
-__all__ = [
-    'capillary_transform',
-]
+__all__ = ['capillary_transform']
 
 
 edt = get_edt()
@@ -64,6 +61,8 @@ def capillary_transform(
     recommended to use SI for everything.
 
     """
+    from porespy.generators import ramp
+
     if np.any(theta < 90) or np.any(theta > 180):
         raise Exception('The contact angle must be between 90 and 180')
     delta_rho = rho_nwp - rho_wp

@@ -9,6 +9,8 @@ from porespy.tools import get_edt, sanitize_filename
 
 edt = get_edt()
 
+__all__ = ["to_vtk", "dict_to_vtk", "to_palabos", "to_stl", "to_paraview", "open_paraview"]
+
 
 def dict_to_vtk(data, filename, voxel_size=1, origin=(0, 0, 0)):
     r"""

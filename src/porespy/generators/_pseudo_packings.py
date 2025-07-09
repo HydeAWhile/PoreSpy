@@ -7,13 +7,7 @@ import scipy.ndimage as spim
 from numba import njit
 
 from porespy.filters import trim_disconnected_blobs
-from porespy.tools import (
-    _insert_disk_at_point,
-    get_edt,
-    parse_shape,
-    ps_round,
-    unpad,
-)
+from porespy.tools import _insert_disk_at_point, get_edt, parse_shape, ps_round, unpad
 
 __all__ = [
     "pseudo_gravity_packing",

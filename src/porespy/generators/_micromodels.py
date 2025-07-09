@@ -5,12 +5,10 @@ import numpy as np
 import scipy.ndimage as spim
 import scipy.stats as spst
 
-from porespy.generators import lattice_spheres, spheres_from_coords
-from porespy.tools import (
-    _insert_disks_at_points_parallel,
-    extend_slice,
-    parse_shape,
-)
+from porespy.tools import _insert_disks_at_points_parallel, extend_slice, parse_shape
+
+from ._imgen import lattice_spheres
+from ._spheres_from_coords import spheres_from_coords
 
 __all__ = [
     'rectangular_pillars_array',

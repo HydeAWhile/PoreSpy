@@ -15,7 +15,6 @@ from porespy.filters import (
     region_size,
     trim_floating_solid,
 )
-from porespy.filters._snows import _estimate_overlap
 from porespy.generators import borders
 from porespy.tools import (
     Results,
@@ -282,8 +281,10 @@ def skeleton_parallel(im, parallel_kw={}):
         Skeleton of image
 
     """
-    # parse out divs, cores, overlap from parallel_kw
-    # take default from settings if not on parallel_kw dict
+    from porespy.filters._snows import _estimate_overlap
+
+    # Parse out divs, cores, overlap from parallel_kw
+    # Take default from settings if not on parallel_kw dict
     divs = parallel_kw.get("divs", settings.divs)
     cores = parallel_kw.get("cores", settings.ncores)
     overlap = parallel_kw.get("overlap", settings.overlap)
