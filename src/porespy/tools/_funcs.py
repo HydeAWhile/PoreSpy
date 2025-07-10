@@ -46,6 +46,7 @@ __all__ = [
     'unpad',
     'jit_extend_slice',
     'pad',
+    'parse_steps',
 ]
 
 
@@ -53,6 +54,48 @@ logger = logging.getLogger(__name__)
 edt = get_edt()
 tqdm = get_tqdm()
 settings = Settings()
+
+
+def parse_steps(steps, vals, mask=None, descending=True):
+    r"""
+    Converts given steps into a list of sizes
+
+    Parameters
+    ----------
+    steps : int, tuple, list or ndarray, or None
+        If an `int` then `steps` is treated as the number of steps between 1 and the
+        maximum in `vals`. If a `tuple` is received then this is used as the first
+        and last values of an integer range. If a `list` or `ndarray` is received
+        they are used directly. If `None` then all unique values in `vals` are used.
+    vals : ndarray
+        An array containing the values to be scanned, such as a distance or
+        capillary transform.
+    mask : ndarray
+        A boolean mask of which values in `vals` to use when finding limits. If
+        not provided then all values `vals` are used, but if provided, then `vals`
+        is converted as `vals = vals[mask]` beforehand.
+    descending : bool, optional
+        If `True` (default), then the returned list of sizes is in descending order
+
+    Returns
+    -------
+    bins : ndarray
+        Array of values spanning the desired start and stop limits
+    """
+    if mask is not None:
+        vals = vals[mask]
+    if steps is None:
+        bins = np.unique(vals)
+    elif isinstance(steps, tuple):
+        bins = np.arange(*steps)
+    elif type(steps) is int:
+        bins = np.linspace(1, vals.max(), steps)
+    else:
+        bins = np.unique(steps)
+        bins = bins[bins > 0]
+    if descending:
+        bins = bins[-1::-1]
+    return bins
 
 
 def tilde(im):

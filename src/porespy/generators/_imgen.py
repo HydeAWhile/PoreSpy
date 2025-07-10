@@ -7,7 +7,7 @@ import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
 from numba import njit
-from porespy import metrics, settings
+from porespy import settings
 from porespy.filters import chunked_func
 from porespy.tools import (
     _insert_disk_at_points,
@@ -1160,18 +1160,18 @@ def blobs(
         optional settings include `divs` (scalar or list of scalars,
         default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
         and `cores` (scalar, default is all available cores).
-        
+
         `divs` is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
         respective axis will be divided by its corresponding number in the
         list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
         and 4 respectively.
-        
+
         `overlap` is the amount of overlap to include when dividing up the
         image. This value is controlled by the blobiness and shape of the
         image by default but can be controlled using parallel_kw!
-        
+
         `cores` is the number of cores that will be used to parallel process all
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will
@@ -1494,7 +1494,7 @@ def cylinders(
             im = im * tmp
         n_fibers_added += n_fibers
         # Update parameters for next iteration
-        eps = metrics.porosity(im)
+        eps = im.sum(dtype=np.float64)/im.size
         vol_added = get_num_pixels(eps)
         vol_fiber = vol_added / n_fibers_added
 

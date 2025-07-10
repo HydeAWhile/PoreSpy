@@ -17,6 +17,7 @@ from porespy.tools import (
     _insert_disk_at_points,
     ps_round,
     make_contiguous,
+    parse_steps,
 )
 from porespy import settings
 from edt import edt
@@ -40,6 +41,7 @@ def imbibition_dsi(
     im,
     inlets=None,
     outlets=None,
+    dt=None,
     steps=None,
     smooth=True,
 ):
@@ -60,10 +62,16 @@ def imbibition_dsi(
         A boolean array with `True` values indicating the outlet locations through
         which defending (non-wetting) phase would exit the domain. If not provided
         then trapping of the non-wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
     steps : scalar or array_like
-        A list of which sphere sizes to invade. If `None` (default) then each unique
-        integer value in the distance transform is used. If a scalar then a list of
-        steps is generated from `steps` to 1.
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
         If `True` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
@@ -92,15 +100,10 @@ def imbibition_dsi(
     else:
         func = _insert_disk_at_points
     im = np.array(im, dtype=bool)
-    dt = edt(im, parallel=settings.ncores)
+    if dt is None:
+        dt = edt(im)
     dt_int = dt.astype(int)
-    if steps is None:
-        bins = np.unique(np.around(dt[im], decimals=0))
-    elif type(steps) is int:
-        bins = np.arange(1, steps, 1)
-    else:
-        bins = np.unique(steps)
-        bins = bins[bins > 0]
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
@@ -151,6 +154,7 @@ def imbibition_dt_fft(
     inlets=None,
     outlets=None,
     residual=None,
+    dt=None,
     steps=None,
     smooth=True,
 ):
@@ -172,10 +176,16 @@ def imbibition_dt_fft(
         A boolean array with `True` values indicating the outlet locations through
         which defending (non-wetting) phase would exit the domain. If not provided
         then trapping of the non-wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
     steps : scalar or array_like
-        A list of which sphere sizes to invade. If `None` (default) then each unique
-        integer value in the distance transform is used. If a scalar then a list of
-        steps is generated from `steps` to 1.
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
         If `True` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
@@ -200,14 +210,9 @@ def imbibition_dt_fft(
     `porespy.settings.ncores > 1`
     """
     im = np.array(im, dtype=bool)
-    dt = edt(im, parallel=settings.ncores)
-    if steps is None:
-        bins = np.unique(np.around(dt[im], decimals=0))
-    elif type(steps) is int:
-        bins = np.arange(1, steps, 1)
-    else:
-        bins = np.unique(steps)
-        bins = bins[bins > 0]
+    if dt is None:
+        dt = edt(im)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -255,6 +260,7 @@ def imbibition_dt(
     inlets=None,
     outlets=None,
     residual=None,
+    dt=None,
     steps=None,
     smooth=True,
 ):
@@ -276,10 +282,16 @@ def imbibition_dt(
         A boolean array with `True` values indicating the outlet locations through
         which defending (non-wetting) phase would exit the domain. If not provided
         then trapping of the non-wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
     steps : scalar or array_like
-        A list of which sphere sizes to invade. If `None` (default) then each unique
-        integer value in the distance transform is used. If a scalar then a list of
-        steps is generated from `steps` to 1.
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
         If `True` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
@@ -305,14 +317,9 @@ def imbibition_dt(
     `porespy.settings.ncores > 1`
     """
     im = np.array(im, dtype=bool)
-    dt = edt(im, parallel=settings.ncores)
-    if steps is None:
-        bins = np.unique(np.around(dt[im], decimals=0))
-    elif type(steps) is int:
-        bins = np.arange(1, steps, 1)
-    else:
-        bins = np.unique(steps)
-        bins = bins[bins > 0]
+    if dt is None:
+        dt = edt(im)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -361,6 +368,7 @@ def imbibition_fft(
     inlets=None,
     outlets=None,
     residual=None,
+    dt=None,
     steps=None,
     smooth=True,
 ):
@@ -381,10 +389,16 @@ def imbibition_fft(
         A boolean array with `True` values indicating the outlet locations through
         which defending (non-wetting) phase would exit the domain. If not provided
         then trapping of the non-wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
     steps : scalar or array_like
-        A list of which sphere sizes to invade. If `None` (default) then each unique
-        integer value in the distance transform is used. If a scalar then a list of
-        steps is generated from `steps` to 1.
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
         If `True` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
@@ -404,14 +418,9 @@ def imbibition_fft(
         ----------- ----------------------------------------------------------------
     """
     im = np.array(im, dtype=bool)
-    dt = edt(im, parallel=settings.ncores)
-    if steps is None:
-        bins = np.unique(np.around(dt[im], decimals=0))
-    elif type(steps) is int:
-        bins = np.arange(1, steps, 1)
-    else:
-        bins = np.unique(steps)
-        bins = bins[bins > 0]
+    if dt is None:
+        dt = edt(im)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -520,8 +529,8 @@ def imbibition(
                     inaccessbile, or sufficient pressure was not reached.
         im_snwp     A numpy array with each voxel value indicating the global
                     non-wetting phase saturation at the point it was invaded.
-        im_trapped  A numpy array with ``True`` values indicating trapped voxels if
-                    `outlets` was provided, otherwise will be `None`.
+        im_trapped  A numpy array with ``True`` values indicating trapped voxels
+                    if `outlets` was provided, otherwise will be `None`.
         pc          1D array of capillary pressure values that were applied
         snwp        1D array of non-wetting phase saturations for each applied
                     value of capillary pressure (``pc``).
@@ -577,7 +586,7 @@ def imbibition(
         nwp_mask = np.zeros_like(im, dtype=bool)
         if np.any(edges):
             coords = np.where(edges)
-            radii = dt[coords].astype(int)
+            radii = dt[coords].astype(int) + 1
             nwp_mask = _insert_disks_at_points_parallel(
                 im=nwp_mask,
                 coords=np.vstack(coords),
@@ -699,13 +708,14 @@ if __name__ == '__main__':
     i = np.random.randint(1, 100000)  # bad: 38364, good: 65270, 71698
     i = 50591
     # i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
+    # i = 38364
     print(i)
     im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
     im = ps.filters.fill_closed_pores(im, surface=True)
 
     inlets = ps.generators.faces(im.shape, inlet=0)
     outlets = ps.generators.faces(im.shape, outlet=0)
-    lt = ps.filters.local_thickness(im)
+    lt = ps.filters.local_thickness_dt(im)
     residual = (lt < 8)*im
     pc = ps.filters.capillary_transform(im=im, voxel_size=1e-4)
 
