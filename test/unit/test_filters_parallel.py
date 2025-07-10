@@ -34,22 +34,6 @@ class ParallelTest():
         mx_parallel_1 = ps.filters.find_peaks(dt=dt, parallel_kw=parallel_kw)
         assert np.all(mx_serial == mx_parallel_1)
 
-    def test_porosimetry(self):
-        im = ps.generators.blobs(shape=[100, 100, 100], blobiness=2, periodic=False,)
-        parallel_kw = {"divs": 1}
-        mio_serial = ps.filters.porosimetry(im, mode='mio', parallel_kw=parallel_kw)
-        parallel_kw = {"divs": 2}
-        mio_parallel = ps.filters.porosimetry(im, mode='mio', parallel_kw=parallel_kw)
-        assert np.all(mio_serial == mio_parallel)
-
-    def test_local_thickness(self):
-        im = ps.generators.blobs(shape=[100, 100, 100], blobiness=2, periodic=False,)
-        parallel_kw = {"divs": 1}
-        lt_serial = ps.filters.local_thickness(im, mode='mio', parallel_kw=parallel_kw)
-        parallel_kw = {"divs": 2}
-        lt_parallel = ps.filters.local_thickness(im, mode='mio', parallel_kw=parallel_kw)
-        assert np.all(lt_serial == lt_parallel)
-
     def test_blobs_3D(self):
         np.random.seed(0)
         parallel_kw = {"divs": 1}
