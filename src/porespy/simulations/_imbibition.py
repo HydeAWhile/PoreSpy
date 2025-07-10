@@ -520,8 +520,8 @@ def imbibition(
                     inaccessbile, or sufficient pressure was not reached.
         im_snwp     A numpy array with each voxel value indicating the global
                     non-wetting phase saturation at the point it was invaded.
-        im_trapped  A numpy array with ``True`` values indicating trapped voxels if
-                    `outlets` was provided, otherwise will be `None`.
+        im_trapped  A numpy array with ``True`` values indicating trapped voxels
+                    if `outlets` was provided, otherwise will be `None`.
         pc          1D array of capillary pressure values that were applied
         snwp        1D array of non-wetting phase saturations for each applied
                     value of capillary pressure (``pc``).
@@ -577,7 +577,7 @@ def imbibition(
         nwp_mask = np.zeros_like(im, dtype=bool)
         if np.any(edges):
             coords = np.where(edges)
-            radii = dt[coords].astype(int)
+            radii = dt[coords].astype(int) + 1
             nwp_mask = _insert_disks_at_points_parallel(
                 im=nwp_mask,
                 coords=np.vstack(coords),
@@ -699,13 +699,14 @@ if __name__ == '__main__':
     i = np.random.randint(1, 100000)  # bad: 38364, good: 65270, 71698
     i = 50591
     # i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
+    # i = 38364
     print(i)
     im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
     im = ps.filters.fill_closed_pores(im, surface=True)
 
     inlets = ps.generators.faces(im.shape, inlet=0)
     outlets = ps.generators.faces(im.shape, outlet=0)
-    lt = ps.filters.local_thickness(im)
+    lt = ps.filters.local_thickness_dt(im)
     residual = (lt < 8)*im
     pc = ps.filters.capillary_transform(im=im, voxel_size=1e-4)
 
