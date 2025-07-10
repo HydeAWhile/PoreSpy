@@ -162,13 +162,13 @@ def local_thickness(
     """
 
     if method == 'dt':
-        lt = local_thickness_dt(im=im, dt=dt, smooth=smooth)
+        lt = local_thickness_dt(im=im, dt=dt, sizes=sizes, smooth=smooth)
     elif method == 'imj':
-        lt = local_thickness_imj(im=im, dt=dt, smooth=smooth)
+        lt = local_thickness_imj(im=im, dt=dt, smooth=smooth)[0]
     elif method == 'bf':
         lt = local_thickness_bf(im=im, dt=dt, smooth=smooth)
     elif method == 'conv':
-        lt = local_thickness_conv(im=im, dt=dt, smooth=smooth)
+        lt = local_thickness_conv(im=im, dt=dt, sizes=sizes, smooth=smooth)
     else:
         raise Exception(f"Unrecognized method {method}")
     return lt
