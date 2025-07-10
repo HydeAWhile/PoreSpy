@@ -147,12 +147,12 @@ def magnet(im,
         if im.ndim == 3:
             _check_skeleton_health(sk.astype('bool'))
     # take distance transform
-    dt = edt(im, parallel=16)
+    dt = edt(im)
     # find junctions
     fj = find_junctions(sk)
     juncs = fj.juncs + fj.endpts
     # if int is not passed, s is dt
-    if type(s) is not int:
+    if s is None:
         s = dt
     juncs = merge_nearby_juncs(sk, juncs, s)  # FIXME: merge juncs AND endpts?
     # find throats
@@ -230,7 +230,6 @@ def skeleton(im, surface=False, parallel_kw=None):
          specify any integer values to control the memory usage. Setting value
          to 1 will effectively process the chunks in serial to minimize memory
          usage.
-
 
     Returns
     -------
