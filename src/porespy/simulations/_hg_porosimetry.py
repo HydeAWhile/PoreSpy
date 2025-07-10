@@ -5,6 +5,11 @@ from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import Results
 
 
+__all__ = [
+    'hg_porosimetry',
+]
+
+
 def hg_porosimetry(im, steps=25, voxel_size=1.0):
     faces = borders(im.shape, mode='faces')
     pc = capillary_transform(
@@ -46,7 +51,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     i = 50591
-    im = ps.generators.blobs([200, 200, 200], porosity=0.4, seed=0)
+    im = ps.generators.blobs([100, 100, 100], porosity=0.4, seed=0)
     mip = hg_porosimetry(im, voxel_size=1e-5, steps=50)
 
     fig, ax = plt.subplots()
