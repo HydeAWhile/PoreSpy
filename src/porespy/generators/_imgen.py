@@ -7,7 +7,7 @@ import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
 from numba import njit
-from porespy import metrics, settings
+from porespy import settings
 from porespy.filters import chunked_func
 from porespy.tools import (
     _insert_disk_at_points,
@@ -1497,7 +1497,7 @@ def cylinders(
             im = im * tmp
         n_fibers_added += n_fibers
         # Update parameters for next iteration
-        eps = metrics.porosity(im)
+        eps = im.sum(dtype=np.float64)/im.size
         vol_added = get_num_pixels(eps)
         vol_fiber = vol_added / n_fibers_added
 

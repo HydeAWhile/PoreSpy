@@ -18,20 +18,25 @@ from porespy.filters import (
     find_surface_pores,
     local_thickness,
     pc_to_seq,
+    fill_closed_pores,
+    find_closed_pores,
+    find_surface_pores,
 )
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
-    get_edt,
-    get_slices_slabs,
     get_tqdm,
+    get_slices_slabs,
+    get_edt,
 )
 
 __all__ = [
+    "bond_number",
     "boxcount",
     "chord_counts",
     "chord_length_distribution",
     "find_h",
+    "find_porosity_threshold",
     "is_percolating",
     "lineal_path_distribution",
     "pore_size_distribution",
@@ -44,7 +49,15 @@ __all__ = [
     "percolating_porosity",
     "phase_fraction",
     "pc_map_to_pc_curve",
-    "bond_number",
+    "percolating_porosity",
+    "phase_fraction",
+    "pore_size_distribution",
+    "porosity",
+    "porosity_by_type",
+    "porosity_profile",
+    "radial_density_distribution",
+    "satn_profile",
+    "two_point_correlation",
 ]
 
 
@@ -54,7 +67,52 @@ logger = logging.getLogger(__name__)
 strel = {2: {"min": disk(1), "max": square(3)}, 3: {"min": ball(1), "max": cube(3)}}
 
 
-def is_percolating(im, axis=None, inlets=None, outlets=None, conn="min"):
+def porosity_by_type(im, conn='min'):
+    r"""
+    Computes different types of porosity in an image including total, closed, and
+    surface
+
+    Parameters
+    ----------
+    im : ndarray
+        An image of the void space with 1 (or `True`) representing the phase of
+        interest.  The bulk volume will be computed as the sum of 0's and 1's.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    results
+        A dataclass-like object with the following attributes:
+
+        ==========  ================================================================
+        Attribute   Description
+        ==========  ================================================================
+        `total`     The total fraction of the image which is void phase
+        `closed`    The fraction of the image which consists isolated voids
+        `surface`   The fracton of the image which are pores only the surfaces
+        ==========  ================================================================
+
+    """
+    Vb = np.sum((im == 1) + (im == 0), dtype=np.float64)
+    temp = im == 1
+    eps_total = np.sum(temp, dtype=np.float64)/Vb
+    temp = find_closed_pores(im, conn=conn)
+    eps_closed = np.sum(temp, dtype=np.float64)/Vb
+    temp = find_surface_pores(im, conn=conn)
+    eps_surface = np.sum(temp, dtype=np.float64)/Vb
+
+    r = Results()
+    r.total = eps_total
+    r.closed = eps_closed
+    r.surface = eps_surface
+    return r
+
+
+def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
     r"""
     Determines if a percolating path exists across the domain (in the specified
     direction) or between given inlets and outlets.
@@ -1279,7 +1337,7 @@ def pc_map_to_pc_curve(
         swp_r = (seq[im] == 0).sum(dtype=np.int64) / im.sum(dtype=np.int64)
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        idx = np.argsort(pcs)[-1::-1]  # Because -inf lands on wrong end
+        idx = np.argsort(pcs)[-1::-1]  # Because -inf, if present, is on wrong end
         pcs = pcs[idx]
         counts = counts[idx]
         snwp = 1 - np.cumsum(counts) / im.sum()

@@ -21,8 +21,12 @@ from porespy.tools import (
     _insert_disks_at_points_parallel,
     get_edt,
     get_tqdm,
-    make_contiguous,
+    Results,
     ps_round,
+    make_contiguous,
+    get_edt,
+    ps_round,
+    parse_steps,
 )
 
 __all__ = [
@@ -44,6 +48,7 @@ def drainage_dsi(
     im,
     inlets=None,
     outlets=None,
+    dt=None,
     steps=None,
     smooth=True,
 ):
@@ -64,10 +69,16 @@ def drainage_dsi(
         A boolean array with `True` values indicating the outlet locations through
         which defending (wetting) phase would exit the domain. If not provided then
         trapping of the wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
     steps : scalar or array_like
-        A list of which sphere sizes to invade. If `None` (default) then each unique
-        integer value in the distance transform is used. If a scalar then a list of
-        steps is generated from `steps` to 1.
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
         If `True` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
@@ -96,15 +107,10 @@ def drainage_dsi(
     else:
         func = _insert_disk_at_points
     im = np.array(im, dtype=bool)
-    dt = edt(im, parallel=settings.ncores)
+    if dt is None:
+        dt = edt(im)
     dt_int = dt.astype(int)
-    if steps is None:
-        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
-    elif type(steps) is int:
-        bins = np.arange(steps, 0, -1)
-    else:
-        bins = np.unique(steps)[::-1]
-        bins = bins[bins > 0]
+    bins = parse_steps(steps=steps, vals=dt[im], descending=True)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
@@ -149,7 +155,14 @@ def drainage_dsi(
     return results
 
 
-def drainage_dt_fft(im, inlets=None, outlets=None, steps=None, smooth=True):
+def drainage_dt_fft(
+    im,
+    inlets=None,
+    outlets=None,
+    dt=None,
+    steps=None,
+    smooth=True
+):
     r"""
     Performs a distance transform based drainage simulation using distance transform
     thresholding for the erosion step and fft-based convolution for the dilation
@@ -168,10 +181,16 @@ def drainage_dt_fft(im, inlets=None, outlets=None, steps=None, smooth=True):
         A boolean array with `True` values indicating the outlet locations through
         which defending (wetting) phase would exit the domain. If not provided then
         trapping of the wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
     steps : scalar or array_like
-        A list of which sphere sizes to invade. If `None` (default) then each unique
-        integer value in the distance transform is used. If a scalar then a list of
-        steps is generated from `steps` to 1.
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
         If `True` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
@@ -196,14 +215,9 @@ def drainage_dt_fft(im, inlets=None, outlets=None, steps=None, smooth=True):
     `porespy.settings.ncores > 1`
     """
     im = np.array(im, dtype=bool)
-    dt = edt(im, parallel=settings.ncores)
-    if steps is None:
-        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
-    elif type(steps) is int:
-        bins = np.arange(steps, 0, -1)
-    else:
-        bins = np.unique(steps)[::-1]
-        bins = bins[bins > 0]
+    if dt is None:
+        dt = edt(im)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=True)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -240,6 +254,7 @@ def drainage_fft(
     im,
     inlets=None,
     outlets=None,
+    dt=None,
     steps=None,
     smooth=True,
 ):
@@ -260,10 +275,16 @@ def drainage_fft(
         A boolean array with `True` values indicating the outlet locations through
         which defending (wetting) phase would exit the domain. If not provided then
         trapping of the wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
     steps : scalar or array_like
-        A list of which sphere sizes to invade. If `None` (default) then each unique
-        integer value in the distance transform is used. If a scalar then a list of
-        steps is generated from `steps` to 1.
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
         If `True` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
@@ -283,14 +304,9 @@ def drainage_fft(
         ----------- ----------------------------------------------------------------
     """
     im = np.array(im, dtype=bool)
-    dt = edt(im, parallel=settings.ncores)
-    if steps is None:
-        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
-    elif type(steps) is int:
-        bins = np.arange(steps, 0, -1)
-    else:
-        bins = np.unique(steps)[::-1]
-        bins = bins[bins > 0]
+    if dt is None:
+        dt = edt(im)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=True)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -329,6 +345,7 @@ def drainage_dt(
     inlets,
     outlets=None,
     # residual=None,
+    dt=None,
     steps=None,
     smooth=True,
 ):
@@ -350,10 +367,16 @@ def drainage_dt(
         A boolean array with `True` values indicating the outlet locations through
         which defending (wetting) phase would exit the domain. If not provided then
         trapping of the wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
     steps : scalar or array_like
-        A list of which sphere sizes to invade. If `None` (default) then each unique
-        integer value in the distance transform is used. If a scalar then a list of
-        steps is generated from `steps` to 1.
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
         If `True` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
@@ -379,14 +402,9 @@ def drainage_dt(
     `porespy.settings.ncores > 1`
     """
     im = np.array(im, dtype=bool)
-    dt = edt(im, parallel=settings.ncores)
-    if steps is None:
-        bins = np.unique(np.around(dt[im], decimals=0))[::-1]
-    elif type(steps) is int:
-        bins = np.arange(steps, 0, -1)
-    else:
-        bins = np.unique(steps)[::-1]
-        bins = bins[bins > 0]
+    if dt is None:
+        dt = edt(im)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=True)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name

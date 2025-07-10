@@ -1,4 +1,3 @@
-import inspect
 import logging
 import operator
 from typing import Literal
@@ -22,6 +21,8 @@ from porespy.tools import (
     ps_disk,
     recombine,
     unpad,
+    get_tqdm,
+    get_edt,
 )
 
 __all__ = [
@@ -34,9 +35,7 @@ __all__ = [
     "flood",
     "flood_func",
     "hold_peaks",
-    "local_thickness",
     "nphase_border",
-    "porosimetry",
     "prune_branches",
     "region_size",
     "trim_extrema",

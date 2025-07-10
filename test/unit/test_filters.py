@@ -32,28 +32,29 @@ class FilterTest():
     def test_porosimetry_compare_modes_2d(self):
         im = self.im[:, :, 50]
         sizes = np.arange(25, 1, -1)
-        fft = ps.filters.porosimetry(im, mode='hybrid', sizes=sizes)
-        mio = ps.filters.porosimetry(im, mode='mio', sizes=sizes)
-        dt = ps.filters.porosimetry(im, mode='dt', sizes=sizes)
+        fft = ps.filters.porosimetry(im, method='conv', sizes=sizes)
+        dsi = ps.filters.porosimetry(im, method='dsi', sizes=sizes)
+        dt = ps.filters.porosimetry(im, method='dt', sizes=sizes)
         assert np.all(fft == dt)
-        assert np.all(fft == mio)
+        assert np.all(fft == dsi)
 
     def test_porosimetry_num_points(self):
-        mip = ps.filters.porosimetry(im=self.im, sizes=10)
+        mip = ps.filters.porosimetry(im=self.im, sizes=None)
         steps = np.unique(mip)
-        ans = np.array([0.00000000, 1.00000000, 1.37871571, 1.61887041,
-                        1.90085700, 2.23196205, 2.62074139, 3.07724114,
-                        3.61325732])
+        ans = np.array([0.        , 1.        , 1.41421354, 1.73205078, 2.        ,
+                        2.23606801, 2.44948983, 2.82842708, 3.        , 3.1622777 ,
+                        3.31662488, 3.46410155, 3.60555124, 3.7416575 , 4.        ,
+                        4.12310553])
         assert np.allclose(steps, ans)
 
     def test_porosimetry_compare_modes_3d(self):
         im = self.im
         sizes = np.arange(25, 1, -1)
-        fft = ps.filters.porosimetry(im, sizes=sizes, mode='hybrid')
-        mio = ps.filters.porosimetry(im, sizes=sizes, mode='mio')
-        dt = ps.filters.porosimetry(im, sizes=sizes, mode='dt')
+        fft = ps.filters.porosimetry(im, sizes=sizes, method='conv')
+        dsi = ps.filters.porosimetry(im, sizes=sizes, method='dsi')
+        dt = ps.filters.porosimetry(im, sizes=sizes, method='dt')
         assert np.all(fft == dt)
-        assert np.all(fft == mio)
+        assert np.all(fft == dsi)
 
     def test_porosimetry_with_sizes(self):
         s = np.logspace(0.01, 0.6, 5)
@@ -290,11 +291,11 @@ class FilterTest():
         assert max1 > max2
 
     def test_local_thickness(self):
-        lt = ps.filters.local_thickness(self.im, mode='dt')
+        lt = ps.filters.local_thickness(self.im, method='dt')
         np.testing.assert_almost_equal(lt.max(), self.im_dt.max(), decimal=6)
-        lt = ps.filters.local_thickness(self.im, mode='mio')
+        lt = ps.filters.local_thickness(self.im, method='imj')
         np.testing.assert_almost_equal(lt.max(), self.im_dt.max(), decimal=6)
-        lt = ps.filters.local_thickness(self.im, mode='hybrid')
+        lt = ps.filters.local_thickness(self.im, method='conv')
         np.testing.assert_almost_equal(lt.max(), self.im_dt.max(), decimal=6)
 
     def test_local_thickness_known_sizes(self):
@@ -303,15 +304,6 @@ class FilterTest():
         im = ps.generators.random_spheres(im=im, r=10)
         lt = ps.filters.local_thickness(im, sizes=[20, 10])
         assert np.all(np.unique(lt) == [0, 10, 20])
-
-    def test_porosimetry(self):
-        im2d = self.im[:, :, 50]
-        lt = ps.filters.local_thickness(im2d)
-        sizes = np.unique(lt)
-        mip = ps.filters.porosimetry(im2d,
-                                     sizes=len(sizes),
-                                     access_limited=False)
-        assert mip.max() <= sizes.max()
 
     def test_morphology_fft_dilate_2d(self):
         im = self.im[:, :, 50]
@@ -695,11 +687,6 @@ class FilterTest():
         )
 
         assert np.all(trp1 == trp2)
-
-        fig, ax = plt.subplots(1, 3)
-        ax[0].imshow(inv.im_seq/im, interpolation='none', origin='lower')
-        ax[1].imshow(trp1/im, interpolation='none', origin='lower')
-        ax[2].imshow(trp2/im, interpolation='none', origin='lower')
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 edt = ps.tools.get_edt()
 
 
-def test_drainage(plot=False):
+def test_imbibition(plot=False):
     im = ps.generators.blobs(
         shape=[500, 500],
         porosity=0.708328,
@@ -225,4 +225,4 @@ def test_drainage(plot=False):
 
 # %%
 if __name__ == "__main__":
-    test_drainage(plot=False)
+    test_imbibition(plot=False)

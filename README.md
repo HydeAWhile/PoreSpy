@@ -4,6 +4,8 @@
 
 [![image](https://img.shields.io/pypi/v/porespy.svg)](https://pypi.python.org/pypi/porespy/)
 [![image](https://codecov.io/gh/PMEAL/PoreSpy/branch/dev/graph/badge.svg)](https://codecov.io/gh/PMEAL/PoreSpy)
+[![Tests](https://github.com/PMEAL/porespy/actions/workflows/tests.yml/badge.svg?branch=dev)](https://github.com/PMEAL/porespy/actions/workflows/tests.yml)
+[![Examples](https://github.com/PMEAL/porespy/actions/workflows/examples.yml/badge.svg?branch=dev)](https://github.com/PMEAL/porespy/actions/workflows/examples.yml)
 
 # What is PoreSpy?
 
@@ -32,18 +34,18 @@ in **PoreSpy** that are implemented natively, but only when necessary.
 
 **PoreSpy** consists of the following modules:
 
-  - `generators`: Routines for generating artificial images of porous
+- `generators`: Routines for generating artificial images of porous
     materials useful for testing and illustration
-  - `filters`: Functions that accept an image and return an altered
+- `filters`: Functions that accept an image and return an altered
     image
-  - `metrics`: Tools for quantifying properties of images
-  - `networks`: Algorithms and tools for analyzing images as pore networks
-  - `simulations`: Physical simulations on images including drainage
-  - `visualization`: Helper functions for creating useful views of the
+- `metrics`: Tools for quantifying properties of images
+- `networks`: Algorithms and tools for analyzing images as pore networks
+- `simulations`: Physical simulations on images including drainage
+- `visualization`: Helper functions for creating useful views of the
     image
-  - `io`: Functions for outputting image data in various formats for use in
+- `io`: Functions for outputting image data in various formats for use in
     common software
-  - `tools`: Various useful tools for working with images
+- `tools`: Various useful tools for working with images
 
 ## Gallery
 
@@ -85,19 +87,19 @@ several filters, and calculating some common metrics. A set of examples
 is included in this repo, and can be [browsed
 here](https://github.com/PMEAL/porespy/tree/dev/examples).
 
-
 ## Generating an image
 
 PoreSpy offers several ways to generate artificial images, for quick
 testing and developmnet of work flows, instead of dealing with
 reading/writing/storing of large tomograms.
 
-``` python
+```python
 import porespy as ps
 import matplotlib.pyplot as plt
 im = ps.generators.blobs(shape=[500, 500], porosity=0.6, blobiness=2)
 plt.imshow(im)
 ```
+
 <p align="center">
   <img src="https://github.com/PMEAL/porespy/raw/dev/docs/_static/images/fig1.png" width="50%"></img>
 </p>
@@ -109,10 +111,11 @@ voxel with the radius of a sphere that overlaps it. Analysis of the
 histogram of the voxel values provides information about the pore size
 distribution.
 
-``` python
+```python
 lt = ps.filters.local_thickness(im)
 plt.imshow(lt)
 ```
+
 <p align="center">
   <img src="https://github.com/PMEAL/porespy/raw/dev/docs/_static/images/fig2.png" width="50%"></img>
 </p>
@@ -122,11 +125,12 @@ space in a given direction. It is possible to gain information about
 anisotropy of the material by looking at the distributions of chords
 lengths in each principle direction.
 
-``` python
+```python
 cr = ps.filters.apply_chords(im)
 cr = ps.filters.flood(cr, mode='size')
 plt.imshow(cr)
 ```
+
 <p align="center">
   <img src="https://github.com/PMEAL/porespy/raw/dev/docs/_static/images/fig3.png" width="50%"></img>
 </p>
@@ -137,12 +141,13 @@ The metrics sub-module contains several common functions that analyze
 binary tomogram directly. Examples are simple porosity, as well as
 two-point correlation function.
 
-``` python
+```python
 data = ps.metrics.two_point_correlation_fft(im)
 fig = plt.plot(*data, 'bo-')
 plt.ylabel('probability')
 plt.xlabel('correlation length [voxels]')
 ```
+
 <p align="center">
   <img src="https://github.com/PMEAL/porespy/raw/dev/docs/_static/images/fig4.png" width="50%"></img>
 </p>
@@ -151,7 +156,7 @@ The metrics sub-module also contains a suite of functions that produce
 plots based on values in images that have passed through a filter, such
 as local thickness.
 
-``` python
+```python
 mip = ps.filters.porosimetry(im)
 data = ps.metrics.pore_size_distribution(mip, log=False)
 plt.imshow(mip)
@@ -160,6 +165,7 @@ plt.plot(data.R, data.cdf, 'bo-')
 plt.xlabel('invasion size [voxels]')
 plt.ylabel('volume fraction invaded [voxels]')
 ```
+
 <p align="center">
   <img src="https://github.com/PMEAL/porespy/raw/dev/docs/_static/images/fig5.png" width="50%"></img>
   <img src="https://github.com/PMEAL/porespy/raw/dev/docs/_static/images/fig6.png" width="50%"></img>
