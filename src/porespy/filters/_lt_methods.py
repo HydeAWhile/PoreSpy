@@ -1,5 +1,6 @@
 import logging
 import inspect
+from typing import Literal
 import numpy as np
 import numpy.typing as npt
 from skimage.morphology import ball, disk, square, cube
@@ -25,13 +26,82 @@ __all__ = [
     "local_thickness_dt",
     "local_thickness_conv",
     "local_thickness",
+    "porosimetry",
 ]
+
+
+def porosimetry(
+    im: npt.NDArray,
+    dt: npt.NDArray = None,
+    inlets: npt.NDArray = None,
+    sizes: int = None,
+    method: Literal['dsi', 'fft', 'dt'] = 'dt',
+    smooth: bool = True,
+):
+    r"""
+    Each location is assigned the radius of the largest sphere that can reach it
+    from the given inlets.
+
+    This function is essentially a local thickness filter but with access limitations
+    so represents a form of porosimetry
+
+    Parameters
+    ----------
+    im : ndarray
+        Boolean image of the porous material
+    dt : ndarray, optional
+        The distance transform of the image
+    inlets : ndarray, optional
+        A boolean array the same sizes a `im`, with `True` values indicating the
+        inlet locations. If not provided then all faces are used.
+    method : str
+        Which method to use to compute the local thickness. Options are:
+
+        ======== ===================================================================
+        Method   Description
+        ======== ===================================================================
+        'dt'     Uses distance transforms to perform erosion and dilation for each
+                 radius in the image
+        'dsi'     Uses brute-force to inserts spheres at each voxel
+        'conv'   Uses FFT-based convolution to perform erosion and dilation for
+                 each radius in the image
+        ======== ===================================================================
+
+    sizes : array_like or scalar
+        This is only used if the method is `dt` or `conv`. If a list of values is
+        provided they are used directly. If a scalar is provided then that number
+        of points spanning the min and max of the distance transform are used.
+        If `None`, then all the unique values in the distance transform are used,
+        which may become time consuming. This can be sped up if `dt` is provided
+        and rounded to the nearest integer first.
+    smooth : bool, optional
+        Indicates if protrusions should be removed from the faces of the spheres
+        or not. Default is `True`.
+
+    """
+    if inlets is None:
+        from porespy.generators import borders
+        inlets = borders(im.shape, mode='faces')
+    if dt is None:
+        dt = edt(im)
+    if sizes is None:
+        sizes = np.unique(dt[im])
+    if method == 'dt':
+        from porespy.simulations import drainage_dt
+        drn = drainage_dt(im=im, inlets=inlets, steps=sizes, smooth=smooth)
+    elif method in ['dsi', 'bf']:
+        from porespy.simulations import drainage_dsi
+        drn = drainage_dsi(im=im, inlets=inlets, steps=sizes, smooth=smooth)
+    if method in ['fft', 'conv']:
+        from porespy.simulations import drainage_fft
+        drn = drainage_fft(im=im, inlets=inlets, steps=sizes, smooth=smooth)
+    return drn.im_size
 
 
 def local_thickness(
     im: npt.NDArray,
     dt: npt.NDArray = None,
-    method: str = 'dt',
+    method: Literal['bf', 'imj', 'conv', 'dt'] = 'dt',
     smooth: bool = True,
     mask: npt.NDArray = None,
     approx: bool = False,
