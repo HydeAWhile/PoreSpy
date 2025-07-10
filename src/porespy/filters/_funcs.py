@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import operator
 import scipy.ndimage as spim
-from skimage.morphology import reconstruction
+from skimage.morphology import reconstruction, ball, disk, square, cube
 from skimage.segmentation import clear_border
 from porespy.tools import (
     _check_for_singleton_axes,
@@ -13,7 +13,6 @@ from porespy.tools import (
     unpad,
     get_tqdm,
     get_edt,
-    get_strel,
 )
 from porespy import settings
 from typing import Literal
@@ -39,7 +38,7 @@ __all__ = [
 
 edt = get_edt()
 tqdm = get_tqdm()
-strel = get_strel()
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 logger = logging.getLogger(__name__)
 
 

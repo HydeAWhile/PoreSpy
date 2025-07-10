@@ -2,12 +2,12 @@ import logging
 import inspect
 import numpy as np
 import numpy.typing as npt
+from skimage.morphology import ball, disk, square, cube
 from porespy import settings
 from porespy.tools import (
     get_edt,
     _insert_disk_at_points,
     get_tqdm,
-    get_strel,
     ps_round,
 )
 
@@ -17,15 +17,91 @@ from numba import njit, prange
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
-strel = get_strel()
-
+strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 __all__ = [
     "local_thickness_bf",
     "local_thickness_imj",
     "local_thickness_dt",
     "local_thickness_conv",
+    "local_thickness",
 ]
+
+
+def local_thickness(
+    im: npt.NDArray,
+    dt: npt.NDArray = None,
+    method: str = 'dt',
+    smooth: bool = True,
+    mask: npt.NDArray = None,
+    approx: bool = False,
+    sizes: int = 25,
+):
+    r"""
+    Insert a maximally inscribed sphere at every pixel labelled by sphere radius
+
+    This is a wrapper method for computing local thickness via a variety of
+    different methods.
+
+    Parameters
+    ----------
+    im : ndarray
+        Boolean image of the porous material
+    dt : ndarray, optional
+        The distance transform of the image
+    method : str
+        Which method to use to compute the local thickness. Options are:
+
+        ======== ===================================================================
+        Method   Description
+        ======== ===================================================================
+        'dt'     Uses distance transforms to perform erosion and dilation for each
+                 radius in the image
+        'bf'     Uses brute-force to inserts spheres at each voxel
+        'imj'    Uses the brute-force method but reduces the number of insertion
+                 sites by 80-90% to speed up the process
+        'conv'   Uses FFT-based convolution to perform erosion and dilation for
+                 each radius in the image
+        ======== ===================================================================
+
+    sizes : array_like or scalar
+        This is only used if the method is `dt` or `conv`. If a list of values is
+        provided they are used directly. If a scalar is provided then that number
+        of points spanning the min and max of the distance transform are used.
+        If `None`, then all the unique values in the distance transform are used,
+        which may become time consuming. This can be sped up if `dt` is provided
+        and rounded to the nearest integer first.
+    smooth : bool, optional
+        Indicates if protrusions should be removed from the faces of the spheres
+        or not. Default is `True`.
+    mask : ndarray, optional
+        This is only used if the method is `bf` or `imj`.  A boolean mask indicating
+        which sites to insert spheres at. If not provided then all `True` values in
+        `im` are used.
+    approx : bool, optional
+        This is only used if the method is `imj`. If `True` the algorithm is more
+        agressive at skipping voxels to process, which speeds things up, but this
+        sacrifices accuracy in terms of a voxel-by-voxel match with the reference
+        implementation. The default is `False`, meaning full accuracy is the default.
+
+    Returns
+    -------
+    lt : ndarray
+        The local thickness of the image with each voxel labelled according to the
+        radius of the largest sphere which overlaps it
+    """
+
+    if method == 'dt':
+        lt = local_thickness_dt(im=im, dt=dt, smooth=smooth)
+    elif method == 'imj':
+        lt = local_thickness_imj(im=im, dt=dt, smooth=smooth)
+    elif method == 'bf':
+        lt = local_thickness_bf(im=im, dt=dt, smooth=smooth)
+    elif method == 'conv':
+        lt = local_thickness_conv(im=im, dt=dt, smooth=smooth)
+    else:
+        raise Exception(f"Unrecognized method {method}")
+    return lt
 
 
 def local_thickness_bf(im, dt=None, mask=None, smooth=True):
@@ -286,7 +362,7 @@ def local_thickness_conv(
         to integers and using `sizes=None` can save time by limiting the number of
         sizes that are used.
     sizes : array_like or scalar
-        The sizes to insert. If a list of values of provided they are
+        The sizes to insert. If a list of values is provided they are
         used directly. If a scalar is provided then that number of points
         spanning the min and max of the distance transform are used. If `None`, the
         all the unique values in the distance transform are used, which may become
@@ -359,7 +435,7 @@ def local_thickness_dt(
         to integers and using `sizes=None` can save time by limiting the number of
         sizes that are used.
     sizes : array_like or scalar
-        The sizes to insert. If a list of values of provided they are
+        The sizes to insert. If a list of values is provided they are
         used directly. If a scalar is provided then that number of points
         spanning the min and max of the distance transform are used. If `None`, then
         all the unique values in the distance transform are used, which may become
