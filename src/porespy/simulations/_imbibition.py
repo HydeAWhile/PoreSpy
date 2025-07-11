@@ -327,7 +327,7 @@ def imbibition_dt(
         # Perform erosion using dt
         seeds = dt >= r if smooth else dt > r
         # Perform dilation using dt
-        tmp = edt(~seeds, parallel=settings.ncores)
+        tmp = edt(~seeds)
         wp = ~(tmp < r) if smooth else ~(tmp <= r)
         wp[~im] = 0
         # Trimming disconnected wetting phase

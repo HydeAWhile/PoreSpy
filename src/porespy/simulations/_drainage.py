@@ -116,12 +116,15 @@ def drainage_dsi(
     nwp = np.zeros_like(im, dtype=bool)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        if smooth:
-            seeds = dt >= r
-            edges = dt_int == r
-        else:
-            seeds = dt > r
-            edges = (dt > r) * (dt_int <= (r + 1))
+        seeds = dt >= r if smooth else dt > r
+        # edges = dt_int == r if smooth else (dt > r) * (dt_int <= (r + 1))
+        edges = (dt < (r + 1))*seeds
+        # if smooth:
+        #     seeds = dt >= r
+        #     edges = dt_int == r
+        # else:
+        #     seeds = dt > r
+        #     edges = (dt > r) * (dt_int <= (r + 1))
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
             edges *= seeds
@@ -342,7 +345,7 @@ def drainage_fft(
 
 def drainage_dt(
     im,
-    inlets,
+    inlets=None,
     outlets=None,
     # residual=None,
     dt=None,
@@ -414,13 +417,13 @@ def drainage_dt(
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        tmp = edt(~seeds, parallel=settings.ncores)
+        tmp = edt(~seeds)
         nwp = tmp < r if smooth else tmp <= r
         # if residual is not None:
         #     blobs = trim_disconnected_voxels(residual, inlets=nwp)
         #     seeds = dt >= r
         #     seeds = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     nwp = edt(~seeds, parallel=settings.ncores) < r
+        #     nwp = edt(~seeds) < r
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
