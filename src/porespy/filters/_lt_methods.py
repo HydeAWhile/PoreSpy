@@ -78,6 +78,23 @@ def porosimetry(
         Indicates if protrusions should be removed from the faces of the spheres
         or not. Default is `True`.
 
+    Returns
+    -------
+    sizes : ndarray
+        In image with each voxel value indicating the largest overlapping sphere
+        which can reach it from the given inlets.
+
+    See Also
+    --------
+    local_thickness
+    drainage
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/porosimetry.html>`_
+    to view online example.
+
     """
     if inlets is None:
         from porespy.generators import borders
@@ -158,7 +175,13 @@ def local_thickness(
     -------
     lt : ndarray
         The local thickness of the image with each voxel labelled according to the
-        radius of the largest sphere which overlaps it
+        radius of the largest sphere which overlaps it.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/local_thickness.html>`_
+    to view online example.
     """
 
     if method == 'dt':
