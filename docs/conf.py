@@ -62,10 +62,6 @@ nb_execution_mode = "force" if "CI" in os.environ else "off"
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
 copybutton_prompt_is_regexp = True
 
-add_module_names = False
-add_package_names = False
-globaltoc_maxdepth = 2
-
 # AutoAPI Configuration
 autoapi_dirs = ["../src"]
 autoapi_type = "python"
@@ -81,22 +77,32 @@ autoapi_ignore = [
     "*/__pycache__/*",
     "*/dns/*",  # Exclude deprecated dns module
 ]
-autoapi_python_class_content = "both"  # Include both class and __init__ docstrings
-autoapi_member_order = "alphabetical"  # Simple alphabetical order
-autoapi_root = "autoapi"  # Root directory for generated docs
-autoapi_generate_api_docs = True  # Generate individual API docs for each item
-autoapi_keep_files = True  # Don't keep the generated RST files
-autoapi_add_toctree_entry = True  # Don't add to main toctree automatically
-# autoapi_template_dir = "_templates"  # Use custom templates
-autoapi_own_page_level = "function"  # Each function gets its own page
-# autoapi_python_use_implicit_namespaces = True
+# Include both class and __init__ docstrings
+autoapi_python_class_content = "both"
+autoapi_member_order = "alphabetical"
+# Root directory for generated docs
+autoapi_root = "autoapi"
+# Generate individual API docs for each item
+autoapi_generate_api_docs = True
+# Don't keep the generated RST files
+autoapi_keep_files = False
+# Don't add to main toctree automatically
+autoapi_add_toctree_entry = True
+# Use custom templates
+# autoapi_template_dir = "_templates/autoapi"
+# Each function gets its own page
+autoapi_own_page_level = "function"
 toc_object_entries_show_parents = "hide"
+
+add_module_names = False
+add_package_names = False
+globaltoc_maxdepth = 2
 
 # Add any paths that contain templates here, relative to this directory.
 # templates_path = ["_templates"]
 # The master toctree document.
 master_doc = "index"
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "_templates"]
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 # If true, `todo` and `todoList` produce output, else they produce nothing.
