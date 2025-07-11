@@ -32,14 +32,20 @@ jobs:
           cache-dependency-glob: "**/pyproject.toml"
           cache-suffix: "uv-${{ matrix.python-version }}-${{ matrix.os }}"
 
-      - name: Install dependencies (pip) (macOS)
+      - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          uv sync --extra test --extra extras-macos --extra build
+          uv sync --extra test --extra extras --extra build
           uv build
 
-      - name: Install dependencies (pip) (Windows, Linux)
-        if: matrix.os != 'macos-latest'
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          uv sync --extra test --extra extras --extra build
+          uv build
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           uv sync --extra test --extra extras --extra build
           uv build
@@ -52,6 +58,6 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella

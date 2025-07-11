@@ -1,7 +1,6 @@
 import logging
-
+import inspect
 import numpy as np
-import openpnm as op
 import scipy.ndimage as spim
 from skimage.morphology import ball, cube
 from skimage.segmentation import find_boundaries
@@ -152,9 +151,7 @@ def _generate_voxel_image(network, pore_shape, throat_shape, max_dim=200):
     cn = network["throat.conns"]
 
     # Distance bounding box from the network by a fixed amount
-    delta = network["pore.diameter"].mean() / 2
-    if isinstance(network, op.network.Cubic):
-        delta = op.topotools.get_spacing(network).mean() / 2
+    delta = 1.05*(network["pore.diameter"].mean() / 2)
 
     # Shift everything to avoid out-of-bounds
     extra_clearance = int(max_dim * 0.05)

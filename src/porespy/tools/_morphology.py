@@ -3,7 +3,7 @@ from ._utils import get_edt
 
 
 __all__ = [
-    'get_conns',
+    'get_strel',
     'ball',
     'disk',
     'cube',
@@ -43,7 +43,7 @@ def square(w):
     return se
 
 
-def get_conns():
+def get_strel():
     se = {2: {'min': disk(1),
               'max': square(3)},
           3: {'min': ball(1),

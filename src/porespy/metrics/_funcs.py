@@ -1,16 +1,21 @@
-import logging
 import inspect
+import logging
+
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
+from deprecated import deprecated
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
-from skimage.morphology import skeletonize, ball, disk, square, cube
+from skimage.morphology import ball, cube, disk, skeletonize, square
+
 from porespy import settings
 from porespy.filters import (
+    find_closed_pores,
+    find_surface_pores,
     local_thickness,
     pc_to_seq,
     fill_closed_pores,
@@ -25,7 +30,6 @@ from porespy.tools import (
     get_edt,
 )
 
-
 __all__ = [
     "bond_number",
     "boxcount",
@@ -35,7 +39,15 @@ __all__ = [
     "find_porosity_threshold",
     "is_percolating",
     "lineal_path_distribution",
-    "pc_curve",
+    "pore_size_distribution",
+    "radial_density_distribution",
+    "porosity",
+    "find_porosity_threshold",
+    "porosity_profile",
+    "satn_profile",
+    "two_point_correlation",
+    "percolating_porosity",
+    "phase_fraction",
     "pc_map_to_pc_curve",
     "percolating_porosity",
     "phase_fraction",
@@ -52,7 +64,7 @@ __all__ = [
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
-strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
+strel = {2: {"min": disk(1), "max": square(3)}, 3: {"min": ball(1), "max": cube(3)}}
 
 
 def porosity_by_type(im, conn='min'):
@@ -126,6 +138,12 @@ def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
         as a list like `[True, False, True]` indicating that the domain percolates
         in the `x` and `z` directions, but not `y`.
 
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/is_percolating.html>`_
+    to view online example.
+
     """
     if (inlets is not None) and (outlets is not None):
         pass
@@ -152,7 +170,7 @@ def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
     return np.any(hits)
 
 
-def find_porosity_threshold(im, axis=0, conn='min'):
+def find_porosity_threshold(im, axis=0, conn="min"):
     r"""
     Finds the porosity of the image at the percolation threshold
 
@@ -190,9 +208,16 @@ def find_porosity_threshold(im, axis=0, conn='min'):
         R                The threshold to apply to the distance transform to
                          obtain the percolating image (i.e. im = dt >= R)
         ================ ===========================================================
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/find_porosity_threshodl.html>`_
+    to view online example.
+
     """
     if axis is None:
-        raise Exception('axis must be specified')
+        raise Exception("axis must be specified")
 
     def _check_percolation(dt, R, step, axis, conn):
         while True:
@@ -206,14 +231,15 @@ def find_porosity_threshold(im, axis=0, conn='min'):
     dt = edt(im)
 
     R = _check_percolation(dt, R=1, step=10, axis=axis, conn=conn)
-    R = _check_percolation(dt, R=max(1, R-10), step=4, axis=axis, conn=conn)
-    R = _check_percolation(dt, R=max(1, R-4), step=1, axis=axis, conn=conn)
+    R = _check_percolation(dt, R=max(1, R - 10), step=4, axis=axis, conn=conn)
+    R = _check_percolation(dt, R=max(1, R - 4), step=1, axis=axis, conn=conn)
 
     im2 = dt >= (R - 1)
     eps_thresh_total = porosity(im2)
     eps_thresh_perc = percolating_porosity(im2, axis=axis)
 
     from porespy.tools import Results
+
     r = Results()
     r.eps_orig = porosity(im)
     r.eps_orig_perc = percolating_porosity(im, axis=axis)
@@ -223,7 +249,7 @@ def find_porosity_threshold(im, axis=0, conn='min'):
     return r
 
 
-def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn='min'):
+def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn="min"):
     r"""
     Finds volume fraction of void space which belongs to percolating paths
     across the domain in the direction specified.
@@ -243,6 +269,12 @@ def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn='min'):
         Boolean arrays indicating the locations of the inlets and outlets. These
         are useful if the domain is not cubic or if special inlet and outlet
         locations are desired.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/percolating_porosity.html>`_
+    to view online example.
     """
     se = strel[im.ndim][conn]
     if (inlets is None) and (outlets is None):
@@ -252,9 +284,9 @@ def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn='min'):
         outlets = np.zeros_like(im2, dtype=bool)
         outlets[-1, ...] = True
     labels, N = spim.label(im2, structure=se)
-    a = np.unique(labels*inlets)
+    a = np.unique(labels * inlets)
     a = a[a > 0]
-    b = np.unique(labels*outlets)
+    b = np.unique(labels * outlets)
     b = b[b > 0]
     hits = np.intersect1d(a, b)
     im3 = np.isin(labels, hits)
@@ -294,20 +326,20 @@ def boxcount(im, bins=10):
 
     References
     ----------
-    .. [1] See Boxcounting on `Wikipedia
+    .. [1] Read more about box counting on `Wikipedia
        <https://en.wikipedia.org/wiki/Box_counting>`_
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/box_counting.html>`_
+    <https://porespy.org/examples/metrics/reference/boxcount.html>`_
     to view online example.
 
     """
     im = np.array(im, dtype=bool)
 
-    if (len(im.shape) != 2 and len(im.shape) != 3):
-        raise Exception('Image must be 2-dimensional or 3-dimensional')
+    if len(im.shape) != 2 and len(im.shape) != 3:
+        raise Exception("Image must be 2-dimensional or 3-dimensional")
 
     if isinstance(bins, int):
         Ds = np.unique(np.logspace(1, np.log10(min(im.shape)), bins).astype(int))
@@ -321,16 +353,16 @@ def boxcount(im, bins=10):
         for i in range(0, im.shape[0], d):
             for j in range(0, im.shape[1], d):
                 if len(im.shape) == 2:
-                    temp = im[i:i+d, j:j+d]
+                    temp = im[i : i + d, j : j + d]
                     result += np.any(temp)
                     result -= np.all(temp)
                 else:
                     for k in range(0, im.shape[2], d):
-                        temp = im[i:i+d, j:j+d, k:k+d]
+                        temp = im[i : i + d, j : j + d, k : k + d]
                         result += np.any(temp)
                         result -= np.all(temp)
         N.append(result)
-    slope = -1*np.gradient(np.log(np.array(N)), np.log(Ds))
+    slope = -1 * np.gradient(np.log(np.array(N)), np.log(Ds))
     data = Results()
     data.size = Ds
     data.count = N
@@ -387,10 +419,10 @@ def porosity(im, mask=None, fill_closed=False, fill_surface=False):
     """
     im = im.copy()
     if mask is not None:
-        im = np.array(im, dtype=np.int64)*mask
+        im = np.array(im, dtype=np.int64) * mask
     if fill_closed or fill_surface:
-        closed_pores = im * ~fill_closed_pores(im, surface=False)
-        surface_pores = im * ~fill_closed_pores(im, surface=True) * ~closed_pores
+        closed_pores = im * find_closed_pores(im)
+        surface_pores = im * find_surface_pores(im) * ~closed_pores
         if fill_closed:
             im[closed_pores] = 0
         if fill_surface:
@@ -401,7 +433,7 @@ def porosity(im, mask=None, fill_closed=False, fill_surface=False):
     return e
 
 
-def porosity_profile(im, axis=0, span=1, mode='tile'):
+def porosity_profile(im, axis=0, span=1, mode="tile"):
     r"""
     Computes the porosity profile along the specified axis
 
@@ -436,7 +468,9 @@ def porosity_profile(im, axis=0, span=1, mode='tile'):
         Attribute     Description
         ============= =========================================================
         position      The position along the given axis at which porosity
-                      values are computed.  The units are in voxels.
+                      values are computed, corresponding to the middle of each
+                      slice, whether the mode was `'tile'` or `'slide'`.
+                      The units are in voxels.
         porosity      The local porosity value at each position.
         ============= =========================================================
 
@@ -453,15 +487,15 @@ def porosity_profile(im, axis=0, span=1, mode='tile'):
 
     """
     if axis >= im.ndim:
-        raise Exception('axis out of range')
+        raise Exception("axis out of range")
     slices = get_slices_slabs(im=im, axis=axis, span=span, mode=mode)
     eps = np.zeros(len(slices))
     z = np.zeros_like(eps)
     for i, s in enumerate(slices):
         num = (im[s] == 1).sum(dtype=np.float64)
         denom = ((im[s] == 1) + (im[s] == 0)).sum(dtype=np.float64)
-        eps[i] = num/denom
-        z[i] = (s[axis].start + s[axis].stop)/2
+        eps[i] = num / denom
+        z[i] = (s[axis].start + s[axis].stop) / 2
     results = Results()
     results.position = z
     results.porosity = eps
@@ -557,7 +591,7 @@ def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
     h = np.histogram(x, bins=bins, density=True)
     h = _parse_histogram(h=h, voxel_size=voxel_size)
     rdf = Results()
-    rdf[f"{log*'Log' + 'R'}"] = h.bin_centers
+    rdf[f"{log * 'Log' + 'R'}"] = h.bin_centers
     rdf.pdf = h.pdf
     rdf.cdf = h.cdf
     rdf.relfreq = h.relfreq
@@ -636,7 +670,7 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
     h = list(np.histogram(x, bins=bins, density=True))
     h = _parse_histogram(h=h, voxel_size=voxel_size)
     cld = Results()
-    cld[f"{log*'Log' + 'L'}"] = h.bin_centers
+    cld[f"{log * 'Log' + 'L'}"] = h.bin_centers
     cld.pdf = h.pdf
     cld.cdf = h.cdf
     cld.relfreq = h.relfreq
@@ -646,8 +680,7 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
     return cld
 
 
-def chord_length_distribution(im, bins=10, log=False, voxel_size=1,
-                              normalization='count'):
+def chord_length_distribution(im, bins=10, log=False, voxel_size=1, normalization="count"):
     r"""
     Determines the distribution of chord lengths in an image containing chords.
 
@@ -725,19 +758,19 @@ def chord_length_distribution(im, bins=10, log=False, voxel_size=1,
     x = x * voxel_size
     if log:
         x = np.log10(x)
-    if normalization == 'length':
+    if normalization == "length":
         h = list(np.histogram(x, bins=bins, density=False))
         # Scale bin heigths by length
         h[0] = h[0] * (h[1][1:] + h[1][:-1]) / 2
         # Normalize h[0] manually
         h[0] = h[0] / h[0].sum(dtype=np.int64) / (h[1][1:] - h[1][:-1])
-    elif normalization in ['number', 'count']:
+    elif normalization in ["number", "count"]:
         h = np.histogram(x, bins=bins, density=True)
     else:
-        raise Exception('Unsupported normalization:', normalization)
+        raise Exception("Unsupported normalization:", normalization)
     h = _parse_histogram(h)
     cld = Results()
-    cld[f"{log*'Log' + 'L'}"] = h.bin_centers
+    cld[f"{log * 'Log' + 'L'}"] = h.bin_centers
     cld.pdf = h.pdf
     cld.cdf = h.cdf
     cld.relfreq = h.relfreq
@@ -804,7 +837,7 @@ def pore_size_distribution(im, bins=10, log=True, voxel_size=1):
         vals = np.log10(vals)
     h = _parse_histogram(np.histogram(vals, bins=bins, density=True))
     cld = Results()
-    cld[f"{log*'Log' + 'R'}"] = h.bin_centers
+    cld[f"{log * 'Log' + 'R'}"] = h.bin_centers
     cld.pdf = h.pdf
     cld.cdf = h.cdf
     cld.satn = h.relfreq
@@ -859,17 +892,15 @@ def two_point_correlation_bf(im, spacing=10):
     """
     _check_for_singleton_axes(im)
     if im.ndim == 2:
-        pts = np.meshgrid(range(0, im.shape[0], spacing),
-                          range(0, im.shape[1], spacing))
-        crds = np.vstack([pts[0].flatten(),
-                          pts[1].flatten()]).T
+        pts = np.meshgrid(range(0, im.shape[0], spacing), range(0, im.shape[1], spacing))
+        crds = np.vstack([pts[0].flatten(), pts[1].flatten()]).T
     elif im.ndim == 3:
-        pts = np.meshgrid(range(0, im.shape[0], spacing),
-                          range(0, im.shape[1], spacing),
-                          range(0, im.shape[2], spacing))
-        crds = np.vstack([pts[0].flatten(),
-                          pts[1].flatten(),
-                          pts[2].flatten()]).T
+        pts = np.meshgrid(
+            range(0, im.shape[0], spacing),
+            range(0, im.shape[1], spacing),
+            range(0, im.shape[2], spacing),
+        )
+        crds = np.vstack([pts[0].flatten(), pts[1].flatten(), pts[2].flatten()]).T
     dmat = sptl.distance.cdist(XA=crds, XB=crds)
     hits = im[tuple(pts)].flatten()
     dmat = dmat[hits, :]
@@ -916,20 +947,20 @@ def _radial_profile(autocorr, bins, pf=None, voxel_size=1):
         # use np.round otherwise with odd image sizes, the mask generated can
         # be zero, resulting in Div/0 error
         inds = np.indices(autocorr.shape) - np.round(adj / 2)
-        dt = np.sqrt(inds[0]**2 + inds[1]**2)
+        dt = np.sqrt(inds[0] ** 2 + inds[1] ** 2)
     elif len(autocorr.shape) == 3:
         adj = np.reshape(autocorr.shape, [3, 1, 1, 1])
         # use np.round otherwise with odd image sizes, the mask generated can
         # be zero, resulting in Div/0 error
         inds = np.indices(autocorr.shape) - np.round(adj / 2)
-        dt = np.sqrt(inds[0]**2 + inds[1]**2 + inds[2]**2)
+        dt = np.sqrt(inds[0] ** 2 + inds[1] ** 2 + inds[2] ** 2)
     else:
-        raise Exception('Image dimensions must be 2 or 3')
+        raise Exception("Image dimensions must be 2 or 3")
     if np.max(bins) > np.max(dt):
         msg = (
-            'Bins specified distances exceeding maximum radial distance for'
-            ' image size. Radial distance cannot exceed distance from center'
-            ' of image to corner.'
+            "Bins specified distances exceeding maximum radial distance for"
+            " image size. Radial distance cannot exceed distance from center"
+            " of image to corner."
         )
         raise Exception(msg)
 
@@ -956,8 +987,9 @@ def _get_radial_sum(dt, bins, bin_size, autocorr):
     radial_sum = np.zeros_like(bins[:-1], dtype=np.float64)
     for i, r in enumerate(bins[:-1]):
         mask = (dt <= r) * (dt > (r - bin_size[i]))
-        radial_sum[i] = (np.sum(np.ravel(autocorr)[np.ravel(mask)], dtype=np.int64) /
-                         np.sum(mask, dtype=np.int64))
+        radial_sum[i] = np.sum(np.ravel(autocorr)[np.ravel(mask)], dtype=np.int64) / np.sum(
+            mask, dtype=np.int64
+        )
     return radial_sum
 
 
@@ -1138,11 +1170,13 @@ def phase_fraction(im, normed=True):
     labels = np.unique(im)
     results = {}
     for label in labels:
-        results[label] = np.sum(im == label, dtype=np.int64) * \
-            (1 / im.size if normed else 1)
+        results[label] = np.sum(im == label, dtype=np.int64) * (
+            1 / im.size if normed else 1
+        )
     return results
 
 
+@deprecated
 def pc_curve(im, pc, seq=None):
     r"""
     Produces a Pc-Snwp curve given a map of meniscus radii or capillary
@@ -1187,18 +1221,18 @@ def pc_curve(im, pc, seq=None):
     Ps = np.unique(pc[im])
     # Utilize the fact that -inf and +inf will be at locations 0 & -1 in Ps
     if Ps[-1] == np.inf:
-        Ps[-1] = Ps[-2]*2
+        Ps[-1] = Ps[-2] * 2
     if Ps[0] == -np.inf:
-        Ps[0] = Ps[1] - np.abs(Ps[1]/2)
+        Ps[0] = Ps[1] - np.abs(Ps[1] / 2)
     else:
         # Add a point at begining to ensure curve starts a 0, if no residual
-        Ps = np.hstack((Ps[0] - np.abs(Ps[0]/2), Ps))
+        Ps = np.hstack((Ps[0] - np.abs(Ps[0] / 2), Ps))
     y = []
     Vp = im.sum(dtype=np.int64)
     temp = pc[im]
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for p in tqdm(Ps, desc=desc, **settings.tqdm):
-        y.append((temp <= p).sum(dtype=np.int64)/Vp)
+        y.append((temp <= p).sum(dtype=np.int64) / Vp)
     pc_curve = Results()
     pc_curve.pc = Ps
     pc_curve.snwp = np.array(y)
@@ -1209,7 +1243,7 @@ def pc_map_to_pc_curve(
     pc,
     im,
     seq=None,
-    mode='drainage',
+    mode="drainage",
     pc_min=None,
     pc_max=None,
     fix_ends=True,
@@ -1263,6 +1297,12 @@ def pc_map_to_pc_curve(
     To use this function with the results of `porosimetry` or `ibip` the sizes map
     must be converted to a capillary pressure map first.  `drainage` and `invasion`
     both return capillary pressure maps which can be passed directly as `pc`.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/pc_map_to_pc_curve.html>`_
+    to view online example.
     """
     pc = np.copy(pc)
 
@@ -1275,13 +1315,12 @@ def pc_map_to_pc_curve(
         #     seq = np.digitize(x=pc.flatten(), bins=np.flip(np.unique(pc)))
         # seq = np.reshape(seq, im.shape)
 
-    if mode.startswith('dr'):
+    if mode.startswith("dr"):
         seq = seq.astype(float)
         seq[seq == -1] = np.inf
-        vals, index, counts = \
-            np.unique(seq[im], return_index=True, return_counts=True)
+        vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        snwp = np.cumsum(counts)/im.sum()
+        snwp = np.cumsum(counts) / im.sum()
         # If pc does not have residual phase (-inf), then add new point at snwp=0
         if fix_ends:
             if pcs[0] != -np.inf:
@@ -1293,18 +1332,17 @@ def pc_map_to_pc_curve(
             if pcs[-1] == np.inf:  # If trapping occurred, as point at +inf
                 snwp[-1] = snwp[-2]
 
-    elif mode.startswith('imb'):
+    elif mode.startswith("imb"):
         # seq[seq == -1] = -np.inf
-        swp_r = (seq[im] == 0).sum(dtype=np.int64)/im.sum(dtype=np.int64)
-        vals, index, counts = \
-            np.unique(seq[im], return_index=True, return_counts=True)
+        swp_r = (seq[im] == 0).sum(dtype=np.int64) / im.sum(dtype=np.int64)
+        vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
         idx = np.argsort(pcs)[-1::-1]  # Because -inf, if present, is on wrong end
         pcs = pcs[idx]
         counts = counts[idx]
-        snwp = 1 - np.cumsum(counts)/im.sum()
+        snwp = 1 - np.cumsum(counts) / im.sum()
         if fix_ends:
-            snwp = np.hstack(([1.0-swp_r], snwp))
+            snwp = np.hstack(([1.0 - swp_r], snwp))
             pcs = np.hstack((pcs[0], pcs))
             if pcs[-1] == -np.inf:
                 snwp[-1] = snwp[-2]
@@ -1319,7 +1357,7 @@ def pc_map_to_pc_curve(
     return results
 
 
-def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
+def satn_profile(satn, s=None, im=None, axis=0, span=10, mode="tile"):
     r"""
     Computes a saturation profile from an image of fluid invasion
 
@@ -1377,14 +1415,14 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
     span = max(1, span)
     if s is None:
         if satn.dtype != bool:
-            msg = 'Must specify a target saturation if saturation map is provided'
+            msg = "Must specify a target saturation if saturation map is provided"
             raise Exception(msg)
         s = 2  # Will find ALL voxels, then > 0 will limit to only True ones
         satn = satn.astype(int)
         satn[satn == 0] = -1
         satn[~im] = 0
     else:
-        msg = 'The maximum saturation in the image is less than the given threshold'
+        msg = "The maximum saturation in the image is less than the given threshold"
         if satn.max() < s:
             raise Exception(msg)
 
@@ -1394,8 +1432,8 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode='tile'):
     for i, slab in enumerate(slices):
         void = satn[slab] != 0
         nwp = (satn[slab] <= s) * (satn[slab] > 0)
-        y[i] = nwp.sum(dtype=np.int64)/void.sum(dtype=np.int64)
-        z[i] = (slab[axis].start + slab[axis].stop)/2
+        y[i] = nwp.sum(dtype=np.int64) / void.sum(dtype=np.int64)
+        z[i] = (slab[axis].start + slab[axis].stop) / 2
 
     results = Results()
     results.position = z
@@ -1460,8 +1498,9 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
     if (min(srange) < min(saturation)) or (max(srange) > max(saturation)):
         srange = max(min(srange), min(saturation)), min(max(srange), max(saturation))
         r.valid = False
-        logger.warning(f'The requested saturation range was adjusted to {srange}'
-                       ' to accomodate data')
+        logger.warning(
+            f"The requested saturation range was adjusted to {srange} to accomodate data"
+        )
     # Find zmax
     x = saturation >= max(srange)
     zmax = np.where(x)[0][-1]
@@ -1477,7 +1516,7 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
     r.zmin = zmin
     r.smax = max(srange)
     r.smin = min(srange)
-    r.h = abs(zmax-zmin)
+    r.h = abs(zmax - zmin)
 
     return r
 
@@ -1488,8 +1527,8 @@ def bond_number(
     g: float,
     sigma: float,
     voxel_size: float,
-    source: str = 'lt',
-    method: str = 'median',
+    source: str = "lt",
+    method: str = "median",
     mask_source: bool = False,
     use_diameter: bool = False,
 ):
@@ -1542,29 +1581,35 @@ def bond_number(
     use_diameter : bool (default is `False`)
         If `True` then the characteristic size obtaine from `source` is multiplied by
         2 to convert radius to diameter.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/bond_number.html>`_
+    to view online example.
     """
     if mask_source is True:
         mask = skeletonize(im)
     else:
         mask = im
 
-    if source == 'dt':
+    if source == "dt":
         dvals = edt(im)
-    elif source == 'lt':
+    elif source == "lt":
         dvals = local_thickness(im)
     else:
         raise Exception(f"Unrecognized source {source}")
 
-    if method in ['median', 'mean', 'amin', 'amax']:
+    if method in ["median", "mean", "amin", "amax"]:
         f = getattr(np, method)
-    elif method in ['min', 'max']:
-        f = getattr(np, 'a' + method)
-    elif method in ['pmean', 'hmean', 'gmean', 'mode']:
+    elif method in ["min", "max"]:
+        f = getattr(np, "a" + method)
+    elif method in ["pmean", "hmean", "gmean", "mode"]:
         f = getattr(spst, method)
     else:
         raise Exception(f"Unrecognized method {method}")
     R = f(dvals[mask])
     if use_diameter:
-        R = 2*R
-    Bo = abs(delta_rho*g*(R*voxel_size)**2/sigma)
+        R = 2 * R
+    Bo = abs(delta_rho * g * (R * voxel_size) ** 2 / sigma)
     return Bo

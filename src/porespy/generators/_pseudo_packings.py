@@ -1,19 +1,19 @@
 import logging
+from typing import List, Literal
+
+import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
-import numpy as np
-from typing import List, Literal
 from numba import njit
-from skimage.morphology import ball, disk
-from porespy.filters import trim_disconnected_blobs
+
+from porespy.filters import trim_disconnected_voxels
 from porespy.tools import (
     _insert_disk_at_point,
-    ps_round,
-    unpad,
     get_edt,
     parse_shape,
+    ps_round,
+    unpad,
 )
-
 
 __all__ = [
     "pseudo_gravity_packing",
@@ -38,7 +38,7 @@ def _random_spheres2(
     clearance: int = 0,
     protrusion: int = 0,
     axis: int = 0,
-    edges: Literal['contained', 'extended'] = 'contained',
+    edges: Literal["contained", "extended"] = "contained",
     maxiter: int = 1000,
     phi: float = 1.0,
     seed: float = None,
@@ -51,6 +51,7 @@ def _random_spheres2(
     though.
     """
     from porespy.generators import borders
+
     if seed is not None:
         _set_seed(seed)  # Initialize rng so numba sees it
         np.random.seed(seed)  # Also initialize numpys rng
@@ -72,8 +73,8 @@ def _random_spheres2(
         mask = dt >= abs(protrusion)
 
     # Deal with edge mode
-    if edges == 'contained':
-        border = borders(im.shape, thickness=1, mode='faces')
+    if edges == "contained":
+        border = borders(im.shape, thickness=1, mode="faces")
         mask[border] = False
 
     # Generate mask of valid insertion points
@@ -87,14 +88,14 @@ def _random_spheres2(
 
     # Compute maxiter
     if phi < 1.0:
-        Vsph = 4/3*np.pi*(r**3) if im.ndim == 3 else np.pi*(r**2)
+        Vsph = 4 / 3 * np.pi * (r**3) if im.ndim == 3 else np.pi * (r**2)
         Vbulk = np.prod(im.shape)
-        maxiter = min(int(np.round(phi*Vbulk/Vsph)), maxiter)
+        maxiter = min(int(np.round(phi * Vbulk / Vsph)), maxiter)
 
     # Finally run it
     im_new = np.zeros_like(im, dtype=bool)
     im_new, count = _do_packing(im_new, mask, q, r, True, clearance, smooth, maxiter)
-    logger.debug(f'A total of {count} spheres were added')
+    logger.debug(f"A total of {count} spheres were added")
     im_new = np.swapaxes(im_new, 0, axis)
     im = np.copy(im).astype(type(value))
     im[im_new] = value
@@ -108,7 +109,7 @@ def pseudo_gravity_packing(
     clearance: int = 0,
     protrusion: int = 0,
     axis: int = 0,
-    edges: Literal['contained', 'extended'] = 'contained',
+    edges: Literal["contained", "extended"] = "contained",
     maxiter: int = 1000,
     phi: float = 1.0,
     seed: int = None,
@@ -190,7 +191,7 @@ def pseudo_gravity_packing(
     to view online example.
 
     """
-    logger.debug(f'Adding spheres of radius {r}')
+    logger.debug(f"Adding spheres of radius {r}")
     if shape:
         shape = parse_shape(shape)
     if seed is not None:  # Initialize rng so numba sees it
@@ -215,8 +216,8 @@ def pseudo_gravity_packing(
         mask = dt >= abs(protrusion)
 
     # Deal with edges
-    if edges == 'contained':
-        im_padded = np.pad(mask, pad_width=1, mode='constant', constant_values=False)
+    if edges == "contained":
+        im_padded = np.pad(mask, pad_width=1, mode="constant", constant_values=False)
         if smooth:
             mask = unpad(edt(im_padded) >= r, 1)
         else:
@@ -227,27 +228,28 @@ def pseudo_gravity_packing(
     # Finalize the mask of valid insertion points
     inlets = np.zeros_like(im)
     inlets[-r:, ...] = True
-    mask = trim_disconnected_blobs(im=mask, inlets=inlets, conn='min')
+    mask = trim_disconnected_voxels(im=mask, inlets=inlets, conn="min")
 
     # Generate elevation values to initialize queue
     from porespy.generators import ramp
+
     tmp = np.arange(im.size)[mask.flatten()]
     inds = np.vstack(np.unravel_index(tmp, im.shape)).T
-    vals = ramp(im.shape, inlet=0, outlet=im.shape[0], axis=0)*mask
+    vals = ramp(im.shape, inlet=0, outlet=im.shape[0], axis=0) * mask
     vals = vals.flatten()[mask.flatten()]
     order = _randomized_argsort(inds, vals)
     q = inds[order, :]
 
     # Compute maxiter
     if phi < 1.0:
-        Vsph = 4/3*np.pi*(r**3) if im.ndim == 3 else np.pi*(r**2)
+        Vsph = 4 / 3 * np.pi * (r**3) if im.ndim == 3 else np.pi * (r**2)
         Vbulk = np.prod(im.shape)
-        maxiter = min(int(np.round(phi*Vbulk/Vsph)), maxiter)
+        maxiter = min(int(np.round(phi * Vbulk / Vsph)), maxiter)
 
     # Finally insert spheres
     im_new = np.zeros_like(im, dtype=bool)
     im_new, count = _do_packing(im_new, mask, q, r, True, clearance, smooth, maxiter)
-    logger.debug(f'A total of {count} spheres were added')
+    logger.debug(f"A total of {count} spheres were added")
     im = np.copy(im).astype(type(value))
     im[im_new] = value
     im = np.swapaxes(im, 0, axis)
@@ -261,7 +263,7 @@ def pseudo_electrostatic_packing(
     sites=None,
     clearance: int = 0,
     protrusion: int = 0,
-    edges: Literal['extended', 'contained'] = 'extended',
+    edges: Literal["extended", "contained"] = "extended",
     phi: float = 1.0,
     maxiter: int = 1000,
     seed: int = None,
@@ -345,6 +347,7 @@ def pseudo_electrostatic_packing(
 
     """
     from porespy.generators import borders
+
     if seed is not None:  # Initialize rng so numba sees it
         _set_seed(seed)
         np.random.seed(seed)
@@ -364,18 +367,18 @@ def pseudo_electrostatic_packing(
         dt = edt(mask)
         mask = dt >= abs(protrusion)
 
-    if edges == 'contained':
-        border = borders(mask.shape, thickness=1, mode='faces')
+    if edges == "contained":
+        border = borders(mask.shape, thickness=1, mode="faces")
         mask[border] = 0
 
     if sites is None:
         dt = edt(mask)
         dt = spim.gaussian_filter(dt, sigma=0.5)
         strel = ps_round(r, ndim=im.ndim, smooth=True)
-        sites = (spim.maximum_filter(dt, footprint=strel) == dt)*(mask > 0)
+        sites = (spim.maximum_filter(dt, footprint=strel) == dt) * (mask > 0)
         if np.any(dt == np.inf) or np.all(dt == dt[0]):  # If above method failed
             sites = np.zeros_like(im)
-            inds = tuple((np.array(im.shape)/2).astype(int))
+            inds = tuple((np.array(im.shape) / 2).astype(int))
             sites[inds] = True
 
     dt2 = edt(~sites)  # Where spheres are attracted to
@@ -386,20 +389,20 @@ def pseudo_electrostatic_packing(
     # Initialize queue
     tmp = np.arange(im.size)[mask.flatten()]
     inds = np.vstack(np.unravel_index(tmp, im.shape)).T
-    vals = np.digitize(dt2[mask], bins=np.arange(1, dt2.max(), int(1/compactness)))
+    vals = np.digitize(dt2[mask], bins=np.arange(1, dt2.max(), int(1 / compactness)))
     order = _randomized_argsort(inds, vals)
     q = inds[order, :]
 
     # Compute maxiter
     if phi < 1.0:
-        Vsph = 4/3*np.pi*(r**3) if im.ndim == 3 else np.pi*(r**2)
+        Vsph = 4 / 3 * np.pi * (r**3) if im.ndim == 3 else np.pi * (r**2)
         Vbulk = np.prod(im.shape)
-        maxiter = min(int(np.round(phi*Vbulk/Vsph)), maxiter)
+        maxiter = min(int(np.round(phi * Vbulk / Vsph)), maxiter)
 
     # Finally run it
     im_new = np.zeros_like(im, dtype=bool)
     im_new, count = _do_packing(im_new, mask, q, r, True, clearance, smooth, maxiter)
-    logger.debug(f'A total of {count} spheres were added')
+    logger.debug(f"A total of {count} spheres were added")
     im = np.copy(im).astype(type(value))
     im[im_new] = value
     return im
@@ -415,10 +418,10 @@ def _randomized_argsort(inds, vals):
     order = np.argsort(vals)
     _, counts = np.unique(vals[order], return_counts=True)
     counts = np.cumsum(np.hstack(([0], counts)))
-    for i in range(len(counts)-1):
-        orig_order = order[counts[i]:counts[i+1]]
+    for i in range(len(counts) - 1):
+        orig_order = order[counts[i] : counts[i + 1]]
         new_order = np.random.permutation(orig_order)
-        order[counts[i]:counts[i+1]] = new_order
+        order[counts[i] : counts[i + 1]] = new_order
     return order
 
 
@@ -440,7 +443,7 @@ def _do_packing(im, mask, q, r, value, clearance, smooth, maxiter):
             mask = _insert_disk_at_point(
                 im=mask,
                 coords=cen,
-                r=2*r + clearance,
+                r=2 * r + clearance,
                 v=False,
                 overwrite=True,
                 smooth=smooth,
@@ -455,10 +458,10 @@ if __name__ == "__main__":
     import scipy.ndimage as spim
 
     import porespy as ps
+
     shape = [200, 200]
 
-
-# %% Electrostatic packing
+    # %% Electrostatic packing
 
     fig, ax = plt.subplots(2, 2)
     if 1:
@@ -469,7 +472,7 @@ if __name__ == "__main__":
             r=5,
             # sites=sites,
             # maxiter=1000,
-            edges='extended',
+            edges="extended",
             # clearance=0,
             # smooth=True,
             compactness=1.0,
@@ -482,9 +485,9 @@ if __name__ == "__main__":
             r=10,
             clearance=0,
             protrusion=0,
-            edges='contained',
+            edges="contained",
             seed=0,
-            phi=.3,
+            phi=0.3,
             smooth=True,
             value=2,
         )
@@ -494,22 +497,22 @@ if __name__ == "__main__":
             r=5,
             clearance=1,
             protrusion=0,
-            edges='extended',
+            edges="extended",
             seed=0,
             phi=1.0,
             smooth=True,
             value=3,
         )
-        ax[0][1].imshow(im2 + (im == 2)*2, origin='lower')
+        ax[0][1].imshow(im2 + (im == 2) * 2, origin="lower")
 
-# %% Gravity packing
+    # %% Gravity packing
     if 1:
         im = pseudo_gravity_packing(
             shape=shape,
             r=16,
             clearance=0,
-            edges='contained',
-            phi=.2,
+            edges="contained",
+            phi=0.2,
             smooth=False,
             value=2,
         )
@@ -518,7 +521,7 @@ if __name__ == "__main__":
             r=8,
             clearance=2,
             protrusion=-2,
-            edges='extended',
+            edges="extended",
             seed=0,
             phi=0.25,
             maxiter=1000,
@@ -530,22 +533,22 @@ if __name__ == "__main__":
             r=12,
             clearance=4,
             protrusion=-4,
-            edges='contained',
+            edges="contained",
             seed=0,
             smooth=True,
             value=4,
         )
-        ax[1][0].imshow(im, origin='lower')
+        ax[1][0].imshow(im, origin="lower")
 
-# %% Random packing
+    # %% Random packing
     if 1:
         im = _random_spheres2(
             shape=shape,
             r=16,
             clearance=5,
-            edges='extended',
+            edges="extended",
             seed=0,
-            phi=.25,
+            phi=0.25,
             smooth=False,
             value=3,
         )
@@ -554,7 +557,7 @@ if __name__ == "__main__":
             r=8,
             clearance=5,
             protrusion=5,
-            edges='contained',
+            edges="contained",
             seed=0,
             phi=0.1,
             maxiter=1000,
@@ -566,9 +569,9 @@ if __name__ == "__main__":
             r=12,
             clearance=5,
             protrusion=5,
-            edges='contained',
+            edges="contained",
             seed=0,
             smooth=True,
-            value=1
+            value=1,
         )
-        ax[1][1].imshow(im, origin='lower')
+        ax[1][1].imshow(im, origin="lower")

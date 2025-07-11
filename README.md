@@ -16,19 +16,19 @@ analysis tools (i.e **Skimage** and **Scipy.NDimage** in the Python environment,
 **ImageJ**, **MatLab**'s Image Processing Toolbox), but they all require building
 up complex scripts or macros to accomplish tasks of specific use to
 porous media. The aim of **PoreSpy** is to provide a set of pre-written
-tools for all the common porous media measurements.  For instance, it's possible to perform a mercury intrusion simulation with a single function call (e.g. ``porespy.filters.porosimetry``).
+tools for all the common porous media measurements. 
 
 **PoreSpy** relies heavily on
 [scipy.ndimage](https://docs.scipy.org/doc/scipy/reference/ndimage.html)
 and [scikit-image](https://scikit-image.org/) also known as **skimage**.
 The former contains an assortment of general image analysis tools such
 as image morphology filters, while the latter offers more complex but
-still general functions such as watershed segmentation. **PoreSpy** does not
-duplicate any of these general functions so you will also have to
+still general functions such as watershed segmentation. **PoreSpy** tries 
+not to duplicate any of these general functions so you will also have to
 install and learn how to use them to get the most from **PoreSpy**. The
-functions in PoreSpy are generally built up using several of the general functions offered by **skimage** and **scipy**. There are a few
-functions in **PoreSpy** that are implemented natively, but only when
-necessary.
+functions in PoreSpy are generally built up using several of the general 
+functions offered by **skimage** and **scipy**. There are a few functions 
+in **PoreSpy** that are implemented natively, but only when necessary.
 
 # Capabilities
 

@@ -1,22 +1,29 @@
 import logging
+import operator
+from typing import Literal
+
 import dask
 import numpy as np
 import numpy.typing as npt
-import operator
 import scipy.ndimage as spim
-from skimage.morphology import reconstruction, ball, disk, square, cube
+from skimage.morphology import ball, disk, reconstruction
 from skimage.segmentation import clear_border
+
+from porespy import settings
 from porespy.tools import (
     _check_for_singleton_axes,
+    extract_subsection,
+    get_edt,
     get_slices_grid,
+    get_strel,
+    get_tqdm,
+    ps_ball,
+    ps_disk,
     recombine,
     unpad,
     get_tqdm,
     get_edt,
 )
-from porespy import settings
-from typing import Literal
-
 
 __all__ = [
     "apply_chords",
@@ -31,14 +38,13 @@ __all__ = [
     "nphase_border",
     "prune_branches",
     "region_size",
-    "trim_disconnected_blobs",
     "trim_extrema",
 ]
 
 
 edt = get_edt()
 tqdm = get_tqdm()
-strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
+strel = get_strel()
 logger = logging.getLogger(__name__)
 
 
@@ -80,8 +86,7 @@ def apply_padded(
     to view online example.
 
     """
-    padded = np.pad(im, pad_width=pad_width,
-                    mode='constant', constant_values=pad_val)
+    padded = np.pad(im, pad_width=pad_width, mode="constant", constant_values=pad_val)
     temp = func(padded, **kwargs)
     result = unpad(im=temp, pad_width=pad_width)
     return result
@@ -147,7 +152,7 @@ def hold_peaks(
 def distance_transform_lin(
     im: npt.NDArray,
     axis: int = 0,
-    mode: Literal['forward', 'backward', 'both'] = "both",
+    mode: Literal["forward", "backward", "both"] = "both",
 ):
     r"""
     Replaces each void voxel with the linear distance to the nearest solid
@@ -260,21 +265,22 @@ def trim_extrema(
     """
     mask = np.copy(im)
     im = np.copy(im)
-    if mode == 'maxima':
-        result = reconstruction(seed=im - h, mask=mask, method='dilation')
-    elif mode == 'minima':
-        result = reconstruction(seed=im + h, mask=mask, method='erosion')
-    elif mode == 'extrema':
-        result = reconstruction(seed=im - h, mask=mask, method='dilation')
-        result = reconstruction(seed=result + h, mask=result, method='erosion')
+    if mode == "maxima":
+        result = reconstruction(seed=im - h, mask=mask, method="dilation")
+    elif mode == "minima":
+        result = reconstruction(seed=im + h, mask=mask, method="erosion")
+    elif mode == "extrema":
+        result = reconstruction(seed=im - h, mask=mask, method="dilation")
+        result = reconstruction(seed=result + h, mask=result, method="erosion")
     return result
 
 
 def flood(
     im: npt.NDArray,
     labels: npt.NDArray,
-    mode: Literal['maximum', 'minimum', 'median', 'mean', 'size',
-                  'standard_deviations',  'variance'] = "max",
+    mode: Literal[
+        "maximum", "minimum", "median", "mean", "size", "standard_deviations", "variance"
+    ] = "max",
 ):
     r"""
     Floods/fills each region in an image with a single value based on the
@@ -340,7 +346,7 @@ def flood(
     mode = "maximum" if mode == "max" else mode
     mode = "minimum" if mode == "min" else mode
     f = getattr(spim, mode)
-    vals = f(input=im*mask, labels=labels, index=range(0, N + 1))
+    vals = f(input=im * mask, labels=labels, index=range(0, N + 1))
     flooded = vals[labels]
     flooded = flooded * mask
     return flooded
@@ -403,7 +409,7 @@ def flood_func(
     for i, s in enumerate(slices):
         sub_im = labels[s] == (i + 1)
         val = func(im[s][sub_im])
-        flooded[s] += sub_im*val
+        flooded[s] += sub_im * val
     return flooded
 
 
@@ -443,8 +449,9 @@ def find_dt_artifacts(dt: npt.NDArray):
     """
     temp = np.ones(shape=dt.shape) * np.inf
     for ax in range(dt.ndim):
-        dt_lin = distance_transform_lin(np.ones_like(temp, dtype=bool),
-                                        axis=ax, mode="both")
+        dt_lin = distance_transform_lin(
+            np.ones_like(temp, dtype=bool), axis=ax, mode="both"
+        )
         temp = np.minimum(temp, dt_lin)
     result = np.clip(dt - temp, a_min=0, a_max=np.inf)
     return result
@@ -452,7 +459,7 @@ def find_dt_artifacts(dt: npt.NDArray):
 
 def region_size(
     im: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
+    conn: Literal["max", "min"] = "min",
 ):
     r"""
     Replace each voxel with the size of the region to which it belongs
@@ -557,8 +564,12 @@ def apply_chords(
     slices = tuple(slxyz[: im.ndim])
     s = [[0, 1, 0], [0, 1, 0], [0, 1, 0]]  # Straight-line structuring element
     if im.ndim == 3:  # Make structuring element 3D if necessary
-        s = np.pad(np.atleast_3d(s), pad_width=((0, 0), (0, 0), (1, 1)),
-                   mode="constant", constant_values=0)
+        s = np.pad(
+            np.atleast_3d(s),
+            pad_width=((0, 0), (0, 0), (1, 1)),
+            mode="constant",
+            constant_values=0,
+        )
     im = im[slices]
     s = np.swapaxes(s, 0, axis)
     chords = spim.label(im, structure=s)[0]
@@ -622,9 +633,9 @@ def apply_chords_3D(
     if spacing < 0:
         raise Exception("Spacing cannot be less than 0")
     ch = np.zeros_like(im, dtype=int)
-    ch[:, :: 4 + 2 * spacing, :: 4 + 2 * spacing] = 1   # X-direction
-    ch[:: 4 + 2 * spacing, :, 2::4 + 2 * spacing] = 2   # Y-direction
-    ch[2::4 + 2 * spacing, 2::4 + 2 * spacing, :] = 3   # Z-direction
+    ch[:, :: 4 + 2 * spacing, :: 4 + 2 * spacing] = 1  # X-direction
+    ch[:: 4 + 2 * spacing, :, 2 :: 4 + 2 * spacing] = 2  # Y-direction
+    ch[2 :: 4 + 2 * spacing, 2 :: 4 + 2 * spacing, :] = 3  # Z-direction
     chords = ch * im
     if trim_edges:
         temp = clear_border(spim.label(chords > 0)[0]) > 0
@@ -632,65 +643,7 @@ def apply_chords_3D(
     return chords
 
 
-def trim_disconnected_blobs(
-    im: npt.NDArray,
-    inlets: npt.NDArray,
-    conn: Literal['max', 'min'] = 'min',
-):
-    r"""
-    Removes foreground voxels not connected to specified inlets.
-
-    Parameters
-    ----------
-    im : ndarray
-        The image containing the blobs to be trimmed
-    inlets : ndarray or tuple of indices
-        The locations of the inlets.  Can either be a boolean mask the
-        same shape as `im`, or a tuple of indices such as that returned
-        by the `where` function.  Any voxels *not* connected directly to
-        the inlets will be trimmed.
-    conn : str
-        Can be either `'min'` or `'max'` and controls the shape of the structuring
-        element used to determine voxel connectivity.  The default if `'min'` which
-        imposes the strictest criteria, so that voxels must share a face to be
-        considered connected.
-
-    Returns
-    -------
-    image : ndarray
-        An array of the same shape as `im`, but with all foreground
-        voxels not connected to the `inlets` removed.
-
-    See Also
-    --------
-    find_disconnected_voxels
-    find_nonpercolating_paths
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/trim_disconnected_blobs.html>`_
-    to view online example.
-
-    """
-    se = strel[im.ndim][conn].copy()
-    if isinstance(inlets, tuple):
-        temp = np.copy(inlets)
-        inlets = np.zeros_like(im, dtype=bool)
-        inlets[temp] = True
-    elif (inlets.shape == im.shape) and (inlets.max() == 1):
-        inlets = inlets.astype(bool)
-    else:
-        raise Exception("inlets not valid, refer to docstring for info")
-    labels = spim.label(inlets + (im > 0), structure=se)[0]
-    keep = np.unique(labels[inlets])
-    keep = keep[keep > 0]
-    im2 = np.isin(labels, keep)
-    im2 = im2 * im
-    return im2
-
-
-def _get_axial_shifts(ndim=2, conn='min'):
+def _get_axial_shifts(ndim=2, conn="min"):
     r"""
     Helper function to generate the axial shifts that will be performed on
     the image to identify bordering pixels/voxels
@@ -711,7 +664,7 @@ def _get_axial_shifts(ndim=2, conn='min'):
         return np.vstack((x, y, z)).T
 
 
-def _make_stack(im, conn='min'):
+def _make_stack(im, conn="min"):
     r"""
     Creates a stack of images with one extra dimension to the input image
     with length equal to the number of borders to search + 1.
@@ -745,7 +698,7 @@ def _make_stack(im, conn='min'):
 
 def nphase_border(
     im: npt.NDArray,
-    conn: Literal['min', 'max'] = 'min',
+    conn: Literal["min", "max"] = "min",
 ):
     r"""
     Identifies the voxels in regions that border *N* other regions.
@@ -838,7 +791,7 @@ def prune_branches(
 
     """
     skel = skel > 0
-    cube = strel[skel.ndim]['max']
+    cube = strel[skel.ndim]["max"]
     # Create empty image to house results
     im_result = np.zeros_like(skel)
     # If branch points are not supplied, attempt to find them
@@ -869,9 +822,9 @@ def prune_branches(
     if iterations > 1:
         iterations -= 1
         im_temp = np.copy(im_result)
-        im_result = prune_branches(skel=im_result,
-                                   branch_points=None,
-                                   iterations=iterations)
+        im_result = prune_branches(
+            skel=im_result, branch_points=None, iterations=iterations
+        )
         if np.all(im_temp == im_result):
             iterations = 0
     return im_result
@@ -1010,7 +963,7 @@ def chunked_func(
         res.append(apply_func(func=func, **kwargs))
     # Have dask actually compute the function on each subsection in parallel
     # with ProgressBar():
-        # ims = dask.compute(res, num_workers=cores)[0]
+    # ims = dask.compute(res, num_workers=cores)[0]
     ims = dask.compute(res, num_workers=cores)[0]
     # Finally, put the pieces back together into a single master image, im2
     im2 = recombine(ims=ims, slices=slices, overlap=overlap)

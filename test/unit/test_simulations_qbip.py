@@ -33,7 +33,7 @@ class QBIPTest(GenericTest):
         assert np.sum(r2.im_seq == -1) == 16967  # These closed plus trapped pores
         assert np.sum(self.im2D) == 27000
         # Ensure all voxels are filled after closed voxels are removed
-        temp = ps.filters.fill_closed_pores(self.im2D, surface=True)
+        temp = ps.filters.fill_invalid_pores(self.im2D)
         r3 = ps.simulations.qbip(im=temp, inlets=inlets)
         assert np.sum(r3.im_seq == -1) == 0
 

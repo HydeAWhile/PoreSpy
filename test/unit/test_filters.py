@@ -229,7 +229,7 @@ class FilterTest():
             im=im, axis=0)
         assert np.all(h == h2)
 
-    def test_trim_disconnected_blobs(self):
+    def test_trim_disconnected_voxels(self):
         np.random.seed(0)
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.55875, blobiness=2, periodic=False,)
@@ -237,7 +237,7 @@ class FilterTest():
         inlets = np.zeros_like(im)
         inlets[0, ...] = 1
         n1 = spim.label(im)[1]
-        h = ps.filters.trim_disconnected_blobs(im=im, inlets=inlets, conn='min')
+        h = ps.filters.trim_disconnected_voxels(im=im, inlets=inlets, conn='min')
         n2 = spim.label(h)[1]
         assert n1 > n2
         assert spim.label(h + inlets)[1] == 1
@@ -248,14 +248,6 @@ class FilterTest():
         h = ps.filters.find_disconnected_voxels(b)
         assert np.sum(h) == 0
 
-    def test_fill_closed_pores_w_surface(self):
-        im = ~ps.generators.lattice_spheres(shape=[101, 101], r=5,
-                                            offset=0, spacing=20)
-        im2 = ps.filters.fill_closed_pores(im, surface=False)
-        assert im2.sum() > 0
-        im3 = ps.filters.fill_closed_pores(im, surface=True)
-        assert im3.sum() == 0
-
     def test_fill_closed_pores_surface_blobs_2D(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.6021, seed=0, periodic=False,)
@@ -263,14 +255,12 @@ class FilterTest():
         im2 = ps.filters.fill_closed_pores(im)
         assert im.sum() == 6021
         assert im2.sum() < im.sum()
-        im3 = ps.filters.fill_closed_pores(im, surface=True)
-        assert im3.sum() < im2.sum()
 
-    def test_fill_closed_pores_surface_blobs_3D(self):
+    def test_fill_invalid_pores_surface_blobs_3D(self):
         im = ps.generators.blobs(
             shape=[100, 100, 100], porosity=0.497569, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.497569
-        im2 = ps.filters.fill_closed_pores(im, surface=True)
+        im2 = ps.filters.fill_invalid_pores(im)
         labels, N = spim.label(im2, ps.tools.ps_rect(3, ndim=3))
         assert N == 1
 
@@ -281,9 +271,9 @@ class FilterTest():
     def test_trim_floating_solid_w_surface(self):
         im = ps.generators.lattice_spheres(shape=[101, 101], r=5,
                                            offset=0, spacing=20)
-        im2 = ps.filters.trim_floating_solid(im, surface=False)
+        im2 = ps.filters.trim_floating_solid(im, incl_surface=False)
         assert im2.sum() < im.size
-        im3 = ps.filters.trim_floating_solid(im, surface=True)
+        im3 = ps.filters.trim_floating_solid(im, incl_surface=True)
         assert im3.sum() == im.size
 
     def test_trim_extrema_min(self):
@@ -541,8 +531,8 @@ class FilterTest():
                                  seed=0,
                                  periodic=False,)
         assert im.sum()/im.size == 0.4028
-        im5 = ps.filters.trim_small_clusters(im=im, size=5)
-        im10 = ps.filters.trim_small_clusters(im=im, size=10)
+        im5 = ps.filters.trim_small_clusters(im=im, min_size=5)
+        im10 = ps.filters.trim_small_clusters(im=im, min_size=10)
         assert im5.sum() > im10.sum()
         label, N = spim.label(im10)
         for i in range(N):

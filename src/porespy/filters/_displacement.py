@@ -1,44 +1,123 @@
 import heapq as hq
-import logging
 import inspect
+import logging
+from typing import Literal
+
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
-from skimage.morphology import ball, disk, square, cube
-from typing import Literal
 from numba import njit
-from porespy import settings
-from porespy.filters import flood, find_disconnected_voxels
-from porespy.tools import (
-    make_contiguous,
-    get_tqdm,
-    Results,
-)
-from porespy.filters import (
-    region_size,
-    flood_func,
-)
-from porespy.generators import (
-    borders,
-)
 
+from porespy import settings
+from porespy.filters import (
+    flood,
+    region_size,
+)
+from porespy.tools import (
+    Results,
+    get_strel,
+    get_tqdm,
+    make_contiguous,
+)
 
 logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
-strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
+strel = get_strel()
 
 
 __all__ = [
-    "find_small_clusters",
     "find_trapped_clusters",
+    "find_small_clusters",
+    "trim_small_clusters",
 ]
+
+
+# def fill_trapped_clusters(
+#     im: npt.NDArray,
+#     trapped: npt.NDArray,
+#     seq: npt.NDArray = None,
+#     size: npt.NDArray = None,
+#     pc: npt.NDArray = None,
+#     min_size: int = 0,
+#     conn: Literal['min', 'max'] = 'min',
+#     mode: Literal['drainage', 'imbibition'] = 'drainage',
+# ):
+#     r"""
+
+#     Parameters
+#     ----------
+#     im : ndarray
+#         The boolean image of the porous media with `True` indicating void.
+#     trapped : ndarray
+#         The boolean array of the trapped voxels.
+#     seq : ndarray
+#         The sequence map produced by a displacement algorithm. Regions labelled -1
+#         are considered trapped, and regions labelled 0 are considered residual
+#         invading phase.
+#     size : ndarray
+#        The size map produced by a displacement algorithm. Regions labelled -1
+#        are considered trapped, and regions labelled 0 are considered solid.
+#     pc : ndarray
+#         The capillary pressure map produced by a displacement algorithm.
+#     conn : str
+#         Controls the shape of the structuring element used to find neighboring
+#         voxels when looking for neighbor values to place into un-trapped voxels.
+#         Options are:
+
+#         ========= ==================================================================
+#         Option    Description
+#         ========= ==================================================================
+#         'min'     This corresponds to a cross with 4 neighbors in 2D and 6
+#                   neighbors in 3D.
+#         'max'     This corresponds to a square or cube with 8 neighbors in 2D and
+#                   26 neighbors in 3D.
+#         ========= ==================================================================
+
+#     """
+#     se = strel[im.ndim][conn].copy()
+#     results = Results()
+
+#     if seq is not None:
+#         seq[trapped] = -1
+#         seq = make_contiguous(seq, mode='symmetric')
+#     if size is not None:
+#         size[trapped] = -1
+#     if pc is not None:
+#         pc[trapped] = np.inf if mode == 'drainage' else -np.inf
+
+#     if min_size > 0:
+#         trapped, released = find_small_clusters(
+#             im=im,
+#             trapped=trapped,
+#             min_size=min_size,
+#             conn=conn,
+#         )
+#         labels = spim.label(released, structure=se)[0]
+#         if seq is not None:
+#             mx = spim.maximum_filter(seq*~released, footprint=se)
+#             mx = flood_func(mx, np.amax, labels=labels)
+#             seq[released] = mx[released]
+#             results.im_seq = seq
+#         if size is not None:
+#             mx = spim.maximum_filter(size*~released, footprint=se)
+#             mx = flood_func(mx, np.amax, labels=labels)
+#             size[released] = mx[released]
+#             results.im_size = size
+#         if pc is not None:
+#             tmp = pc.copy()
+#             tmp[np.isinf(tmp)] = 0
+#             mx = spim.maximum_filter(tmp*~released, footprint=se)
+#             mx = flood_func(mx, np.amax, labels=labels)
+#             pc[released] = mx[released]
+#             results.im_pc = pc
+#     return results
 
 
 def find_small_clusters(
     im: npt.NDArray,
     trapped: npt.NDArray = None,
     min_size: int = 1,
-    conn: str = 'min',
+    conn: str = "min",
 ):
     r"""
     Finds small isolated clusters of voxels which were identified as trapped and
@@ -74,110 +153,74 @@ def find_small_clusters(
         ============= ==============================================================
         Attribute     Description
         ============= ==============================================================
+        `im_small`    A boolean image with `True` values indicating trapped clusters
+                      which are smaller than `min_size`.
         `im_trapped`  An updated mask of trapped voxels with the small clusters of
                       trapped voxels removed (i.e. set to `False`).
-        `im_released` An image with `True` values indicating formerly trapped voxels
-                      which were smaller than `min_size` so set to untrapped.
         ============= ==============================================================
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_small_clusters.html>`_
+    to view online example.
 
     """
     cluster_size = region_size(trapped, conn=conn)
-    mask = (cluster_size <= min_size)*(cluster_size > 0)
+    mask = (cluster_size <= min_size) * (cluster_size > 0)
     trapped[mask] = False
 
     results = Results()
     results.im_trapped = trapped
-    results.im_released = mask
+    results.im_small = mask
 
     return results
 
 
-def fill_trapped_clusters(
+def trim_small_clusters(
     im: npt.NDArray,
-    trapped: npt.NDArray,
-    seq: npt.NDArray = None,
-    size: npt.NDArray = None,
-    pc: npt.NDArray = None,
-    min_size: int = 0,
-    conn: Literal['min', 'max'] = 'min',
-    mode: Literal['drainage', 'imbibition'] = 'drainage',
+    min_size: int = 1,
 ):
     r"""
+    Removes clusters voxel of a given size or smaller
 
     Parameters
     ----------
     im : ndarray
-        The boolean image of the porous media with `True` indicating void.
-    trapped : ndarray
-        The boolean array of the trapped voxels.
-    seq : ndarray
-        The sequence map produced by a displacement algorithm. Regions labelled -1
-        are considered trapped, and regions labelled 0 are considered residual
-        invading phase.
-    size : ndarray
-       The size map produced by a displacement algorithm. Regions labelled -1
-       are considered trapped, and regions labelled 0 are considered solid.
-    pc : ndarray
-        The capillary pressure map produced by a displacement algorithm.
-    conn : str
-        Controls the shape of the structuring element used to find neighboring
-        voxels when looking for neighbor values to place into un-trapped voxels.
-        Options are:
+        The binary image from which voxels are to be removed.
+    min_size : scalar
+        The threshold size of clusters to trim.  As clusters with this
+        many voxels or fewer will be trimmed.  The default is 1 so only
+        single voxels are removed.
 
-        ========= ==================================================================
-        Option    Description
-        ========= ==================================================================
-        'min'     This corresponds to a cross with 4 neighbors in 2D and 6
-                  neighbors in 3D.
-        'max'     This corresponds to a square or cube with 8 neighbors in 2D and
-                  26 neighbors in 3D.
-        ========= ==================================================================
+    Returns
+    -------
+    im : ndarray
+        A copy of `im` with clusters of voxels smaller than the given
+        `size` removed.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/trim_small_clusters.html>`_
+    to view online example.
+
     """
-    se = strel[im.ndim][conn].copy()
-    results = Results()
-
-    if seq is not None:
-        seq[trapped] = -1
-        seq = make_contiguous(seq, mode='symmetric')
-    if size is not None:
-        size[trapped] = -1
-    if pc is not None:
-        pc[trapped] = np.inf if mode == 'drainage' else -np.inf
-
-    if min_size > 0:
-        trapped, released = find_small_clusters(
-            im=im,
-            trapped=trapped,
-            min_size=min_size,
-            conn=conn,
-        )
-        labels = spim.label(released, structure=se)[0]
-        if seq is not None:
-            mx = spim.maximum_filter(seq*~released, footprint=se)
-            mx = flood_func(mx, np.amax, labels=labels)
-            seq[released] = mx[released]
-            results.im_seq = seq
-        if size is not None:
-            mx = spim.maximum_filter(size*~released, footprint=se)
-            mx = flood_func(mx, np.amax, labels=labels)
-            size[released] = mx[released]
-            results.im_size = size
-        if pc is not None:
-            tmp = pc.copy()
-            tmp[np.isinf(tmp)] = 0
-            mx = spim.maximum_filter(tmp*~released, footprint=se)
-            mx = flood_func(mx, np.amax, labels=labels)
-            pc[released] = mx[released]
-            results.im_pc = pc
-    return results
+    se = strel[im.ndim]["min"]
+    filtered_array = np.copy(im)
+    labels, N = spim.label(filtered_array, structure=se)
+    id_sizes = np.array(spim.sum(im, labels, range(N + 1)))
+    area_mask = id_sizes <= min_size
+    filtered_array[area_mask[labels]] = 0
+    return filtered_array
 
 
 def find_trapped_clusters(
     im: npt.ArrayLike,
     seq: npt.ArrayLike,
     outlets: npt.ArrayLike,
-    conn: Literal['min', 'max'] = 'min',
-    method: Literal['queue', 'labels'] = 'labels',
+    conn: Literal["min", "max"] = "min",
+    method: Literal["queue", "labels"] = "labels",
 ):
     r"""
     Find the trapped regions given an invasion sequence map and specified outlets
@@ -196,7 +239,7 @@ def find_trapped_clusters(
         An image the same size as ``im`` with ``True`` indicating outlets
         and ``False`` elsewhere.
     conn : str
-        Controls the shape of the structuring element used to determin if voxels
+        Controls the shape of the structuring element used to determine if voxels
         are connected.  Options are:
 
         ========= ==================================================================
@@ -233,9 +276,8 @@ def find_trapped_clusters(
     `Click here
     <https://porespy.org/examples/filters/reference/find_trapped_clusters.html>`_
     to view online example.
-
     """
-    if method == 'queue':
+    if method == "queue":
         seq = np.copy(seq)  # Need a copy since the queue method updates 'in-place'
         seq_temp = _find_trapped_clusters_queue(
             im=im,
@@ -243,7 +285,7 @@ def find_trapped_clusters(
             outlets=outlets,
             conn=conn,
         )
-    elif method == 'labels':
+    elif method == "labels":
         seq_temp = _find_trapped_clusters_labels(
             im=im,
             seq=seq,
@@ -251,30 +293,32 @@ def find_trapped_clusters(
             conn=conn,
         )
     else:
-        raise Exception(f'{method} is not a supported method')
+        raise Exception(f"{method} is not a supported method")
 
-    return (seq_temp == -1)*im
+    return (seq_temp == -1) * im
 
 
 def _find_trapped_clusters_labels(
     im: npt.ArrayLike,
     seq: npt.ArrayLike,
     outlets: npt.ArrayLike,
-    conn: Literal['min', 'max'] = 'min',
+    conn: Literal["min", "max"] = "min",
 ):
     r"""
     This version is meant for IBOP (i.e. drainage or MIO) simulations
     """
+    from porespy.filters import find_invalid_pores
+
     seq = np.copy(seq)
-    non_perc = find_disconnected_voxels(im, surface=True)
+    non_perc = find_invalid_pores(im) > 0
     se = strel[im.ndim][conn].copy()
     mask = seq < 0  # This is used again at the end of the function to fix seq
     # All uninvaded regions should be given sequence number of lowest nearby fluid
     if np.any(mask):
-        mask_dil = spim.binary_dilation(mask, structure=se)*im
-        tmp = seq*mask_dil
-        new_seq = flood(im=tmp, labels=spim.label(mask_dil)[0], mode='maximum')
-        seq = seq*~mask + new_seq*mask
+        mask_dil = spim.binary_dilation(mask, structure=se) * im
+        tmp = seq * mask_dil
+        new_seq = flood(im=tmp, labels=spim.label(mask_dil)[0], mode="maximum")
+        seq = seq * ~mask + new_seq * mask
     outlets = np.where(outlets)
     # Remove all trivially trapped regions (i.e. invaded after last outlet)
     trapped = np.zeros_like(seq, dtype=bool)
@@ -290,13 +334,13 @@ def _find_trapped_clusters_labels(
         labels = spim.label(temp, structure=se)[0]
         keep = np.unique(labels[outlets])
         keep = keep[keep > 0]
-        trapped += temp*np.isin(labels, keep, invert=True)
+        trapped += temp * np.isin(labels, keep, invert=True)
     # Set uninvaded locations back to -1, and set to untrapped
     seq[mask] = -1
     trapped[mask] = False
     seq[trapped] = -1
     seq[im == 0] = 0
-    seq = make_contiguous(seq, mode='symmetric')
+    seq = make_contiguous(seq, mode="symmetric")
     seq[non_perc] = -1
     return seq
 
@@ -305,21 +349,20 @@ def _find_trapped_clusters_queue(
     im: npt.NDArray,
     seq: npt.NDArray,
     outlets: npt.NDArray,
-    conn: Literal['min', 'max'] = 'min',
+    conn: Literal["min", "max"] = "min",
 ):
     r"""
     This version is meant for IBIP or QBIP (ie. invasion) simulations.
-
     """
     im = im > 0
     # Make sure outlets are masked correctly and convert to 3d
-    out_temp = np.atleast_3d(outlets*(seq > 0))
+    out_temp = np.atleast_3d(outlets * (seq > 0))
     # Initialize im_trapped array
     im_trapped = np.ones_like(out_temp, dtype=bool)
     # Convert seq to negative numbers and convert to 3d
-    seq_temp = np.atleast_3d(-1*seq)
+    seq_temp = np.atleast_3d(-1 * seq)
     # Note which sites have been added to heap already
-    edge = out_temp*np.atleast_3d(im) + np.atleast_3d(~im)
+    edge = out_temp * np.atleast_3d(im) + np.atleast_3d(~im)
     # seq = np.copy(np.atleast_3d(seq))
     trapped, step = _trapped_regions_inner_loop(
         seq=seq_temp,
@@ -334,7 +377,7 @@ def _find_trapped_clusters_queue(
     trapped = np.squeeze(trapped)
     seq[trapped] = -1
     seq[~im] = 0
-    seq = make_contiguous(im=seq, mode='symmetric')
+    seq = make_contiguous(im=seq, mode="symmetric")
     return seq
 
 
@@ -369,8 +412,7 @@ def _trapped_regions_inner_loop(
                 trapped[pt[1], pt[2], pt[3]] = False
                 minseq = pt[0]
             # Add neighboring points to heap and edge
-            neighbors = \
-                _find_valid_neighbors(i=pt[1], j=pt[2], k=pt[3], im=edge, conn=conn)
+            neighbors = _find_valid_neighbors(i=pt[1], j=pt[2], k=pt[3], im=edge, conn=conn)
             for n in neighbors:
                 hq.heappush(bd, [seq[n], n[0], n[1], n[2]])
                 edge[n[0], n[1], n[2]] = True
@@ -379,44 +421,41 @@ def _trapped_regions_inner_loop(
 
 
 @njit
-def _find_valid_neighbors(
-    i,
-    j,
-    im,
-    k=0,
-    conn='min',
-    valid=False
-):  # pragma: no cover
+def _find_valid_neighbors(i, j, im, k=0, conn="min", valid=False):  # pragma: no cover
     if im.ndim == 2:
         xlim, ylim = im.shape
-        if conn == 'min':
+        if conn == "min":
             mask = [[0, 1, 0], [1, 1, 1], [0, 1, 0]]
-        elif conn == 'max':
+        elif conn == "max":
             mask = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
         neighbors = []
-        for a, x in enumerate(range(i-1, i+2)):
+        for a, x in enumerate(range(i - 1, i + 2)):
             if (x >= 0) and (x < xlim):
-                for b, y in enumerate(range(j-1, j+2)):
+                for b, y in enumerate(range(j - 1, j + 2)):
                     if (y >= 0) and (y < ylim):
                         if mask[a][b] == 1:
                             if im[x, y] == valid:
                                 neighbors.append((x, y))
     else:
         xlim, ylim, zlim = im.shape
-        if conn == 'min':
-            mask = [[[0, 0, 0], [0, 1, 0], [0, 0, 0]],
-                    [[0, 1, 0], [1, 1, 1], [0, 1, 0]],
-                    [[0, 0, 0], [0, 1, 0], [0, 0, 0]]]
-        elif conn == 'max':
-            mask = [[[1, 1, 1], [1, 1, 1], [1, 1, 1]],
-                    [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
-                    [[1, 1, 1], [1, 1, 1], [1, 1, 1]]]
+        if conn == "min":
+            mask = [
+                [[0, 0, 0], [0, 1, 0], [0, 0, 0]],
+                [[0, 1, 0], [1, 1, 1], [0, 1, 0]],
+                [[0, 0, 0], [0, 1, 0], [0, 0, 0]],
+            ]
+        elif conn == "max":
+            mask = [
+                [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            ]
         neighbors = []
-        for a, x in enumerate(range(i-1, i+2)):
+        for a, x in enumerate(range(i - 1, i + 2)):
             if (x >= 0) and (x < xlim):
-                for b, y in enumerate(range(j-1, j+2)):
+                for b, y in enumerate(range(j - 1, j + 2)):
                     if (y >= 0) and (y < ylim):
-                        for c, z in enumerate(range(k-1, k+2)):
+                        for c, z in enumerate(range(k - 1, k + 2)):
                             if (z >= 0) and (z < zlim):
                                 if mask[a][b][c] == 1:
                                     if im[x, y, z] == valid:
