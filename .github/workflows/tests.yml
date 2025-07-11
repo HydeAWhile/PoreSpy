@@ -45,7 +45,7 @@ jobs:
           uv build
 
       - name: Install dependencies (Linux)
-        if: matrix.os != 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           uv sync --extra test --extra extras --extra build
           uv build
