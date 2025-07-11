@@ -42,9 +42,9 @@ body {
     font-weight: 300;
 }
 
-/* .bd-sidenav {
-    font-family: "Roboto Mono" !important;
-} */
+.bd-sidenav {
+    font-family: "Roboto Mono";
+}
 
 ul.nav.bd-sidenav > li.toctree-l1 {
     display: none;

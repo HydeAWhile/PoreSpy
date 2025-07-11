@@ -7,7 +7,6 @@ API
 This section contains the complete API reference for all PoreSpy modules and functions.
 
 .. toctree::
-   :titlesonly:
-   :maxdepth: 5
+   :maxdepth: 1
 
    /autoapi/porespy/index

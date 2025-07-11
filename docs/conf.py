@@ -56,13 +56,14 @@ myst_enable_extensions = [
 ]
 
 # Force notebook execution during documentation build
-nb_execution_mode = "off"
+nb_execution_mode = "force" if "CI" in os.environ else "off"
 
 # So that 'sphinx-copybutton' only copies the actual code, not the prompt
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
 copybutton_prompt_is_regexp = True
 
-add_module_names = False  # porespy.generators --> generators
+add_module_names = False
+add_package_names = False
 globaltoc_maxdepth = 2
 
 # AutoAPI Configuration
@@ -84,12 +85,15 @@ autoapi_python_class_content = "both"  # Include both class and __init__ docstri
 autoapi_member_order = "alphabetical"  # Simple alphabetical order
 autoapi_root = "autoapi"  # Root directory for generated docs
 autoapi_generate_api_docs = True  # Generate individual API docs for each item
-autoapi_keep_files = False  # Don't keep the generated RST files
-autoapi_add_toctree_entry = False  # Don't add to main toctree automatically
-autoapi_template_dir = "_templates"  # Use custom templates
+autoapi_keep_files = True  # Don't keep the generated RST files
+autoapi_add_toctree_entry = True  # Don't add to main toctree automatically
+# autoapi_template_dir = "_templates"  # Use custom templates
+autoapi_own_page_level = "function"  # Each function gets its own page
+# autoapi_python_use_implicit_namespaces = True
+toc_object_entries_show_parents = "hide"
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
+# templates_path = ["_templates"]
 # The master toctree document.
 master_doc = "index"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
@@ -137,6 +141,7 @@ html_theme_options = {
         {"name": "Issue Tracker", "url": "https://github.com/PMEAL/porespy/issues"},
         {"name": "Get Help", "url": "https://github.com/PMEAL/porespy/discussions"},
     ],
+    "collapse_navigation": False,
     "navigation_with_keys": False,
     "show_prev_next": False,
     "icon_links_label": "Quick Links",
