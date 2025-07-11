@@ -3,7 +3,6 @@ import logging
 import dask
 import porespy as ps
 import numpy as np
-import openpnm as op
 import pandas as pd
 from porespy.tools import Results, get_edt, get_tqdm
 
@@ -46,6 +45,7 @@ def calc_g(im, axis, solver_args={}):
     This is intended to receive blocks of a larger image and is used by
     `tortuosity_bt`.
     """
+    import openpnm as op
     from porespy.simulations import tortuosity_fd
     solver_args = {'tol': 1e-6} | solver_args
     solver = solver_args.pop('solver', None)
@@ -310,7 +310,7 @@ def df_to_tortuosity(im, df):
     tau : list of floats
         The tortuosity in all three principal directions
     """
-
+    import openpnm as op
     block_size = list(df['length'])[0]
     divs = block_size_to_divs(shape=im.shape, block_size=block_size)
 

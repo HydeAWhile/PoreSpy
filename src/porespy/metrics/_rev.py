@@ -4,7 +4,6 @@ import time
 
 import dask
 import numpy as np
-import openpnm as op
 import pandas as pd
 
 from porespy import settings
@@ -125,7 +124,6 @@ def calc_g(im, axis, solver_args={}):
     t0 = time.perf_counter()
 
     try:
-        solver = op.solvers.PyamgRugeStubenSolver(**solver_args)
         results = tortuosity_fd(im=im, axis=axis, solver=solver)
     except Exception:
         results = Results()

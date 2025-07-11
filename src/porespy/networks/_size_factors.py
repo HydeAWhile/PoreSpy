@@ -131,10 +131,12 @@ def _calc_g_val(im):
     Calculates the diffusive size factor of conduit image (ROI)
     using finite difference method. The finite difference nodes
     are created using OpenPNM's CubicTemplate method.
+
     Parameters
     ----------
     im : ndarray
         3D image of a pair of pore to pore regions (conduit)
+        
     Returns
     -------
     g : scalar
