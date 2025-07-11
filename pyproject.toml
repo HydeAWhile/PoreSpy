@@ -29,7 +29,6 @@ dependencies = [
     "matplotlib",
     "numba",
     "numpy<2.0",
-    "openpnm",
     "pandas",
     "psutil",
     "rich",
@@ -50,9 +49,9 @@ requires-python = ">=3.10,<3.13"
 
 [project.optional-dependencies]
 extras = [
-    "pyevtk",
     "scikit-learn",
-    "trimesh",
+    "pyedt",
+    "openpnm",
 ]
 build = [
     "hatch",
