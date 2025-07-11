@@ -153,7 +153,6 @@ def imbibition_dt_fft(
     im,
     inlets=None,
     outlets=None,
-    residual=None,
     dt=None,
     steps=None,
     smooth=True,
@@ -259,7 +258,6 @@ def imbibition_dt(
     im,
     inlets=None,
     outlets=None,
-    residual=None,
     dt=None,
     steps=None,
     smooth=True,
@@ -367,7 +365,6 @@ def imbibition_fft(
     im,
     inlets=None,
     outlets=None,
-    residual=None,
     dt=None,
     steps=None,
     smooth=True,
@@ -589,7 +586,7 @@ def imbibition(
         nwp_mask = np.zeros_like(im, dtype=bool)
         if np.any(edges):
             coords = np.where(edges)
-            radii = dt[coords].astype(int) + 1
+            radii = dt[coords].astype(int) + 1  # I added this +1 as a hack
             nwp_mask = _insert_disks_at_points_parallel(
                 im=nwp_mask,
                 coords=np.vstack(coords),
