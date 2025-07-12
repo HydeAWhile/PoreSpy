@@ -1,19 +1,19 @@
-import logging
 import inspect
+import logging
 from typing import Literal
+
 import numpy as np
 import numpy.typing as npt
-from skimage.morphology import ball, disk, square, cube
-from porespy import settings
+from numba import njit, prange
+from skimage.morphology import ball, cube, disk, square
+
 from porespy.tools import (
-    get_edt,
     _insert_disk_at_points,
+    get_edt,
     get_tqdm,
     ps_round,
+    settings,
 )
-
-from numba import njit, prange
-
 
 edt = get_edt()
 tqdm = get_tqdm()
@@ -554,9 +554,10 @@ def local_thickness_dt(
 
 if __name__ == "__main__":
 
-    import porespy as ps
     import matplotlib.pyplot as plt
     from localthickness import local_thickness as loct
+
+    import porespy as ps
 
     im = ~ps.generators.random_spheres([150, 150, 150], r=10, clearance=10, seed=0)
     dt = edt(im)

@@ -1,5 +1,6 @@
 import logging
 import time
+
 import numpy as np
 
 from porespy.filters import trim_nonpercolating_paths
@@ -37,11 +38,8 @@ def tortuosity_fd(im, axis, solver=None):
         effective_porosity  Porosity of the image after applying
                             ``trim_nonpercolating_paths``.  This removes
                             disconnected voxels which cause singular matrices.
-
         original_porosity   Porosity of the as-received the image
-
         formation_factor    Found as :math:`D_{AB}/D_{eff}`.
-
         im_conc             An image containing the concentration values from
                             the simulation.
         =================== ===================================================
@@ -49,13 +47,13 @@ def tortuosity_fd(im, axis, solver=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/simulations/reference/tortuosity_fd.html>`_
+    <https://porespy.org/examples/simulations/reference/tortuosity_fd.html>`__
     to view online example.
 
     """
     import openpnm as op
     ws = op.Workspace()
-    
+
     if axis > (im.ndim - 1):
         raise Exception(f"'axis' must be <= {im.ndim}")
     openpnm_v3 = op.__version__.startswith("3")

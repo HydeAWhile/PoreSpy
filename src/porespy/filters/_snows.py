@@ -1,5 +1,6 @@
-import logging
 import inspect
+import logging
+
 import dask.array as da
 import numpy as np
 import scipy.ndimage as spim
@@ -7,18 +8,19 @@ import scipy.spatial as sptl
 from numba import njit, prange
 from skimage.morphology import cube, square
 from skimage.segmentation import watershed
-from porespy import settings
-from porespy.filters import chunked_func
+
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
     extend_slice,
+    get_edt,
     get_tqdm,
     ps_rect,
     ps_round,
-    get_edt,
+    settings,
 )
 
+from ._funcs import chunked_func
 
 __all__ = [
     "snow_partitioning",
@@ -101,7 +103,7 @@ def snow_partitioning(im, dt=None, r_max=4, sigma=0.4, peaks=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/snow_partitioning.html>`_
+    <https://porespy.org/examples/filters/reference/snow_partitioning.html>`__
     to view online example.
 
     """
@@ -212,7 +214,7 @@ def snow_partitioning_n(im, r_max=4, sigma=0.4, peaks=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/snow_partitioning_n.html>`_
+    <https://porespy.org/examples/filters/reference/snow_partitioning_n.html>`__
     to view online example.
 
     """
@@ -312,7 +314,7 @@ def find_peaks(dt, r_max=4, strel=None, sigma=None, parallel_kw={"divs": 1}):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_peaks.html>`_
+    <https://porespy.org/examples/filters/reference/find_peaks.html>`__
     to view online example.
 
     """
@@ -371,7 +373,7 @@ def reduce_peaks(peaks):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/reduce_peaks.html>`_
+    <https://porespy.org/examples/filters/reference/reduce_peaks.html>`__
     to view online example.
 
     """
@@ -421,7 +423,7 @@ def trim_saddle_points(peaks, dt, maxiter=20):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_saddle_points.html>`_
+    <https://porespy.org/examples/filters/reference/trim_saddle_points.html>`__
     to view online example.
 
     """
@@ -497,7 +499,7 @@ def trim_saddle_points_legacy(peaks, dt, maxiter=10):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_saddle_points_legacy.html>`_
+    <https://porespy.org/examples/filters/reference/trim_saddle_points_legacy.html>`__
     to view online example.
     """
     new_peaks = np.zeros_like(peaks, dtype=bool)
@@ -580,7 +582,7 @@ def trim_nearby_peaks(peaks, dt, f=1):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_nearby_peaks.html>`_
+    <https://porespy.org/examples/filters/reference/trim_nearby_peaks.html>`__
     to view online example.
 
     """
@@ -656,20 +658,20 @@ def snow_partitioning_parallel(im,
         optional settings include `divs` (scalar or list of scalars,
         default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
         and `cores` (scalar, default is all available cores).
-        
+
         `divs` is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
         respective axis will be divided by its corresponding number in the
         list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
         and 4 respectively.
-        
+
         `overlap` is the amount of overlap to include when dividing up the image.
         This value will almost always be the size (i.e. raduis) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
         case the `strel_arg` must be specified.
-        
+
         `cores` is the number of cores that will be used to parallel process all
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will
@@ -685,7 +687,7 @@ def snow_partitioning_parallel(im,
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/snow_partitioning_parallel.html>`_
+    <https://porespy.org/examples/filters/reference/snow_partitioning_parallel.html>`__
     to view online example.
 
     """
@@ -711,7 +713,7 @@ def snow_partitioning_parallel(im,
     # Get overlap thickness from distance transform
     chunk_shape = (np.array(shape) / np.array(divs)).astype(int)
     logger.info('Beginning parallel SNOW algorithm...')
-    
+
     if overlap is None:
         overlap = _estimate_overlap(im, mode='dt')
     overlap = overlap / 2.0

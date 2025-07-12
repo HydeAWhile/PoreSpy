@@ -8,18 +8,11 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 from numba import njit
 
-from porespy import settings
-from porespy.filters import (
-    flood,
-    region_size,
-)
-from porespy.tools import (
-    Results,
-    get_strel,
-    get_tqdm,
-    make_contiguous,
-)
+from porespy.tools import Results, get_strel, get_tqdm, make_contiguous, settings
 
+from ._funcs import flood, region_size
+
+tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
 strel = get_strel()
@@ -274,7 +267,7 @@ def find_trapped_clusters(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_trapped_clusters.html>`_
+    <https://porespy.org/examples/filters/reference/find_trapped_clusters.html>`__
     to view online example.
     """
     if method == "queue":

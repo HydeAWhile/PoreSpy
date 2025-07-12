@@ -1,8 +1,9 @@
-import psutil
-import numpy as np
 from typing import Literal
-from porespy.tools import all_to_uniform, parse_shape
 
+import numpy as np
+import psutil
+
+from porespy.tools import all_to_uniform, parse_shape
 
 __all__ = [
     'fractal_noise',
@@ -80,12 +81,12 @@ def fractal_noise(
     called `FastNoiseSIMD <https://github.com/Auburn/FastNoiseSIMD>`_.
     To access the more elaborate functionality and options of these
     packages, explore the `pyfastnoisesimd documentation
-    <https://pyfastnoisesimd.readthedocs.io/en/latest/overview.html>`_.
+    <https://pyfastnoisesimd.readthedocs.io/en/latest/overview.html>`__.
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/fractal_noise.html>`_
+    <https://porespy.org/examples/generators/reference/fractal_noise.html>`__
     to view online example.
 
     """

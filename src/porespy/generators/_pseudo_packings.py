@@ -187,7 +187,7 @@ def pseudo_gravity_packing(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/pseudo_gravity_packing.html>`_
+    <https://porespy.org/examples/generators/reference/pseudo_gravity_packing.html>`__
     to view online example.
 
     """
@@ -342,7 +342,7 @@ def pseudo_electrostatic_packing(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/pseudo_electrostatic_packing.html>`_
+    <https://porespy.org/examples/generators/reference/pseudo_electrostatic_packing.html>`__
     to view online example.
 
     """

@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import porespy as ps
 
+import porespy as ps
 
 edt = ps.tools.get_edt()
 
@@ -13,7 +13,7 @@ def test_inverse_Bo_study(plot=False):
     # Generate image
     vx = 0.0001
     sigma = 0.072
-    theta=180
+    theta = 180
     g = 9.81
      # To get the trends observed in the WRR paper the image must be way bigger
     im = ps.generators.overlapping_spheres(shape=[600, 200], r=8, porosity=0.65)

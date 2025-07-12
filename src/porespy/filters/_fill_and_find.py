@@ -70,6 +70,7 @@ def trim_disconnected_voxels(
     --------
     `Click here
     <https://porespy.org/examples/filters/reference/trim_disconnected_voxels.html>`_
+    <https://porespy.org/examples/filters/reference/trim_small_clusters.html>`__
     to view online example.
 
     """
@@ -122,7 +123,7 @@ def find_disconnected_voxels(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_disconnected_voxels.html>`_
+    <https://porespy.org/examples/filters/reference/find_disconnected_voxels.html>`__
     to view online example.
     """
     se = strel[im.ndim][conn].copy()
@@ -163,7 +164,7 @@ def find_closed_pores(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_closed_pores.html>`_
+    <https://porespy.org/examples/filters/reference/find_closed_pores.html>`__
     to view online example.
     """
     from porespy.generators import borders
@@ -252,7 +253,7 @@ def find_surface_pores(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_surface_pores.html>`_
+    <https://porespy.org/examples/filters/reference/find_surface_pores.html>`__
     to view online example.
     """
     if axis is None:
@@ -341,7 +342,7 @@ def find_invalid_pores(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/find_invalid_pores.html>`_
+    <https://porespy.org/examples/filters/reference/find_invalid_pores.html>`__
     to view online example.
     """
     closed = find_closed_pores(im=im, conn=conn)
@@ -380,6 +381,7 @@ def fill_invalid_pores(
     --------
     `Click here
     <https://porespy.org/examples/filters/reference/fill_invalid_pores.html>`_
+    <https://porespy.org/examples/filters/reference/fill_closed_pores.html>`__
     to view online example.
     """
     im = im.copy()
@@ -426,7 +428,7 @@ def trim_floating_solid(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_floating_solid.html>`_
+    <https://porespy.org/examples/filters/reference/trim_floating_solid.html>`__
     to view online example.
 
     """
@@ -533,7 +535,7 @@ def trim_nonpercolating_paths(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/trim_nonpercolating_paths.html>`_
+    <https://porespy.org/examples/filters/reference/trim_nonpercolating_paths.html>`__
     to view online example.
 
     """

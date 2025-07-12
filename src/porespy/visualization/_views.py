@@ -2,7 +2,6 @@ import numpy as np
 import scipy.ndimage as spim
 from numba import njit, prange
 
-
 __all__ = [
     "show_3D",
     "show_planes",
@@ -38,7 +37,7 @@ def show_3D(im):  # pragma: no cover
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/show_3D.html>`_
+    <https://porespy.org/examples/visualization/reference/show_3D.html>`__
     to view online example.
 
     """
@@ -77,7 +76,7 @@ def show_planes(im, spacing=10):  # pragma: no cover
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/show_planes.html>`_
+    <https://porespy.org/examples/visualization/reference/show_planes.html>`__
     to view online example.
 
     """
@@ -128,7 +127,7 @@ def sem(im, axis=0):  # pragma: no cover
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/sem.html>`_
+    <https://porespy.org/examples/visualization/reference/sem.html>`__
     to view online example.
 
     """
@@ -181,7 +180,7 @@ def xray(im, axis=0):  # pragma: no cover
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/sem.html>`_
+    <https://porespy.org/examples/visualization/reference/sem.html>`__
     to view online example.
     """
     im = np.array(~im, dtype=int)

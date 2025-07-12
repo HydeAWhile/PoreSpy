@@ -1,27 +1,27 @@
 import inspect
 import logging
 from typing import List, Literal
+
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
 from numba import njit
-from porespy import settings
-from porespy.filters import chunked_func
+
 from porespy.tools import (
     _insert_disk_at_points,
     _insert_disk_at_points_parallel,
     all_to_uniform,
     extract_subsection,
+    get_edt,
     get_tqdm,
     insert_sphere,
+    parse_shape,
     ps_ball,
     ps_disk,
-    get_edt,
-    parse_shape
+    settings,
 )
-
 
 __all__ = [
     "blobs",
@@ -78,7 +78,7 @@ def faces(shape, inlet: int = None, outlet: int = None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/faces.html>`_
+    <https://porespy.org/examples/generators/reference/faces.html>`__
     to view online example.
 
     """
@@ -130,7 +130,7 @@ def borders(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/borders.html>`_
+    <https://porespy.org/examples/generators/reference/borders.html>`__
     to view online example.
 
     """
@@ -246,7 +246,7 @@ def ramp(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/ramp.html>`_
+    <https://porespy.org/examples/generators/reference/ramp.html>`__
     to view online example.
     """
     shape = parse_shape(shape)
@@ -283,7 +283,7 @@ def cylindrical_plug(shape, r=None, axis=2):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/cylindrical_plug.html>`_
+    <https://porespy.org/examples/generators/reference/cylindrical_plug.html>`__
     to view online example.
 
     """
@@ -349,7 +349,7 @@ def insert_shape(im, element, center=None, corner=None, value=1, mode="overwrite
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/insert_shape.html>`_
+    <https://porespy.org/examples/generators/reference/insert_shape.html>`__
     to view online example.
 
     """
@@ -495,7 +495,7 @@ def random_spheres(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/random_spheres.html>`_
+    <https://porespy.org/examples/generators/reference/random_spheres.html>`__
     to view online example.
 
     """
@@ -671,7 +671,7 @@ def bundle_of_tubes(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -681,7 +681,7 @@ def bundle_of_tubes(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/bundle_of_tubes.html>`_
+    <https://porespy.org/examples/generators/reference/bundle_of_tubes.html>`__
     to view online example.
 
     """
@@ -752,7 +752,7 @@ def polydisperse_spheres(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -762,7 +762,7 @@ def polydisperse_spheres(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/polydisperse_spheres.html>`_
+    <https://porespy.org/examples/generators/reference/polydisperse_spheres.html>`__
     to view online example.
 
     """
@@ -814,7 +814,7 @@ def voronoi_edges(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -824,7 +824,7 @@ def voronoi_edges(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/voronoi_edges.html>`_
+    <https://porespy.org/examples/generators/reference/voronoi_edges.html>`__
     to view online example.
 
     """
@@ -952,7 +952,7 @@ def lattice_spheres(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/lattice_spheres.html>`_
+    <https://porespy.org/examples/generators/reference/lattice_spheres.html>`__
     to view online example.
 
     """
@@ -1063,7 +1063,7 @@ def overlapping_spheres(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -1079,7 +1079,7 @@ def overlapping_spheres(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/overlapping_spheres.html>`_
+    <https://porespy.org/examples/generators/reference/overlapping_spheres.html>`__
     to view online example.
 
     """
@@ -1176,10 +1176,11 @@ def blobs(
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will
         effectively process the chunks in serial to minimize memory usage.
+
     seed : int, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
     periodic : bool, default = `True`
         If `True` the blobs will be periodic, meaning that the image can be tiled
         and the phases will be continuous. `False` will provide the "legacy" version
@@ -1198,8 +1199,7 @@ def blobs(
     -----
     This function generates random noise, the applies a gaussian blur to
     the noise with a sigma controlled by the blobiness argument as:
-
-        $$ np.mean(shape) / (40 * blobiness) $$
+    ``np.mean(shape) / (40 * blobiness)``
 
     The value of 40 was chosen so that a ``blobiness`` of 1 gave a
     reasonable result.
@@ -1207,11 +1207,13 @@ def blobs(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/blobs.html>`_
+    <https://porespy.org/examples/generators/reference/blobs.html>`__
     to view online example.
 
     """
-    # parse out divs from parallel_kw, use default from settings
+    from porespy.filters import chunked_func
+
+    # Parse out divs from parallel_kw, use default from settings
     divs = parallel_kw.get("divs", settings.divs)
     if seed is not None:
         np.random.seed(seed)
@@ -1290,7 +1292,7 @@ def _cylinders(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -1409,7 +1411,7 @@ def cylinders(
     seed : int, optional, default = `None`
         Initializes numpy's random number generator to the specified state. If not
         provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
+        ``np.random.seed(seed)`` prior to calling this function will be respected.
 
     Returns
     -------
@@ -1438,7 +1440,7 @@ def cylinders(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/cylinders.html>`_
+    <https://porespy.org/examples/generators/reference/cylinders.html>`__
     to view online example.
 
     """
@@ -1527,7 +1529,7 @@ def line_segment(X0, X1):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/line_segment.html>`_
+    <https://porespy.org/examples/generators/reference/line_segment.html>`__
     to view online example.
 
     """

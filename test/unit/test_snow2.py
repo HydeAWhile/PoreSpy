@@ -1,9 +1,9 @@
 import numpy as np
 import openpnm as op
-import porespy as ps
 import scipy.ndimage as spim
 from scipy import stats as spst
 
+import porespy as ps
 
 edt = ps.tools.get_edt()
 ws = op.Workspace()

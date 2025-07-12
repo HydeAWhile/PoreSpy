@@ -12,7 +12,6 @@ ways that do NOT return a modified version of the original image.
 from ._utils import *
 from ._morphology import *
 from ._funcs import *
-from ._funcs import _check_for_singleton_axes, center_of_mass
 from ._sphere_insertions import *
 from ._marching_cubes import *
 from ._marching_squares import *
@@ -24,3 +23,5 @@ def _get_version():
     if ver.endswith(suffix):
         ver = ver[:-len(suffix)]
     return ver
+
+settings = Settings()

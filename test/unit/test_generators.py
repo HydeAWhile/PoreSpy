@@ -2,10 +2,11 @@ import sys
 
 import numpy as np
 import pandas as pd
-import porespy as ps
 import pytest
 import scipy.ndimage as spim
 import scipy.stats as spst
+
+import porespy as ps
 
 ps.settings.tqdm['disable'] = True
 

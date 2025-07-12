@@ -1,8 +1,9 @@
+import inspect
+import sys
+
 import porespy as ps
 from porespy import beta
 from porespy.tools import get_edt
-import sys
-import inspect
 
 edt = get_edt()
 ps.settings.tqdm["disable"] = True
