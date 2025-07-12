@@ -26,7 +26,6 @@ from porespy.tools import (
 __all__ = [
     "blobs",
     "borders",
-    "bundle_of_tubes",
     "cylinders",
     "cylindrical_plug",
     "elevation",
@@ -194,7 +193,9 @@ def elevation(
 
     Examples
     --------
-    # TODO: Create a notebook example for this function
+    `Click here
+    <https://porespy.org/examples/generators/reference/elevation.html>`_
+    to view online example.
 
     """
     shape = parse_shape(shape)
@@ -204,7 +205,8 @@ def elevation(
     b = np.reshape(a, [im.shape[0], 1, 1])
     c = np.tile(b, (1, *im.shape[1:]))
     c = c*voxel_size
-    h = np.swapaxes(c, 0, axis)
+    h = c.squeeze()
+    h = np.swapaxes(h, 0, axis)
     return h
 
 
@@ -258,7 +260,7 @@ def ramp(
     return ramp
 
 
-def cylindrical_plug(shape, r=None, axis=2):
+def cylindrical_plug(shape, r=None, axis=2, smooth=True):
     r"""
     Generates a cylindrical plug suitable for use as a mask on a tomogram
 
@@ -273,6 +275,9 @@ def cylindrical_plug(shape, r=None, axis=2):
     axis : int
         The direction along with the cylinder's axis of rotation should be
         oriented.  The default is 2, which is the z-direction.
+    smooth : bool
+        Boolean flag to indicate if the cylinder should have the single voxels
+        protrusion on each face or not (Default if `True`)
 
     Returns
     -------
@@ -295,7 +300,7 @@ def cylindrical_plug(shape, r=None, axis=2):
         dt = edt(im2d)
         if r is None:
             r = int(min(shape[axes])/2)
-        circ = dt < r
+        circ = dt < r if smooth else dt <= r
         tile_ax = [1, 1, 1]
         tile_ax[axis] = shape[axis]
         circ = np.expand_dims(circ, axis)
@@ -306,7 +311,7 @@ def cylindrical_plug(shape, r=None, axis=2):
         dt = edt(im2d)
         if r is None:
             r = int(min(shape[axes])/2)
-        cyl = dt < r
+        cyl = dt < r if smooth else dt <= r
     return cyl
 
 
@@ -644,74 +649,6 @@ def _make_choice(options_im, free_sites):  # pragma: no cover
             choice = options_im[coords[0], coords[1], coords[2]]
             count += 1
     return coords, count
-
-
-def bundle_of_tubes(
-    shape: List[int],
-    spacing: int,
-    distribution=None,
-    smooth: bool = True,
-    seed: int = None,
-):
-    r"""
-    Create a 3D image of a bundle of tubes, in the form of a rectangular
-    plate with randomly sized holes through it.
-
-    Parameters
-    ----------
-    shape : list
-        The size the image, with the 3rd dimension indicating the plate
-        thickness.  If the 3rd dimension is not given then a thickness of
-        1 voxel is assumed.
-    spacing : int
-        The center to center distance of the holes.  The hole sizes will
-        be distributed between this values down to 3 voxels.
-    distribution : scipy.stats object
-        A handle to a scipy stats object with the desired parameters.
-    seed : int, optional, default = `None`
-        Initializes numpy's random number generator to the specified state. If not
-        provided, the current global value is used. This means calls to
-        ``np.random.state(seed)`` prior to calling this function will be respected.
-
-    Returns
-    -------
-    image : ndarray
-        A boolean array with ``True`` values denoting the pore space
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/generators/reference/bundle_of_tubes.html>`_
-    to view online example.
-
-    """
-    if seed is not None:
-        np.random.seed(seed)
-    shape = parse_shape(shape)
-    if len(shape) == 2:
-        shape = np.hstack((shape, [1]))
-    shape2 = shape[shape > 1]
-    im = ~lattice_spheres(shape=shape2,
-                          r=1,
-                          offset=0.5*spacing,
-                          spacing=spacing,
-                          lattice='sc')
-    N = im.sum(dtype=np.int64)
-    if distribution is None:
-        # +1 below is because randint 4.X gives a max of 3
-        distribution = spst.randint(low=3, high=int(spacing/2 + 1))
-        Rs = distribution.rvs(N)
-    else:
-        Rs = distribution.rvs(N)
-        Rs = np.around(np.clip(Rs, a_min=1, a_max=spacing/2), decimals=0).astype(int)
-    temp = np.zeros_like(im)
-    inds = np.where(im)
-    for i in range(len(inds[0])):
-        c = np.hstack([j[i] for j in inds])
-        temp = insert_sphere(im=temp, c=c, r=Rs[i])
-    # Add 3rd dimension back
-    temp = np.tile(np.atleast_3d(temp), [1, 1, shape[2]])
-    return temp
 
 
 def polydisperse_spheres(

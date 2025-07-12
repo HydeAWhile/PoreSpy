@@ -51,6 +51,12 @@ def spheres_from_coords(df, mode='contained', smooth=False):
         ``False`` elsewhere. The size of the returned image will be large enough
         to fit all the spheres plus the radius of the largest sphere.
 
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/generators/reference/spheres_from_coords.html>`_
+    to view online example.
+
     Notes
     -----
     The input data should be in column format as a dictionary of 1D

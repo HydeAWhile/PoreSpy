@@ -111,9 +111,9 @@ def rectangular_pillars_array(
 
     Examples
     --------
-        `Click here
+    `Click here
         <https://porespy.org/examples/generators/reference/rectangular_pillars_array.html>`_
-        to view online example.
+    to view online example.
     """
     shape = parse_shape(shape)
     if len(shape) != 2:
