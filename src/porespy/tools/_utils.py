@@ -22,6 +22,7 @@ __all__ = [
     "get_skel",
     "parse_shape",
     "get_fixtures_path",
+    "Settings",
 ]
 
 
@@ -191,8 +192,8 @@ class Settings:  # pragma: no cover
         controls width.
     loglevel : str, or int
         Determines what messages to get printed in console. Options are:
-        "TRACE" (5), "DEBUG" (10), "INFO" (20), "SUCCESS" (25), "WARNING" (30),
-        "ERROR" (40), "CRITICAL" (50)
+        ``'TRACE'`` (5), ``'DEBUG'`` (10), ``'INFO'`` (20), ``'SUCCESS'`` (25),
+        ``'WARNING'`` (30), ``'ERROR'`` (40), ``'CRITICAL'`` (50)
 
     """
 

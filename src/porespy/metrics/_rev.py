@@ -6,12 +6,12 @@ import dask
 import numpy as np
 import pandas as pd
 
-from porespy import settings
 from porespy.tools import (
     Results,
     get_slices_grid,
     get_slices_random,
     get_tqdm,
+    settings,
 )
 
 __all__ = [
@@ -55,9 +55,9 @@ def rev_porosity(im, n=1000, slices=None):
         ========== ==================================================================
 
         These attributes can be conveniently plotted by passing the Results
-        object to matplotlib's ``plot`` function using the
-        \* notation: ``plt.plot(\*result, 'b.')``.  The resulting plot is
-        similar to the sketch given by Bachmat and Bear [1]_
+        object to matplotlib's ``plot`` function using the notation:
+        ``plt.plot(\*result, 'b.')``. The resulting plot is similar to the
+        sketch given by Bachmat and Bear [1]_
 
     References
     ----------
@@ -68,8 +68,9 @@ def rev_porosity(im, n=1000, slices=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/rev_porosity.html>`_
+    <https://porespy.org/examples/metrics/reference/rev_porosity.html>`__
     to view online example.
+
     """
     # TODO: This function is frustratingly slow.  Profiling indicates that all the
     # time is spent on scipy's ``sum`` function which is needed to sum the number of
@@ -347,9 +348,8 @@ if __name__ == "__main__":
     import numpy as np
 
     import porespy as ps
-
-    ps.settings.tqdm["disable"] = False
-    ps.settings.tqdm["leave"] = True
+    ps.settings.tqdm['disable'] = False
+    ps.settings.tqdm['leave'] = True
 
     im = ps.generators.blobs([300] * 2, porosity=0.7, blobiness=2, seed=1)
     # im = ps.generators.random_cantor_dust([500, 500])

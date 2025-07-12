@@ -1,36 +1,36 @@
+import logging
+
 import dask.array as da
+import numpy as np
 import scipy.ndimage as spim
 import scipy.signal as spsg
-import logging
-import numpy as np
+from numba import jit
+from scipy.ndimage import maximum_position
+from skimage.morphology import cube, square
+
 from porespy.filters import (
-    trim_floating_solid,
+    chunked_func,
+    fill_invalid_pores,
     flood_func,
     region_size,
-    fill_invalid_pores,
-    chunked_func,
-)
-from porespy.filters._snows import _estimate_overlap
-from porespy.tools import (
-    ps_rect,
-    Results,
-    extend_slice,
-    make_contiguous,
-    _insert_disks_at_points,
-    ps_round,
-    extract_subsection,
-    get_tqdm,
-    ps_ball,
-    ps_disk,
-    get_edt,
-    get_skel,
+    trim_floating_solid,
 )
 from porespy.generators import borders
-from skimage.morphology import square, cube
-from scipy.ndimage import maximum_position
-from porespy import settings
-from numba import jit
-
+from porespy.tools import (
+    Results,
+    _insert_disks_at_points,
+    extend_slice,
+    extract_subsection,
+    get_edt,
+    get_skel,
+    get_tqdm,
+    make_contiguous,
+    ps_ball,
+    ps_disk,
+    ps_rect,
+    ps_round,
+    settings,
+)
 
 tqdm = get_tqdm()
 edt = get_edt()
@@ -294,8 +294,10 @@ def skeleton_parallel(im, parallel_kw={}):
         Skeleton of image
 
     """
-    # parse out divs, cores, overlap from parallel_kw
-    # take default from settings if not on parallel_kw dict
+    from porespy.filters._snows import _estimate_overlap
+
+    # Parse out divs, cores, overlap from parallel_kw
+    # Take default from settings if not on parallel_kw dict
     divs = parallel_kw.get("divs", settings.divs)
     cores = parallel_kw.get("cores", settings.ncores)
     overlap = parallel_kw.get("overlap", settings.overlap)

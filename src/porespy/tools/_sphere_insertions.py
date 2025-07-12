@@ -23,14 +23,16 @@ def points_to_spheres(im):
     Parameters
     ----------
     im : ndarray
-        The image containing nonzeros indicating the locations to insert spheres.
-        If the non-zero values are `bool`, then the maximal size is found and used;
-        if the non-zeros are `int` then these values are used as the radii.
+        The image containing nonzeros indicating the locations to insert
+        spheres. If the non-zero values are ``bool``, then the maximal size is
+        found and used. If the non-zeros are ``int`` then these values are used
+        as the radii.
 
     Returns
     -------
     spheres : ndarray
-        A `bool` array with disks/spheres inserted at each nonzero location in `im`.
+        A `bool` array with disks/spheres inserted at each nonzero location in
+        ``im``.
     """
     from scipy.spatial import distance_matrix
     if im.ndim == 3:

@@ -1,10 +1,7 @@
 import numpy.typing as npt
 from scipy.signal import fftconvolve
-from porespy.tools import (
-    ps_round,
-    get_edt
-)
 
+from porespy.tools import get_edt, ps_round
 
 __all__ = [
     'erode',
@@ -57,7 +54,7 @@ def erode(
         An image the same size as `im` with the foreground eroded by the specified
         amount.
     """
-    from porespy import settings
+    from porespy.tools import settings
     if method == 'dt':
         if dt is None:
             dt = edt(im, parallel=settings.ncores)
@@ -109,7 +106,7 @@ def dilate(
         An image the same size as `im` with the foreground eroded by the specified
         amount.
     """
-    from porespy import settings
+    from porespy.tools import settings
     im = im == 1
     if method == 'dt':
         if dt is None:
@@ -123,8 +120,9 @@ def dilate(
 
 
 if __name__ == "__main__":
-    import porespy as ps
     import matplotlib.pyplot as plt
+
+    import porespy as ps
 
     im = ps.generators.blobs([200, 200], porosity=0.6, seed=5)
 

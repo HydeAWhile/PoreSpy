@@ -1,21 +1,22 @@
 import logging
+
 import numba
 import numpy as np
 import scipy.ndimage as spim
 from numba import njit, prange
 from numba.core import types
 from numba.typed import Dict, List
+
 from porespy.tools import (
     center_of_mass,
     create_mc_template_list,
+    get_edt,
     jit_extend_slice,
     jit_marching_cubes_area_and_volume,
     jit_marching_squares_perimeter_and_area,
     make_contiguous,
     pad,
-    get_edt,
 )
-
 
 __all__ = [
     "regions_to_network_parallel",
@@ -194,7 +195,7 @@ def regions_to_network_parallel(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/regions_to_network.html>`_
+    <https://porespy.org/examples/networks/reference/regions_to_network.html>`__
     to view online example.
 
     """

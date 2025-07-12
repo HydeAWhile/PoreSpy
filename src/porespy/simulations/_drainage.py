@@ -3,9 +3,7 @@ from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
-from skimage.morphology import ball, cube, disk, square
 
-from porespy import settings
 from porespy.filters import (
     fftmorphology,
     find_small_clusters,
@@ -20,13 +18,12 @@ from porespy.tools import (
     _insert_disk_at_points_parallel,
     _insert_disks_at_points_parallel,
     get_edt,
+    get_strel,
     get_tqdm,
-    Results,
-    ps_round,
     make_contiguous,
-    get_edt,
-    ps_round,
     parse_steps,
+    ps_round,
+    settings,
 )
 
 __all__ = [
@@ -41,7 +38,7 @@ __all__ = [
 
 edt = get_edt()
 tqdm = get_tqdm()
-strel = {2: {"min": disk(1), "max": square(3)}, 3: {"min": ball(1), "max": cube(3)}}
+strel = get_strel()
 
 
 def drainage_dsi(
@@ -88,19 +85,19 @@ def drainage_dsi(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
-        `im_seq`    The sequence map indicating the sequence or step number at which
+        =========== ================================================================
+        ``im_seq``  The sequence map indicating the sequence or step number at which
                     each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
+        ``im_size`` The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
 
     Notes
     -----
-    The sphere insert stesps will be executed in parallel if
-    `porespy.settings.ncores > 1`
+    The sphere insert steps will be executed in parallel if
+    ``porespy.settings.ncores > 1``
     """
     if settings.ncores > 1:
         func = _insert_disk_at_points_parallel
@@ -203,14 +200,14 @@ def drainage_dt_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         `im_seq`    The sequence map indicating the sequence or step number at which
                     each voxels was first invaded.
         `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
 
     Notes
     -----
@@ -297,14 +294,14 @@ def drainage_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
         `im_seq`    The sequence map indicating the sequence or step number at which
                     each voxels was first invaded.
         `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ================================================================
     """
     im = np.array(im, dtype=bool)
     if dt is None:
@@ -462,7 +459,7 @@ def drainage(
 ):
     r"""
     Simulate drainage using image-based sphere insertion, optionally including
-    gravity
+    gravity [4]_.
 
     Parameters
     ----------
@@ -506,14 +503,14 @@ def drainage(
         Controls the shape of the structuring element used to find neighboring
         voxels when looking at connectivity of invading blobs.  Options are:
 
-        ========= ==================================================================
+        ========= =============================================================
         Option    Description
-        ========= ==================================================================
-        'min'     This corresponds to a cross with 4 neighbors in 2D and 6 neighbors
-                  in 3D.
-        'max'     This corresponds to a square or cube with 8 neighbors in 2D and
-                  26 neighbors in 3D.
-        ========= ==================================================================
+        ========= =============================================================
+        'min'     This corresponds to a cross with 4 neighbors in 2D and 6
+                  neighbors in 3D.
+        'max'     This corresponds to a square or cube with 8 neighbors in 2D
+                  and 26 neighbors in 3D.
+        ========= =============================================================
 
     min_size : int
         Any clusters of trapped voxels smaller than this size will be set to not
@@ -555,17 +552,18 @@ def drainage(
 
     References
     ----------
-    .. [1]  Chadwick EA, Hammen LH, Schulz VP, Bazylak A, Ioannidis MA, Gostick JT.
+    .. [4] Chadwick EA, Hammen LH, Schulz VP, Bazylak A, Ioannidis MA, Gostick JT.
        Incorporating the effect of gravity into image-based drainage simulations on
        volumetric images of porous media.
-       `Water Resources Research. <https://doi.org/10.1029/2021WR031509>`_.
+       `Water Resources Research. <https://doi.org/10.1029/2021WR031509>`__.
        58(3), e2021WR031509 (2022)
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/simulations/reference/drainage.html>`_
+    <https://porespy.org/examples/simulations/reference/drainage.html>`__
     to view online example.
+
     """
     if (residual is not None) and (outlets is not None):
         raise Exception("Trapping cannot be properly assessed if residual present")
@@ -715,7 +713,6 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     import porespy as ps
-
     ps.visualization.set_mpl_style()
 
     cm = copy(plt.cm.turbo)

@@ -1,27 +1,21 @@
+import heapq as hq
 import inspect
 import logging
+from typing import Literal
+
 import numpy as np
 import numpy.typing as npt
-import heapq as hq
-from typing import Literal
 from numba import njit
-from porespy import settings
+
+from porespy.filters import find_small_clusters, find_trapped_clusters, seq_to_satn
 from porespy.tools import (
+    Results,
+    _insert_disk_at_points,
+    get_edt,
     get_tqdm,
     make_contiguous,
-    _insert_disk_at_points,
-    Results,
-    get_edt,
+    settings,
 )
-from porespy.filters import (
-    find_trapped_clusters,
-    find_small_clusters,
-    seq_to_satn,
-)
-from porespy.generators import (
-    borders,
-)
-
 
 logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
@@ -48,8 +42,8 @@ def qbip(
     min_size: int = 0,
 ):
     r"""
-    Simulates non-wetting injection using a priority queue, optionally including
-    the effect of gravity
+    Simulates non-wetting injection using a priority queue, optionally
+    including the effect of gravity
     """
     im = np.atleast_3d(im == 1)
     if maxiter is None:  # Compute number of pixels in image
@@ -234,7 +228,7 @@ def _find_valid_neighbors(
 def _insert_disk_at_point(
     im, i, j, r, v, k=0, overwrite=False, smooth=True):  # pragma: no cover
     r"""
-    Insert spheres (or disks) of specified radii into an ND-image at given locations.
+    Insert spheres (or disks) of specified radii into an image at given locations.
 
     This function uses numba to accelerate the process, and does not overwrite
     any existing values (i.e. only writes to locations containing zeros).
@@ -245,7 +239,7 @@ def _insert_disk_at_point(
         The image into which the spheres/disks should be inserted. This is an
         'in-place' operation.
     i, j, k : int
-        The center point of each sphere/disk.  If the image is 2D then `k` can be
+        The center point of each sphere/disk.  If the image is 2D then ``k`` can be
         omitted.
     r : array_like
         The radius of the sphere/disk to insert
@@ -297,7 +291,7 @@ def ibip(
     min_size: int = 0,
 ):
     r"""
-    Simulates non-wetting fluid injection on an image using the IBIP algorithm [1]_
+    Simulates non-wetting fluid injection on an image using the IBIP algorithm [3]_
 
     Parameters
     ----------
@@ -314,7 +308,7 @@ def ibip(
         for 10,000 steps which is almost certain to reach completion if the
         image is smaller than about 250-cubed.
     return_sizes : bool
-        If `True` then an array containing the size of the sphere which first
+        If ``True`` then an array containing the size of the sphere which first
         overlapped each voxel is returned. This array is not computed by default
         as it increases computation time.
 
@@ -323,18 +317,18 @@ def ibip(
     results : dataclass-like
         A dataclass-like object with the following arrays as attributes:
 
-        ============= ===============================================================
+        ============= ================================================================
         Attribute     Description
-        ============= ===============================================================
+        ============= ================================================================
         im_seq        A numpy array with each voxel value containing the step at
                       which it was invaded.  Uninvaded voxels are set to -1.
         im_snwp       A numpy array with each voxel value indicating the saturation
                       present in the domain it was invaded. Solids are given 0, and
                       uninvaded regions are given -1.
-        im_size       If `return_sizes` was set to `True`, then a numpy array with
+        im_size       If ``return_sizes`` was set to ``True``, then a numpy array with
                       each voxel containing the radius of the sphere, in voxels,
                       that first overlapped it.
-        ============= ===============================================================
+        ============= ================================================================
 
     See Also
     --------
@@ -343,15 +337,16 @@ def ibip(
 
     References
     ----------
-    .. [1] Gostick JT, Misaghian N, Yang J, Boek ES. Simulating volume-controlled
+    .. [3] Gostick JT, Misaghian N, Yang J, Boek ES. Simulating volume-controlled
        invasion of a non-wetting fluid in volumetric images using basic image
-       processing tools. Computers & Geosciences. 158(1), 104978 (2022). `Link.
-       <https://doi.org/10.1016/j.cageo.2021.104978>`_
+       processing tools. Computers & Geosciences. 158(1), 104978 (2022).
+       `Link. <https://doi.org/10.1016/j.cageo.2021.104978>`__
 
     Notes
     -----
-    This function is slower and is less capable than `qbip`, which returns identical
-    results, so it is recommended to use that instead.
+    This function is slower and is less capable than ``qbip``, which returns
+    identical results, so it is recommended to use that instead.
+
     """
     # Process the boundary image
     if inlets is None:
@@ -479,7 +474,7 @@ def injection(
         the void space
     pc : ndarray, optional
         Precomputed capillary pressure transform which is used to determine
-        the invadability of each voxel. If not provided then the `2/dt` is used,
+        the invadability of each voxel. If not provided then the ``2/dt`` is used,
         which is equivalent to a surface tension and voxel size of unity, and a
         contact angle of 180 degrees.
     dt : ndarray (optional)
@@ -494,18 +489,18 @@ def injection(
         all the output images are adjusted accordingly. Note that trapping can
         be assessed during postprocessing as well.
     return_sizes : bool, default = `False`
-        If `True` then an array containing the size of the sphere which first
+        If ``True`` then an array containing the size of the sphere which first
         overlapped each pixel is returned. This array is not computed by default
         to save computation time.
-    return_pressures : bool, default = `True`
-        If `True` then an array containing the capillary pressure at which
+    return_pressures : bool, default = ``True``
+        If ``True`` then an array containing the capillary pressure at which
         each pixels was first invaded is returned.
     maxiter : int
         The maximum number of iteration to perform.  The default is equal to the
-        number of void pixels in `im`.
+        number of void pixels in ``im``.
     min_size : int
         Any clusters of trapped voxels smaller than this size will be set to not
-        trapped. This argument is only used if `outlets` is given. This is useful
+        trapped. This argument is only used if ``outlets`` is given. This is useful
         to prevent small voxels along edges of the void space from being set to
         trapped. These can appear to be trapped due to the jagged nature of the
         digital image. The default is 0, meaning this adjustment is not applied,
@@ -548,10 +543,10 @@ def injection(
         im_snwp    A numpy array with each voxel value indicating the saturation
                    present in the domain it was invaded. Solids are given 0, and
                    uninvaded regions are given -1.
-        im_pc      If `return_pressures` was set to `True`, then a numpy array with
-                   each voxel value indicating the capillary pressure at which it
-                   was invaded. Uninvaded voxels have value of ``np.inf``.
-        im_size    If `return_sizes` was set to `True`, then a numpy array with
+        im_pc      If ``return_pressures`` was set to ``True``, then a numpy array
+                   with each voxel value indicating the capillary pressure at which
+                   it was invaded. Uninvaded voxels have value of ``np.inf``.
+        im_size    If ``return_sizes`` was set to ``True``, then a numpy array with
                    each voxel containing the radius of the sphere, in voxels, that
                    first overlapped it.
         ========== =================================================================
@@ -561,19 +556,19 @@ def injection(
     .. [1] Gostick JT, Misaghian N, A Irannezhad, B Zhao. *A computationally
        efficient queue-based algorithm for simulating volume-controlled drainage
        under the influence of gravity on volumetric images*. `Advances in Water
-       Resources <https://doi.org/10.1016/j.advwatres.2024.104799>`_. 193(11),
+       Resources <https://doi.org/10.1016/j.advwatres.2024.104799>`__. 193(11),
        104799 (2024)
+
     .. [2] Gostick JT, Misaghian N, Yang J, Boek ES. *Simulating volume-controlled
        invasion of a non-wetting fluid in volumetric images using basic image
        processing tools*. `Computers and the Geosciences
-       <https://doi.org/10.1016/j.cageo.2021.104978>`_. 158(1), 104978 (2022)
+       <https://doi.org/10.1016/j.cageo.2021.104978>`__. 158(1), 104978 (2022)
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/injection.html>`_
+    <https://porespy.org/examples/filters/reference/injection.html>`__
     to view an online example.
-
 
     """
     if method == 'qbip':
@@ -604,9 +599,10 @@ def injection(
 
 
 if __name__ == "__main__":
-    import porespy as ps
+
     import matplotlib.pyplot as plt
-    from copy import copy
+
+    import porespy as ps
     from porespy.simulations import drainage
 
     ps.settings.tqdm['disable'] = False

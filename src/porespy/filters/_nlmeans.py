@@ -56,7 +56,7 @@ def nl_means_layered(im, cores=None, axis=0, patch_size=5, patch_distance=5, h=4
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/nl_means_layered.html>`_
+    <https://porespy.org/examples/filters/reference/nl_means_layered.html>`__
     to view online example.
 
     """

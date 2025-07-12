@@ -1,11 +1,12 @@
 import logging
+
 import numpy as np
+
 from porespy.tools import (
     _insert_disks_at_points,
     find_bbox,
     parse_shape,
 )
-
 
 __all__ = [
     'spheres_from_coords',
@@ -69,7 +70,7 @@ def spheres_from_coords(df, mode='contained', smooth=False):
         d['Z'] = np.array([1, 1, 1])
         d['R'] = np.array([0.5, 0.7, 0.6])
 
-    Or a *pandas* ``DataFrame` like this:
+    Or a *pandas* ``DataFrame`` like this:
 
     ==== ==== ==== ==== ====
     ID   'X'  'Y'  'Z'  'R'
@@ -151,14 +152,14 @@ def spheres_from_coords(df, mode='contained', smooth=False):
 
 
 if __name__ == "__main__":
-    import pandas as pd
     import matplotlib.pyplot as plt
-    import porespy as ps
+    import pandas as pd
+
 
     df = pd.DataFrame()
     df['X'] = [10, 10, 20]
     df['Y'] = [10, 30, 20]
-    df['Z'] = [0,  0,  0]
+    df['Z'] = [0, 0, 0]
     df['R'] = [5, 6, 7]
 
     im = spheres_from_coords(df)

@@ -1,11 +1,12 @@
-from copy import copy
 import inspect
+from copy import copy
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
 from tqdm import tqdm
-from porespy import settings
 
+from porespy.tools import settings
 
 __all__ = [
     'set_mpl_style',
@@ -87,12 +88,12 @@ def satn_to_movie(
     cmap : str
         The name of the matplotlib color map to use. These are listed on
         matplotlib's website
-        `here <https://matplotlib.org/stable/gallery/color/colormap_reference.html>`_
+        `here <https://matplotlib.org/stable/gallery/color/colormap_reference.html>`__
     c_under, c_over : str
         The color to insert for values that are less than `v_under`
         (greater than `v_over`).  The string value of colors are given on
         matplotlib's website
-        `here <https://matplotlib.org/stable/gallery/color/named_colors.html>`_
+        `here <https://matplotlib.org/stable/gallery/color/named_colors.html>`__
     v_under, v_over : scalar
         The values in ``satn`` that should be considered the lower and upper
         threshold, beyond which the colors given in `c_under` and `c_over`
@@ -112,7 +113,7 @@ def satn_to_movie(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/satn_to_movie.html>`_
+    <https://porespy.org/examples/visualization/reference/satn_to_movie.html>`__
     to view online example.
     """
     # Define nice color map
@@ -184,7 +185,7 @@ def satn_to_panels(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/satn_to_panels.html>`_
+    <https://porespy.org/examples/visualization/reference/satn_to_panels.html>`__
     to view online example.
     """
     def factors(n):
@@ -283,7 +284,7 @@ def prep_for_imshow(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/prep_for_imshow.html>`_
+    <https://porespy.org/examples/visualization/reference/prep_for_imshow.html>`__
     to view online example.
 
     """

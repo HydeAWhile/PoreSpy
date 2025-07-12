@@ -12,7 +12,6 @@ from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from skimage.morphology import ball, cube, disk, skeletonize, square
 
-from porespy import settings
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
@@ -22,9 +21,10 @@ from porespy.filters import (
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
-    get_tqdm,
-    get_slices_slabs,
     get_edt,
+    get_slices_slabs,
+    get_tqdm,
+    settings,
 )
 
 __all__ = [
@@ -294,7 +294,7 @@ def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn="min"):
 def boxcount(im, bins=10):
     r"""
     Calculates the fractal dimension of an image using the tiled box counting
-    method [1]_
+    method [1a]_
 
     Parameters
     ----------
@@ -323,7 +323,7 @@ def boxcount(im, bins=10):
 
     References
     ----------
-    .. [1] Read more about box counting on `Wikipedia
+    .. [1a] Read more about box counting on `Wikipedia
        <https://en.wikipedia.org/wiki/Box_counting>`_
 
     Examples
@@ -410,7 +410,7 @@ def porosity(im, mask=None, fill_closed=False, fill_surface=False):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/porosity.html>`_
+    <https://porespy.org/examples/metrics/reference/porosity.html>`__
     to view online example.
 
     """
@@ -479,7 +479,7 @@ def porosity_profile(im, axis=0, span=1, mode="tile"):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/porosity_profile.html>`_
+    <https://porespy.org/examples/metrics/reference/porosity_profile.html>`__
     to view online example.
 
     """
@@ -503,7 +503,7 @@ def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
     r"""
     Computes radial density function by analyzing the histogram of voxel
     values in the distance transform.  This function is defined by
-    Torquato [1]_ as:
+    Torquato [1b]_ as:
 
         .. math::
 
@@ -571,13 +571,13 @@ def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
 
     References
     ----------
-    .. [1] Torquato, S. Random Heterogeneous Materials: Mircostructure and
+    .. [1b] Torquato, S. Random Heterogeneous Materials: Mircostructure and
        Macroscopic Properties. Springer, New York (2002) - See page 48 & 292
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/radial_density.html>`_
+    <https://porespy.org/examples/metrics/reference/radial_density.html>`__
     to view online example.
 
     """
@@ -603,7 +603,7 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
     Determines the probability that a point lies within a certain distance
     of the opposite phase *along a specified direction*
 
-    This relates directly the radial density function defined by Torquato [1],
+    This relates directly the radial density function defined by Torquato [1c]_,
     but instead of reporting the probability of lying within a stated distance
     to the nearest solid in any direciton, it considers only linear distances
     along orthogonal directions.The benefit of this is that anisotropy can be
@@ -651,13 +651,13 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
 
     References
     ----------
-    [1] Torquato, S. Random Heterogeneous Materials: Mircostructure and
-    Macroscopic Properties. Springer, New York (2002)
+    .. [1c] Torquato, S. Random Heterogeneous Materials: Microstructure and
+       Macroscopic Properties. Springer, New York (2002)
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/linearl_path_distribution.html>`_
+    <https://porespy.org/examples/metrics/reference/linearl_path_distribution.html>`__
     to view online example.
 
     """
@@ -711,11 +711,12 @@ def chord_length_distribution(
         *'count' or 'number'*
             (default) This simply counts the number of chords in each bin in
             the normal sense of a histogram.  This is the rigorous definition
-            according to Torquato [1].
+            according to Torquato [1d]_.
+
         *'length'*
             This multiplies the number of chords in each bin by the
             chord length (i.e. bin size).  The normalization scheme accounts for
-            the fact that long chords are less frequent than shorert chords,
+            the fact that long chords are less frequent than shorter chords,
             thus giving a more balanced distribution.
 
     voxel_size : scalar
@@ -745,13 +746,13 @@ def chord_length_distribution(
 
     References
     ----------
-    [1] Torquato, S. Random Heterogeneous Materials: Mircostructure and
-    Macroscopic Properties. Springer, New York (2002) - See page 45 & 292
+    .. [1d] Torquato, S. Random Heterogeneous Materials: Microstructure and
+       Macroscopic Properties. Springer, New York (2002) - See page 45 & 292
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/chord_length_distribution.html>`_
+    <https://porespy.org/examples/metrics/reference/chord_length_distribution.html>`__
     to view online example.
 
     """
@@ -830,7 +831,7 @@ def pore_size_distribution(im, bins=10, log=True, voxel_size=1):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/pore_size_distribution.html>`_
+    <https://porespy.org/examples/metrics/reference/pore_size_distribution.html>`__
     to view online example.
 
     """
@@ -870,8 +871,7 @@ def two_point_correlation_bf(im, spacing=10):
 
         'distance'
             The distance between two points. The distance values are binned
-            as:
-        $$ bins = range(start=0, stop=np.amin(im.shape)/2, stride=spacing) $$
+            as: ``bins = range(start=0, stop=np.amin(im.shape)/2, stride=spacing)``
 
         'probability'
             The probability that two points of the stated separation distance
@@ -889,7 +889,7 @@ def two_point_correlation_bf(im, spacing=10):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/two_point_correlation_bf.html>`_
+    <https://porespy.org/examples/metrics/reference/two_point_correlation_bf.html>`__
     to view online example.
 
     """
@@ -1051,7 +1051,7 @@ def two_point_correlation(im, voxel_size=1, bins=100):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/two_point_correlation.html>`_
+    <https://porespy.org/examples/metrics/reference/two_point_correlation.html>`__
     to view online example.
 
     """
@@ -1128,7 +1128,7 @@ def chord_counts(im):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/reference/metrics/chord_counts.html>`_
+    <https://porespy.org/examples/reference/metrics/chord_counts.html>`__
     to view online example.
 
     """
@@ -1164,7 +1164,7 @@ def phase_fraction(im, normed=True):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/phase_fraction.html>`_
+    <https://porespy.org/examples/metrics/reference/phase_fraction.html>`__
     to view online example.
 
     """
@@ -1173,9 +1173,7 @@ def phase_fraction(im, normed=True):
     labels = np.unique(im)
     results = {}
     for label in labels:
-        results[label] = np.sum(im == label, dtype=np.int64) * (
-            1 / im.size if normed else 1
-        )
+        results[label] = np.sum(im == label, dtype=np.int64) * (1 / im.size if normed else 1)
     return results
 
 
@@ -1217,7 +1215,7 @@ def pc_curve(im, pc, seq=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/pc_curve.html>`_
+    <https://porespy.org/examples/metrics/reference/pc_curve.html>`__
     to view online example.
 
     """
@@ -1412,7 +1410,7 @@ def satn_profile(satn, s=None, im=None, axis=0, span=10, mode="tile"):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/satn_profile.html>`_
+    <https://porespy.org/examples/metrics/reference/satn_profile.html>`__
     to view online example.
     """
     span = max(1, span)
@@ -1488,7 +1486,7 @@ def find_h(saturation, position=None, srange=[0.01, 0.99]):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/find_h.html>`_
+    <https://porespy.org/examples/metrics/reference/find_h.html>`__
     to view online example.
 
     """

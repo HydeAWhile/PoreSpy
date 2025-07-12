@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import porespy as ps
 
+import porespy as ps
 
 edt = ps.tools.get_edt()
 

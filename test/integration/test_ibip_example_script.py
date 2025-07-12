@@ -2,6 +2,7 @@ from copy import copy
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 import porespy as ps
 
 

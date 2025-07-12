@@ -1,35 +1,35 @@
 import inspect
+
 import numpy as np
+from edt import edt
+from numba import njit, prange
+
 from porespy.filters import (
-    find_trapped_clusters,
+    erode,
+    fftmorphology,
     find_small_clusters,
+    find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_voxels,
-    fftmorphology,
-    erode,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     Results,
-    get_tqdm,
-    _insert_disks_at_points_parallel,
-    _insert_disk_at_points_parallel,
     _insert_disk_at_points,
-    ps_round,
+    _insert_disk_at_points_parallel,
+    _insert_disks_at_points_parallel,
+    get_tqdm,
     make_contiguous,
     parse_steps,
+    ps_round,
+    settings,
 )
-from porespy import settings
-from edt import edt
-from numba import njit, prange
-
 
 tqdm = get_tqdm()
 
 
 __all__ = [
     'imbibition',
-    # The following are reference implementations using different techniques
     'imbibition_dt',
     'imbibition_dt_fft',
     'imbibition_fft',
@@ -81,19 +81,19 @@ def imbibition_dsi(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
-        `im_seq`    The sequence map indicating the sequence or step number at which
-                    each voxels was first invaded.
+        =========== ===========================================================
+        `im_seq`    The sequence map indicating the sequence or step number at
+                    which each voxels was first invaded.
         `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
 
     Notes
     -----
     The sphere insertion steps will be executed in parallel if
-    `porespy.settings.ncores > 1`
+    ``porespy.settings.ncores > 1``
     """
     if settings.ncores > 1:
         func = _insert_disk_at_points_parallel
@@ -167,12 +167,12 @@ def imbibition_dt_fft(
     im : ndarray
         The boolean image of the void space on which to perform the simulation
     inlets : ndarray (optional)
-        A boolean array with `True` values indicating the inlet locations for the
+        A boolean array with ``True`` values indicating the inlet locations for the
         invading (wetting) fluid. If not provided then access limitations will
         not be applied, meaning that the invading fluid can appear anywhere within
         the domain.
     outlets : ndarray (optional)
-        A boolean array with `True` values indicating the outlet locations through
+        A boolean array with ``True`` values indicating the outlet locations through
         which defending (non-wetting) phase would exit the domain. If not provided
         then trapping of the non-wetting phase is ignored.
     dt : ndarray, optional
@@ -186,7 +186,7 @@ def imbibition_dt_fft(
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
     smooth : boolean
-        If `True` (default) then the spheres are drawn without any single voxel
+        If ``True`` (default) then the spheres are drawn without any single voxel
         protrusions on the faces.
 
     Returns
@@ -194,19 +194,19 @@ def imbibition_dt_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
-        `im_seq`    The sequence map indicating the sequence or step number at which
-                    each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
+        =========== ===========================================================
+        ``im_seq``  The sequence map indicating the sequence or step number at
+                    which each voxel was first invaded.
+        ``im_size`` The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
 
     Notes
     -----
     The distance transform will be executed in parallel if
-    `porespy.settings.ncores > 1`
+    ``porespy.settings.ncores > 1``
     """
     im = np.array(im, dtype=bool)
     if dt is None:
@@ -299,20 +299,20 @@ def imbibition_dt(
     results : Results object
         A dataclass-like object with the following attributes:
 
-        ========== =================================================================
+        ========== ============================================================
         Attribute  Description
-        ========== =================================================================
+        ========== ============================================================
         im_seq     A numpy array with each voxel value indicating the sequence
                    at which it was invaded.  Values of -1 indicate that it was
                    not invaded.
         im_size    A numpy array with each voxel value indicating the radius of
                    spheres being inserted when it was invaded.
-        ========== =================================================================
+        ========== ============================================================
 
     Notes
     -----
     The distance transforms will be executed in parallel if
-    `porespy.settings.ncores > 1`
+    ``porespy.settings.ncores > 1``
     """
     im = np.array(im, dtype=bool)
     if dt is None:
@@ -405,14 +405,14 @@ def imbibition_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
-        `im_seq`    The sequence map indicating the sequence or step number at which
-                    each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
+        =========== ===========================================================
+        ``im_seq``  The sequence map indicating the sequence or step number at
+                    which each voxels was first invaded.
+        ``im_size`` The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
     """
     im = np.array(im, dtype=bool)
     if dt is None:
@@ -515,23 +515,24 @@ def imbibition(
     results : Result Object
         A dataclass-like object with the following attributes:
 
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
         Attribute   Description
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
         im_pc       An ndarray with each voxel indicating the step number at
                     which it was first invaded by wetting phase.
         im_seq      A numpy array with each voxel value indicating the sequence
                     at which it was invaded by the wetting phase.  Values of -1
-                    indicate that it was not invaded, either because it was trapped,
-                    inaccessbile, or sufficient pressure was not reached.
+                    indicate that it was not invaded, either because it was
+                    trapped, inaccessbile, or sufficient pressure was not
+                    reached.
         im_snwp     A numpy array with each voxel value indicating the global
                     non-wetting phase saturation at the point it was invaded.
-        im_trapped  A numpy array with ``True`` values indicating trapped voxels
-                    if `outlets` was provided, otherwise will be `None`.
+        im_trapped  A numpy array with ``True`` values indicating trapped
+                    voxels if `outlets` was provided, otherwise will be `None`.
         pc          1D array of capillary pressure values that were applied
         snwp        1D array of non-wetting phase saturations for each applied
                     value of capillary pressure (``pc``).
-        ----------- ----------------------------------------------------------------
+        =========== ===========================================================
 
     Notes
     -----
@@ -694,11 +695,13 @@ def _insert_disks_npoints_nradii_1value_parallel(
 # %%
 
 if __name__ == '__main__':
-    import porespy as ps
+    from copy import copy
+
     import matplotlib.pyplot as plt
     import numpy as np
     from edt import edt
-    from copy import copy
+
+    import porespy as ps
     ps.visualization.set_mpl_style()
 
     cm = copy(plt.cm.turbo)

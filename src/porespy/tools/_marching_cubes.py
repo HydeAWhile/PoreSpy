@@ -1,12 +1,12 @@
 import itertools
 import math
 import os
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 from numba import njit
 from scipy import spatial
 from skimage import measure
-
 
 __all__ = [
     'face_orientation',
@@ -93,9 +93,12 @@ def mc_templates_generator(override=False):
 
 def create_mc_template_list(spacing=(1, 1, 1)):
     '''
-    Return area and volume lists for the marching cubes templates
-    Reads the templates file
-    Input:
+    Return area and volume lists for the marching cubes templates. Reads the
+    templates file.
+
+    Parameters
+    ----------
+    spacing : tuple, optional
         Tuple with three values for x, y, and z lengths of the voxel edges
     '''
     mc_templates_generator()

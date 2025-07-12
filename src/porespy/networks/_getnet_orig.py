@@ -1,17 +1,17 @@
-import logging
 import inspect
+import logging
+
 import numpy as np
 import scipy.ndimage as spim
 from edt import edt
 from skimage.morphology import ball, disk
-from porespy import settings
+
 from porespy.metrics import (
     region_interface_areas,
     region_surface_areas,
     region_volumes,
 )
-from porespy.tools import extend_slice, get_tqdm, make_contiguous
-
+from porespy.tools import extend_slice, get_tqdm, make_contiguous, settings
 
 __all__ = [
     "regions_to_network",
@@ -48,18 +48,17 @@ def regions_to_network(
     accuracy : string
         Controls how accurately certain properties are calculated. Options are:
 
-        ------------ --------------------------------------------------------
-        Value        Description
-        ------------ --------------------------------------------------------
-        'standard'   Computes the surface areas and perimeters by simply
-                     counting voxels. This is *much* faster but does not
-                     properly account for the rough voxelated nature of the
-                     surfaces.
-        'high'       Computes surface areas using the marching cube method,
-                     and perimeters using the fast marching method. These
-                     are substantially slower but better account for the
-                     voxelated nature of the images.
-        ------------ --------------------------------------------------------
+        ========== ============================================================
+        Value      Description
+        ========== ============================================================
+        'standard' Computes the surface areas and perimeters by simply counting
+                   voxels. This is *much* faster but does not properly account
+                   for the rough voxelated nature of the surfaces.
+        'high'     Computes surface areas using the marching cube method, and
+                   perimeters using the fast marching method. These are
+                   substantially slower but better account for the voxelated
+                   nature of the images.
+        ========== ============================================================
 
     porosity_map : None
         This is not supported for this version of the function.
@@ -133,7 +132,7 @@ def regions_to_network(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/regions_to_network.html>`_
+    <https://porespy.org/examples/networks/reference/regions_to_network.html>`__
     to view online example.
 
     """

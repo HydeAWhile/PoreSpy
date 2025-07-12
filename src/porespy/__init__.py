@@ -12,10 +12,6 @@ modules, occasionally with basic embedded examples on how to use them.
 
 """
 
-from .tools._utils import Settings as _Settings
-
-settings = _Settings()
-
 from . import tools
 from . import filters
 from . import metrics
@@ -45,3 +41,5 @@ def _setup_logger_rich():
 
 
 _setup_logger_rich()
+
+settings = tools.Settings()

@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.stats import rankdata
 
 from porespy.tools import make_contiguous
 
@@ -57,7 +56,7 @@ def size_to_seq(size, im=None, bins=None, mode='drainage'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/size_to_seq.html>`_
+    <https://porespy.org/examples/filters/reference/size_to_seq.html>`__
     to view online example.
 
     """
@@ -130,7 +129,7 @@ def size_to_satn(size, im=None, bins=None, mode='drainage'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/size_to_satn.html>`_
+    <https://porespy.org/examples/filters/reference/size_to_satn.html>`__
     to view online example.
     """
     if bins is None:
@@ -197,7 +196,7 @@ def seq_to_satn(seq, im, mode='drainage'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/seq_to_satn.html>`_
+    <https://porespy.org/examples/filters/reference/seq_to_satn.html>`__
     to view online example.
     """
     seq = np.copy(seq).astype(int)
@@ -267,7 +266,7 @@ def pc_to_seq(pc, im, mode='drainage'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/pc_to_seq.html>`_
+    <https://porespy.org/examples/filters/reference/pc_to_seq.html>`__
     to view online example.
     """
     pc = np.copy(pc)
@@ -330,7 +329,7 @@ def pc_to_satn(pc, im, mode='drainage'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/pc_to_satn.html>`_
+    <https://porespy.org/examples/filters/reference/pc_to_satn.html>`__
     to view online example.
 
     """
@@ -378,7 +377,7 @@ def satn_to_seq(satn, im, residual=None, mode='drainage'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/filters/reference/satn_to_seq.html>`_
+    <https://porespy.org/examples/filters/reference/satn_to_seq.html>`__
     to view online example.
 
     """
@@ -459,9 +458,9 @@ def size_to_pc(im, size, f=None, **kwargs):
 
 
 if __name__ == "__main__":
-    import porespy as ps
     import numpy as np
-    import matplotlib.pyplot as plt
+
+    import porespy as ps
 
     im = np.ones([20, 20], dtype=bool)
     im[-1, :] = False
