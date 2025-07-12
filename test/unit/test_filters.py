@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 import scipy.ndimage as spim
@@ -41,9 +40,9 @@ class FilterTest():
     def test_porosimetry_num_points(self):
         mip = ps.filters.porosimetry(im=self.im, sizes=None)
         steps = np.unique(mip)
-        ans = np.array([0.        , 1.        , 1.41421354, 1.73205078, 2.        ,
-                        2.23606801, 2.44948983, 2.82842708, 3.        , 3.1622777 ,
-                        3.31662488, 3.46410155, 3.60555124, 3.7416575 , 4.        ,
+        ans = np.array([0., 1., 1.41421354, 1.73205078, 2.,
+                        2.23606801, 2.44948983, 2.82842708, 3., 3.1622777,
+                        3.31662488, 3.46410155, 3.60555124, 3.7416575, 4.,
                         4.12310553])
         assert np.allclose(steps, ans)
 

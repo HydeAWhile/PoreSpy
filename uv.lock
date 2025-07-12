@@ -2777,7 +2777,6 @@ dependencies = [
     { name = "numba" },
     { name = "numpy" },
     { name = "numpy-stl" },
-    { name = "openpnm" },
     { name = "pandas" },
     { name = "psutil" },
     { name = "pyevtk" },
@@ -2815,9 +2814,8 @@ docs = [
     { name = "tensorflow" },
 ]
 extras = [
-    { name = "pyevtk" },
+    { name = "openpnm" },
     { name = "scikit-learn" },
-    { name = "trimesh" },
 ]
 interactive = [
     { name = "ipykernel" },
@@ -2866,14 +2864,13 @@ requires-dist = [
     { name = "numba" },
     { name = "numpy", specifier = "<2.0" },
     { name = "numpy-stl", specifier = ">=3.2.0" },
-    { name = "openpnm" },
+    { name = "openpnm", marker = "extra == 'extras'" },
     { name = "pandas" },
     { name = "pandoc", marker = "extra == 'docs'" },
     { name = "pip", marker = "extra == 'build'" },
     { name = "psutil" },
     { name = "pydata-sphinx-theme", marker = "extra == 'docs'" },
     { name = "pyevtk", specifier = ">=1.6.0" },
-    { name = "pyevtk", marker = "extra == 'extras'" },
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pytest-cache", marker = "extra == 'test'" },
     { name = "pytest-cov", marker = "extra == 'test'" },
@@ -2892,7 +2889,6 @@ requires-dist = [
     { name = "tensorflow", marker = "extra == 'docs'" },
     { name = "tqdm" },
     { name = "trimesh", specifier = ">=4.5.3" },
-    { name = "trimesh", marker = "extra == 'extras'" },
 ]
 provides-extras = ["build", "docs", "extras", "interactive", "test"]
 

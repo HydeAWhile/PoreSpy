@@ -47,6 +47,7 @@ def calc_g(im, axis, solver_args={}):
     `tortuosity_bt`.
     """
     import openpnm as op
+
     from porespy.simulations import tortuosity_fd
     solver_args = {'tol': 1e-6} | solver_args
     solver = solver_args.pop('solver', None)

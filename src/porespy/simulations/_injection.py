@@ -7,11 +7,7 @@ import numpy as np
 import numpy.typing as npt
 from numba import njit
 
-from porespy.filters import (
-    find_small_clusters,
-    find_trapped_clusters,
-    seq_to_satn,
-)
+from porespy.filters import find_small_clusters, find_trapped_clusters, seq_to_satn
 from porespy.tools import (
     Results,
     _insert_disk_at_points,

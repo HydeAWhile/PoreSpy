@@ -1,9 +1,8 @@
-from porespy.generators import borders
 from porespy.filters import capillary_transform
-from porespy.simulations import drainage, imbibition
+from porespy.generators import borders
 from porespy.metrics import pc_map_to_pc_curve
+from porespy.simulations import drainage, imbibition
 from porespy.tools import Results
-
 
 __all__ = [
     'hg_porosimetry',
@@ -47,8 +46,9 @@ def hg_porosimetry(im, steps=25, voxel_size=1.0):
 
 
 if __name__ == "__main__":
-    import porespy as ps
     import matplotlib.pyplot as plt
+
+    import porespy as ps
 
     i = 50591
     im = ps.generators.blobs([100, 100, 100], porosity=0.4, seed=0)

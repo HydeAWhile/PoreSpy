@@ -48,8 +48,8 @@ __all__ = [
     'recombine',
     'results_to_df',
     'pad',
-    'parse_steps',
     'unpad',
+    'parse_steps',
 ]
 
 

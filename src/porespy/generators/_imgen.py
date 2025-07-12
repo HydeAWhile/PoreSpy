@@ -9,7 +9,6 @@ import scipy.spatial as sptl
 import scipy.stats as spst
 from numba import njit
 
-from porespy import metrics
 from porespy.tools import (
     _insert_disk_at_points,
     _insert_disk_at_points_parallel,

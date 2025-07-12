@@ -9,7 +9,6 @@ import scipy.ndimage as spim
 from skimage.morphology import reconstruction
 from skimage.segmentation import clear_border
 
-from porespy import settings
 from porespy.tools import (
     _check_for_singleton_axes,
     get_edt,

@@ -1,6 +1,5 @@
 import numpy as np
 
-
 import porespy as ps
 from porespy.tools import get_edt
 

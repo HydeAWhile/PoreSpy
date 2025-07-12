@@ -15,8 +15,6 @@ from porespy.tools import (
     unpad,
 )
 
-from porespy.tools import _insert_disk_at_point, get_edt, parse_shape, ps_round, unpad
-
 __all__ = [
     "pseudo_gravity_packing",
     "pseudo_electrostatic_packing",

@@ -53,7 +53,7 @@ def tortuosity_fd(im, axis, solver=None):
     """
     import openpnm as op
     ws = op.Workspace()
-    
+
     if axis > (im.ndim - 1):
         raise Exception(f"'axis' must be <= {im.ndim}")
     openpnm_v3 = op.__version__.startswith("3")

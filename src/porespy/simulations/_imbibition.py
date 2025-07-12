@@ -11,8 +11,6 @@ from porespy.filters import (
     find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_voxels,
-    fftmorphology,
-    erode,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (

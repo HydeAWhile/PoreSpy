@@ -1,12 +1,9 @@
 import inspect
-import inspect
 import logging
 import time
 
-
 import dask
 import numpy as np
-import openpnm as op
 import pandas as pd
 
 from porespy.tools import (

@@ -3,9 +3,7 @@ from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
-from skimage.morphology import ball, cube, disk, square
 
-from porespy import settings
 from porespy.filters import (
     fftmorphology,
     find_small_clusters,
@@ -20,11 +18,12 @@ from porespy.tools import (
     _insert_disk_at_points_parallel,
     _insert_disks_at_points_parallel,
     get_edt,
+    get_strel,
     get_tqdm,
     make_contiguous,
-    get_edt,
-    ps_round,
     parse_steps,
+    ps_round,
+    settings,
 )
 
 __all__ = [
@@ -39,7 +38,7 @@ __all__ = [
 
 edt = get_edt()
 tqdm = get_tqdm()
-strel = {2: {"min": disk(1), "max": square(3)}, 3: {"min": ball(1), "max": cube(3)}}
+strel = get_strel()
 
 
 def drainage_dsi(
@@ -561,6 +560,7 @@ def drainage(
     `Click here
     <https://porespy.org/examples/simulations/reference/drainage.html>`__
     to view online example.
+
     """
     if (residual is not None) and (outlets is not None):
         raise Exception("Trapping cannot be properly assessed if residual present")
@@ -705,8 +705,6 @@ def drainage(
 
 
 if __name__ == "__main__":
-    from copy import copy
-
     from copy import copy
 
     import matplotlib.pyplot as plt

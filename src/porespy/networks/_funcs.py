@@ -1,5 +1,6 @@
-import logging
 import inspect
+import logging
+
 import numpy as np
 import scipy.ndimage as spim
 from skimage.morphology import ball, cube

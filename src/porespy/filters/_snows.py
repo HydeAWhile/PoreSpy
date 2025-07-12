@@ -9,7 +9,6 @@ from numba import njit, prange
 from skimage.morphology import cube, square
 from skimage.segmentation import watershed
 
-from ._funcs import chunked_func
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
@@ -20,6 +19,8 @@ from porespy.tools import (
     ps_round,
     settings,
 )
+
+from ._funcs import chunked_func
 
 __all__ = [
     "snow_partitioning",

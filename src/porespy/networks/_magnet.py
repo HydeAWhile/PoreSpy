@@ -10,11 +10,9 @@ from skimage.morphology import cube, square
 
 from porespy.filters import (
     chunked_func,
-    fill_closed_pores,
+    fill_invalid_pores,
     flood_func,
     region_size,
-    fill_invalid_pores,
-    chunked_func,
 )
 from porespy.generators import borders
 from porespy.tools import (

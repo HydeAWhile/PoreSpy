@@ -1,9 +1,6 @@
 import heapq as hq
 import inspect
-import inspect
 import logging
-from typing import Literal
-
 from typing import Literal
 
 import numpy as np
@@ -11,30 +8,14 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 from numba import njit
 
-from porespy import settings
-from porespy.filters import (
-    flood,
-    region_size,
-)
-from porespy.tools import (
-    Results,
-    get_strel,
-    get_tqdm,
-    make_contiguous,
-)
+from porespy.tools import Results, get_strel, get_tqdm, make_contiguous, settings
 
-from skimage.morphology import ball, cube, disk, square
-
-from porespy.tools import Results, get_tqdm, make_contiguous, settings
-
-from ._fill_and_find import find_disconnected_voxels
-from ._funcs import flood, flood_func, region_size
+from ._funcs import flood, region_size
 
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 tqdm = get_tqdm()
 strel = get_strel()
-strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
 
 
 __all__ = [
