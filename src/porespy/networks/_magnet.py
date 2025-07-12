@@ -13,6 +13,7 @@ from porespy.filters import (
     fill_invalid_pores,
     flood_func,
     region_size,
+    trim_floating_solid,
 )
 from porespy.generators import borders
 from porespy.tools import (
