@@ -12,21 +12,15 @@ from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from skimage.morphology import ball, cube, disk, skeletonize, square
 
-from porespy import settings
 from porespy.filters import (
     find_closed_pores,
     find_surface_pores,
     local_thickness,
     pc_to_seq,
-    fill_closed_pores,
-    find_closed_pores,
-    find_surface_pores,
 )
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
-    get_tqdm,
-    get_slices_slabs,
     get_edt,
     get_slices_slabs,
     get_tqdm,
