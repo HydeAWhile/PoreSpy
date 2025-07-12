@@ -14,11 +14,8 @@ from skimage.morphology import ball, cube, disk, skeletonize, square
 
 from porespy import settings
 from porespy.filters import (
-    find_closed_pores,
-    find_surface_pores,
     local_thickness,
     pc_to_seq,
-    fill_closed_pores,
     find_closed_pores,
     find_surface_pores,
 )
@@ -212,7 +209,7 @@ def find_porosity_threshold(im, axis=0, conn="min"):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/find_porosity_threshodl.html>`_
+    <https://porespy.org/examples/metrics/reference/find_porosity_threshold.html>`_
     to view online example.
 
     """
@@ -680,7 +677,13 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
     return cld
 
 
-def chord_length_distribution(im, bins=10, log=False, voxel_size=1, normalization="count"):
+def chord_length_distribution(
+    im,
+    bins=10,
+    log=False,
+    voxel_size=1,
+    normalization="count",
+):
     r"""
     Determines the distribution of chord lengths in an image containing chords.
 

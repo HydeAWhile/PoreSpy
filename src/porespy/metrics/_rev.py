@@ -246,6 +246,12 @@ def rev_tortuosity(im, n=100, axis=None, slices=None, dask_on=False):
         slice      The coordinates for the subdomain tested in the original image
         ========== ==================================================================
 
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/rev_tortuosity.html>`_
+    to view online example.
+
     """
     if slices is None:
         slices = get_slices_random(im=im, n=n)
