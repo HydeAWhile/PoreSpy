@@ -11,3 +11,4 @@ from ._dns import *
 from ._drainage import *
 from ._imbibition import *
 from ._injection import *
+from ._hg_porosimetry import *

@@ -1,3 +1,4 @@
+import numpy.typing as npt
 from scipy.signal import fftconvolve
 
 from porespy.tools import get_edt, ps_round
@@ -11,7 +12,13 @@ __all__ = [
 edt = get_edt()
 
 
-def erode(im, r, dt=None, method='dt', smooth=True):
+def erode(
+    im: npt.NDArray,
+    r: int,
+    dt: npt.NDArray = None,
+    method: str = 'dt',
+    smooth: bool = True,
+):
     r"""
     Perform erosion with a round structuring element
 
@@ -35,9 +42,9 @@ def erode(im, r, dt=None, method='dt', smooth=True):
         ========= =============================================================
         `'dt'`    Uses a distance transform to find all voxels within `r` of
                   the background, then removes them to affect an erosion
-        `'conv'`  Using a FFT based convolution to find all voxels within `r`
+        `'conv'`  Uses a FFT based convolution to find all voxels within `r`
                   of the background (voxels with a value smaller than the sum
-                  of the sturcturing element), then removes them to affect an
+                  of the structuring element), then removes them to affect an
                   erosion.
         ========= =============================================================
 
@@ -58,7 +65,13 @@ def erode(im, r, dt=None, method='dt', smooth=True):
     return ero
 
 
-def dilate(im, r, method='dt', smooth=True):
+def dilate(
+    im: npt.NDArray,
+    r: int,
+    dt: npt.NDArray = None,
+    method: str = 'dt',
+    smooth: bool = True,
+):
     r"""
     Perform dilation with a round structuring element
 
@@ -68,6 +81,9 @@ def dilate(im, r, method='dt', smooth=True):
         A boolean image with the foreground (to be dilated) indicated by `True`
     r : int
         The radius of the round structuring element to use
+    dt : ndarray
+        The distance transform of the foreground. If not provided it will be
+        computed. This argument is only relevant if `method='dt'`.
     smooth : boolean
         If `True` (default) the single voxel protrusion on the face of the
         structuring element are removed.
@@ -93,7 +109,8 @@ def dilate(im, r, method='dt', smooth=True):
     from porespy.tools import settings
     im = im == 1
     if method == 'dt':
-        dt = edt(~im, parallel=settings.ncores)
+        if dt is None:
+            dt = edt(~im, parallel=settings.ncores)
         dil = dt < r if smooth else dt <= r
         dil += im
     elif method.startswith('conv'):

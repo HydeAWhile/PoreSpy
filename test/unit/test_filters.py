@@ -32,28 +32,29 @@ class FilterTest():
     def test_porosimetry_compare_modes_2d(self):
         im = self.im[:, :, 50]
         sizes = np.arange(25, 1, -1)
-        fft = ps.filters.porosimetry(im, mode='hybrid', sizes=sizes)
-        mio = ps.filters.porosimetry(im, mode='mio', sizes=sizes)
-        dt = ps.filters.porosimetry(im, mode='dt', sizes=sizes)
+        fft = ps.filters.porosimetry(im, method='conv', sizes=sizes)
+        dsi = ps.filters.porosimetry(im, method='dsi', sizes=sizes)
+        dt = ps.filters.porosimetry(im, method='dt', sizes=sizes)
         assert np.all(fft == dt)
-        assert np.all(fft == mio)
+        assert np.all(fft == dsi)
 
     def test_porosimetry_num_points(self):
-        mip = ps.filters.porosimetry(im=self.im, sizes=10)
+        mip = ps.filters.porosimetry(im=self.im, sizes=None)
         steps = np.unique(mip)
-        ans = np.array([0.00000000, 1.00000000, 1.37871571, 1.61887041,
-                        1.90085700, 2.23196205, 2.62074139, 3.07724114,
-                        3.61325732])
+        ans = np.array([0.        , 1.        , 1.41421354, 1.73205078, 2.        ,
+                        2.23606801, 2.44948983, 2.82842708, 3.        , 3.1622777 ,
+                        3.31662488, 3.46410155, 3.60555124, 3.7416575 , 4.        ,
+                        4.12310553])
         assert np.allclose(steps, ans)
 
     def test_porosimetry_compare_modes_3d(self):
         im = self.im
         sizes = np.arange(25, 1, -1)
-        fft = ps.filters.porosimetry(im, sizes=sizes, mode='hybrid')
-        mio = ps.filters.porosimetry(im, sizes=sizes, mode='mio')
-        dt = ps.filters.porosimetry(im, sizes=sizes, mode='dt')
+        fft = ps.filters.porosimetry(im, sizes=sizes, method='conv')
+        dsi = ps.filters.porosimetry(im, sizes=sizes, method='dsi')
+        dt = ps.filters.porosimetry(im, sizes=sizes, method='dt')
         assert np.all(fft == dt)
-        assert np.all(fft == mio)
+        assert np.all(fft == dsi)
 
     def test_porosimetry_with_sizes(self):
         s = np.logspace(0.01, 0.6, 5)
@@ -228,7 +229,7 @@ class FilterTest():
             im=im, axis=0)
         assert np.all(h == h2)
 
-    def test_trim_disconnected_blobs(self):
+    def test_trim_disconnected_voxels(self):
         np.random.seed(0)
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.55875, blobiness=2, periodic=False,)
@@ -236,7 +237,7 @@ class FilterTest():
         inlets = np.zeros_like(im)
         inlets[0, ...] = 1
         n1 = spim.label(im)[1]
-        h = ps.filters.trim_disconnected_blobs(im=im, inlets=inlets, conn='min')
+        h = ps.filters.trim_disconnected_voxels(im=im, inlets=inlets, conn='min')
         n2 = spim.label(h)[1]
         assert n1 > n2
         assert spim.label(h + inlets)[1] == 1
@@ -247,14 +248,6 @@ class FilterTest():
         h = ps.filters.find_disconnected_voxels(b)
         assert np.sum(h) == 0
 
-    def test_fill_closed_pores_w_surface(self):
-        im = ~ps.generators.lattice_spheres(shape=[101, 101], r=5,
-                                            offset=0, spacing=20)
-        im2 = ps.filters.fill_closed_pores(im, surface=False)
-        assert im2.sum() > 0
-        im3 = ps.filters.fill_closed_pores(im, surface=True)
-        assert im3.sum() == 0
-
     def test_fill_closed_pores_surface_blobs_2D(self):
         im = ps.generators.blobs(
             shape=[100, 100], porosity=0.6021, seed=0, periodic=False,)
@@ -262,14 +255,12 @@ class FilterTest():
         im2 = ps.filters.fill_closed_pores(im)
         assert im.sum() == 6021
         assert im2.sum() < im.sum()
-        im3 = ps.filters.fill_closed_pores(im, surface=True)
-        assert im3.sum() < im2.sum()
 
-    def test_fill_closed_pores_surface_blobs_3D(self):
+    def test_fill_invalid_pores_surface_blobs_3D(self):
         im = ps.generators.blobs(
             shape=[100, 100, 100], porosity=0.497569, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.497569
-        im2 = ps.filters.fill_closed_pores(im, surface=True)
+        im2 = ps.filters.fill_invalid_pores(im)
         labels, N = spim.label(im2, ps.tools.ps_rect(3, ndim=3))
         assert N == 1
 
@@ -280,9 +271,9 @@ class FilterTest():
     def test_trim_floating_solid_w_surface(self):
         im = ps.generators.lattice_spheres(shape=[101, 101], r=5,
                                            offset=0, spacing=20)
-        im2 = ps.filters.trim_floating_solid(im, surface=False)
+        im2 = ps.filters.trim_floating_solid(im, incl_surface=False)
         assert im2.sum() < im.size
-        im3 = ps.filters.trim_floating_solid(im, surface=True)
+        im3 = ps.filters.trim_floating_solid(im, incl_surface=True)
         assert im3.sum() == im.size
 
     def test_trim_extrema_min(self):
@@ -300,11 +291,11 @@ class FilterTest():
         assert max1 > max2
 
     def test_local_thickness(self):
-        lt = ps.filters.local_thickness(self.im, mode='dt')
+        lt = ps.filters.local_thickness(self.im, method='dt')
         np.testing.assert_almost_equal(lt.max(), self.im_dt.max(), decimal=6)
-        lt = ps.filters.local_thickness(self.im, mode='mio')
+        lt = ps.filters.local_thickness(self.im, method='imj')
         np.testing.assert_almost_equal(lt.max(), self.im_dt.max(), decimal=6)
-        lt = ps.filters.local_thickness(self.im, mode='hybrid')
+        lt = ps.filters.local_thickness(self.im, method='conv')
         np.testing.assert_almost_equal(lt.max(), self.im_dt.max(), decimal=6)
 
     def test_local_thickness_known_sizes(self):
@@ -313,15 +304,6 @@ class FilterTest():
         im = ps.generators.random_spheres(im=im, r=10)
         lt = ps.filters.local_thickness(im, sizes=[20, 10])
         assert np.all(np.unique(lt) == [0, 10, 20])
-
-    def test_porosimetry(self):
-        im2d = self.im[:, :, 50]
-        lt = ps.filters.local_thickness(im2d)
-        sizes = np.unique(lt)
-        mip = ps.filters.porosimetry(im2d,
-                                     sizes=len(sizes),
-                                     access_limited=False)
-        assert mip.max() <= sizes.max()
 
     def test_morphology_fft_dilate_2d(self):
         im = self.im[:, :, 50]
@@ -549,8 +531,8 @@ class FilterTest():
                                  seed=0,
                                  periodic=False,)
         assert im.sum()/im.size == 0.4028
-        im5 = ps.filters.trim_small_clusters(im=im, size=5)
-        im10 = ps.filters.trim_small_clusters(im=im, size=10)
+        im5 = ps.filters.trim_small_clusters(im=im, min_size=5)
+        im10 = ps.filters.trim_small_clusters(im=im, min_size=10)
         assert im5.sum() > im10.sum()
         label, N = spim.label(im10)
         for i in range(N):
@@ -705,11 +687,6 @@ class FilterTest():
         )
 
         assert np.all(trp1 == trp2)
-
-        fig, ax = plt.subplots(1, 3)
-        ax[0].imshow(inv.im_seq/im, interpolation='none', origin='lower')
-        ax[1].imshow(trp1/im, interpolation='none', origin='lower')
-        ax[2].imshow(trp2/im, interpolation='none', origin='lower')
 
 
 if __name__ == '__main__':

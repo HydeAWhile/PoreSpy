@@ -63,7 +63,7 @@
     "test/unit/test_filters.py::FilterTest::test_snow_partitioning_n_2D": 0.2513599960366264,
     "test/unit/test_filters.py::FilterTest::test_snow_partitioning_n_3D": 3.1789892330998555,
     "test/unit/test_filters.py::FilterTest::test_snow_partitioning_parallel": 4.476703742868267,
-    "test/unit/test_filters.py::FilterTest::test_trim_disconnected_blobs": 0.008258757996372879,
+    "test/unit/test_filters.py::FilterTest::test_trim_disconnected_voxels": 0.008258757996372879,
     "test/unit/test_filters.py::FilterTest::test_trim_extrema_max": 0.028545134118758142,
     "test/unit/test_filters.py::FilterTest::test_trim_extrema_min": 0.026075057918205857,
     "test/unit/test_filters.py::FilterTest::test_trim_floating_solid": 0.06101754796691239,

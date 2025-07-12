@@ -13,7 +13,8 @@ from porespy.filters import (
     fill_closed_pores,
     flood_func,
     region_size,
-    trim_floating_solid,
+    fill_invalid_pores,
+    chunked_func,
 )
 from porespy.generators import borders
 from porespy.tools import (
@@ -36,6 +37,20 @@ tqdm = get_tqdm()
 edt = get_edt()
 skeletonize = get_skel()
 logger = logging.getLogger(__name__)
+
+
+__all__ = [
+    'magnet',
+    'skeleton',
+    'skeleton_parallel',
+    'find_junctions',
+    'find_throat_junctions',
+    'merge_nearby_juncs',
+    'juncs_to_pore_centers',
+    'junctions_to_network',
+    'partition_skeleton',
+    'get_throat_area',
+]
 
 
 def magnet(im,
@@ -133,12 +148,12 @@ def magnet(im,
         if im.ndim == 3:
             _check_skeleton_health(sk.astype('bool'))
     # take distance transform
-    dt = edt(im, parallel=16)
+    dt = edt(im)
     # find junctions
     fj = find_junctions(sk)
     juncs = fj.juncs + fj.endpts
     # if int is not passed, s is dt
-    if type(s) is not int:
+    if s is None:
         s = dt
     juncs = merge_nearby_juncs(sk, juncs, s)  # FIXME: merge juncs AND endpts?
     # find throats
@@ -217,7 +232,6 @@ def skeleton(im, surface=False, parallel_kw=None):
          to 1 will effectively process the chunks in serial to minimize memory
          usage.
 
-
     Returns
     -------
     sk : ndarray
@@ -228,7 +242,7 @@ def skeleton(im, surface=False, parallel_kw=None):
     """
     # trim floating solid from 3D images
     if im.ndim == 3:
-        im = trim_floating_solid(im, conn='min', surface=surface)
+        im = trim_floating_solid(im, conn='min', incl_surface=surface)
     # perform skeleton
     if parallel_kw is None:  # serial
         sk = skeletonize(im).astype('bool')
@@ -736,7 +750,7 @@ def skeletonize_magnet2(im):
     """
     if im.ndim == 2:
         pw = 5
-        im = fill_closed_pores(im, conn='max', surface=True)
+        im = fill_invalid_pores(im, conn='max')
         shape = np.array(im.shape)
         im = np.pad(im, pad_width=pw, mode='edge')
         im = np.pad(im, pad_width=shape, mode='symmetric')
@@ -747,7 +761,7 @@ def skeletonize_magnet2(im):
         shape = np.array(im.shape)  # Save for later
         dt3D = edt(im)
         # Tidy-up image so skeleton is clean
-        im2 = fill_closed_pores(im, conn='max', surface=True)
+        im2 = fill_invalid_pores(im, conn='max')
         im2 = trim_floating_solid(im2, conn='min')
         # Add one layer to outside where holes will be defined
         im2 = np.pad(im2, 1, mode='edge')

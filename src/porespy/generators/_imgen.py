@@ -1304,6 +1304,8 @@ def _cylinders(
     if seed is not None:
         np.random.seed(seed)
     shape = parse_shape(shape)
+    # pad shape slightly
+    shape = shape + 40
     if np.size(shape) == 2:
         raise Exception("2D cylinders don't make sense")
     # Find hypotenuse of domain from [0,0,0] to [Nx,Ny,Nz]
@@ -1346,6 +1348,7 @@ def _cylinders(
                                                 smooth=True, overwrite=False)
                 n += 1
                 pbar.update()
+    im = im[20:-20, 20:-20, 20:-20]  # Remove padding
     return ~im
 
 
@@ -1497,7 +1500,7 @@ def cylinders(
             im = im * tmp
         n_fibers_added += n_fibers
         # Update parameters for next iteration
-        eps = metrics.porosity(im)
+        eps = im.sum(dtype=np.float64)/im.size
         vol_added = get_num_pixels(eps)
         vol_fiber = vol_added / n_fibers_added
 

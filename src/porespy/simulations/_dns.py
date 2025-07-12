@@ -2,14 +2,12 @@ import logging
 import time
 
 import numpy as np
-import openpnm as op
 
 from porespy.filters import trim_nonpercolating_paths
 from porespy.generators import faces
 from porespy.tools import Results
 
 logger = logging.getLogger(__name__)
-ws = op.Workspace()
 
 
 __all__ = ["tortuosity_fd"]
@@ -53,6 +51,9 @@ def tortuosity_fd(im, axis, solver=None):
     to view online example.
 
     """
+    import openpnm as op
+    ws = op.Workspace()
+    
     if axis > (im.ndim - 1):
         raise Exception(f"'axis' must be <= {im.ndim}")
     openpnm_v3 = op.__version__.startswith("3")
@@ -64,7 +65,7 @@ def tortuosity_fd(im, axis, solver=None):
     inlets = faces(im.shape, inlet=axis)
     outlets = faces(im.shape, outlet=axis)
     im = trim_nonpercolating_paths(im, inlets=inlets, outlets=outlets)
-    # Check if porosity is changed after trimmimg floating pores
+    # Check if porosity is changed after trimming floating pores
     eps = im.sum(dtype=np.int64) / im.size
     if not eps:
         raise Exception("No pores remain after trimming floating pores")

@@ -6,19 +6,27 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 import scipy.stats as spst
+from deprecated import deprecated
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from skimage.morphology import ball, cube, disk, skeletonize, square
 
+from porespy import settings
 from porespy.filters import (
-    fill_closed_pores,
+    find_closed_pores,
+    find_surface_pores,
     local_thickness,
     pc_to_seq,
+    fill_closed_pores,
+    find_closed_pores,
+    find_surface_pores,
 )
 from porespy.tools import (
     Results,
     _check_for_singleton_axes,
+    get_tqdm,
+    get_slices_slabs,
     get_edt,
     get_slices_slabs,
     get_tqdm,
@@ -26,10 +34,12 @@ from porespy.tools import (
 )
 
 __all__ = [
+    "bond_number",
     "boxcount",
     "chord_counts",
     "chord_length_distribution",
     "find_h",
+    "find_porosity_threshold",
     "is_percolating",
     "lineal_path_distribution",
     "pore_size_distribution",
@@ -41,9 +51,16 @@ __all__ = [
     "two_point_correlation",
     "percolating_porosity",
     "phase_fraction",
-    "pc_curve",
     "pc_map_to_pc_curve",
-    "bond_number",
+    "percolating_porosity",
+    "phase_fraction",
+    "pore_size_distribution",
+    "porosity",
+    "porosity_by_type",
+    "porosity_profile",
+    "radial_density_distribution",
+    "satn_profile",
+    "two_point_correlation",
 ]
 
 
@@ -53,8 +70,53 @@ logger = logging.getLogger(__name__)
 strel = {2: {"min": disk(1), "max": square(3)}, 3: {"min": ball(1), "max": cube(3)}}
 
 
-def is_percolating(im, axis=None, inlets=None, outlets=None, conn="min"):
-    R"""
+def porosity_by_type(im, conn='min'):
+    r"""
+    Computes different types of porosity in an image including total, closed, and
+    surface
+
+    Parameters
+    ----------
+    im : ndarray
+        An image of the void space with 1 (or `True`) representing the phase of
+        interest.  The bulk volume will be computed as the sum of 0's and 1's.
+    conn : str
+        Can be either `'min'` or `'max'` and controls the shape of the structuring
+        element used to determine voxel connectivity.  The default if `'min'` which
+        imposes the strictest criteria, so that voxels must share a face to be
+        considered connected.
+
+    Returns
+    -------
+    results
+        A dataclass-like object with the following attributes:
+
+        ==========  ================================================================
+        Attribute   Description
+        ==========  ================================================================
+        `total`     The total fraction of the image which is void phase
+        `closed`    The fraction of the image which consists isolated voids
+        `surface`   The fracton of the image which are pores only the surfaces
+        ==========  ================================================================
+
+    """
+    Vb = np.sum((im == 1) + (im == 0), dtype=np.float64)
+    temp = im == 1
+    eps_total = np.sum(temp, dtype=np.float64)/Vb
+    temp = find_closed_pores(im, conn=conn)
+    eps_closed = np.sum(temp, dtype=np.float64)/Vb
+    temp = find_surface_pores(im, conn=conn)
+    eps_surface = np.sum(temp, dtype=np.float64)/Vb
+
+    r = Results()
+    r.total = eps_total
+    r.closed = eps_closed
+    r.surface = eps_surface
+    return r
+
+
+def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
+    r"""
     Determines if a percolating path exists across the domain (in the specified
     direction) or between given inlets and outlets.
 
@@ -78,6 +140,12 @@ def is_percolating(im, axis=None, inlets=None, outlets=None, conn="min"):
         If `axis=None` then all directions are checked and the result is returned
         as a list like `[True, False, True]` indicating that the domain percolates
         in the `x` and `z` directions, but not `y`.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/is_percolating.html>`_
+    to view online example.
 
     """
     if (inlets is not None) and (outlets is not None):
@@ -143,6 +211,13 @@ def find_porosity_threshold(im, axis=0, conn="min"):
         R                The threshold to apply to the distance transform to
                          obtain the percolating image (i.e. im = dt >= R)
         ================ ===========================================================
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/find_porosity_threshodl.html>`_
+    to view online example.
+
     """
     if axis is None:
         raise Exception("axis must be specified")
@@ -197,6 +272,12 @@ def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn="min"):
         Boolean arrays indicating the locations of the inlets and outlets. These
         are useful if the domain is not cubic or if special inlet and outlet
         locations are desired.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/percolating_porosity.html>`_
+    to view online example.
     """
     se = strel[im.ndim][conn]
     if (inlets is None) and (outlets is None):
@@ -248,13 +329,13 @@ def boxcount(im, bins=10):
 
     References
     ----------
-    .. [1a] See Boxcounting on `Wikipedia
+    .. [1a] Read more about box counting on `Wikipedia
        <https://en.wikipedia.org/wiki/Box_counting>`_
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/box_counting.html>`__
+    <https://porespy.org/examples/metrics/reference/boxcount.html>`_
     to view online example.
 
     """
@@ -343,8 +424,8 @@ def porosity(im, mask=None, fill_closed=False, fill_surface=False):
     if mask is not None:
         im = np.array(im, dtype=np.int64) * mask
     if fill_closed or fill_surface:
-        closed_pores = im * ~fill_closed_pores(im, surface=False)
-        surface_pores = im * ~fill_closed_pores(im, surface=True) * ~closed_pores
+        closed_pores = im * find_closed_pores(im)
+        surface_pores = im * find_surface_pores(im) * ~closed_pores
         if fill_closed:
             im[closed_pores] = 0
         if fill_surface:
@@ -390,7 +471,9 @@ def porosity_profile(im, axis=0, span=1, mode="tile"):
         Attribute     Description
         ============= =========================================================
         position      The position along the given axis at which porosity
-                      values are computed.  The units are in voxels.
+                      values are computed, corresponding to the middle of each
+                      slice, whether the mode was `'tile'` or `'slide'`.
+                      The units are in voxels.
         porosity      The local porosity value at each position.
         ============= =========================================================
 
@@ -1094,6 +1177,7 @@ def phase_fraction(im, normed=True):
     return results
 
 
+@deprecated
 def pc_curve(im, pc, seq=None):
     r"""
     Produces a Pc-Snwp curve given a map of meniscus radii or capillary
@@ -1214,6 +1298,12 @@ def pc_map_to_pc_curve(
     To use this function with the results of `porosimetry` or `ibip` the sizes map
     must be converted to a capillary pressure map first.  `drainage` and `invasion`
     both return capillary pressure maps which can be passed directly as `pc`.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/pc_map_to_pc_curve.html>`_
+    to view online example.
     """
     pc = np.copy(pc)
 
@@ -1248,7 +1338,7 @@ def pc_map_to_pc_curve(
         swp_r = (seq[im] == 0).sum(dtype=np.int64) / im.sum(dtype=np.int64)
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        idx = np.argsort(pcs)[-1::-1]  # Because -inf lands on wrong end
+        idx = np.argsort(pcs)[-1::-1]  # Because -inf, if present, is on wrong end
         pcs = pcs[idx]
         counts = counts[idx]
         snwp = 1 - np.cumsum(counts) / im.sum()
@@ -1492,6 +1582,12 @@ def bond_number(
     use_diameter : bool (default is `False`)
         If `True` then the characteristic size obtaine from `source` is multiplied by
         2 to convert radius to diameter.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/bond_number.html>`_
+    to view online example.
     """
     if mask_source is True:
         mask = skeletonize(im)

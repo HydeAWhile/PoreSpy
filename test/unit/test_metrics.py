@@ -283,28 +283,6 @@ class MetricsTest():
         assert np.all(rev.porosity_orig <= 1)
         assert np.all(rev.volume > 0)
 
-    def test_pc_curve(self):
-        im = ps.generators.blobs(
-            shape=[100, 100], porosity=0.7026, seed=0, periodic=False,)
-        assert im.sum()/im.size == 0.7026
-        sizes = ps.filters.porosimetry(im=im)
-        pc_map = ps.filters.size_to_pc(
-            im=im, size=sizes, sigma=0.01, theta=180, voxel_size=1e-5)
-        pc_curve = ps.metrics.pc_curve(im=im, pc=pc_map)
-        assert hasattr(pc_curve, 'pc')
-        assert hasattr(pc_curve, 'snwp')
-
-    def test_pc_curve_from_ibip(self):
-        im = ps.generators.blobs(
-            shape=[100, 100], porosity=0.7026, seed=0, periodic=False,)
-        assert im.sum()/im.size == 0.7026
-        results = ps.simulations.ibip(im=im, return_sizes=True)
-        pc_map = ps.filters.size_to_pc(
-            im=im, size=results.im_size, sigma=0.01, theta=180, voxel_size=1e-5)
-        pc = ps.metrics.pc_curve(im=im, pc=pc_map, seq=results.im_seq)
-        assert hasattr(pc, 'pc')
-        assert hasattr(pc, 'snwp')
-
     def test_satn_profile_axis(self):
         satn = np.tile(np.atleast_2d(np.linspace(1, 0.01, 100)), (100, 1))
         satn[:25, :] = 0
@@ -395,7 +373,7 @@ class MetricsTest():
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_closed_pores(im, conn='max', surface=True)
+        im = ps.filters.fill_invalid_pores(im, conn='max')
         inlets = ps.generators.borders(shape=im.shape, mode='faces')
 
         # Do drainage without sequence
@@ -440,7 +418,7 @@ class MetricsTest():
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_closed_pores(im, conn="max", surface=True)
+        im = ps.filters.fill_invalid_pores(im, conn="max")
         inlets = ps.generators.faces(shape=im.shape, inlet=0)
         pc = ps.filters.capillary_transform(im)
         drn = ps.simulations.drainage(im=im, pc=pc, inlets=inlets)
@@ -461,7 +439,7 @@ class MetricsTest():
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_closed_pores(im, conn="max", surface=True)
+        im = ps.filters.fill_invalid_pores(im, conn="max")
         inlets = ps.generators.faces(shape=im.shape, inlet=0)
         pc = ps.filters.capillary_transform(im=im)
         imb = ps.simulations.imbibition(im=im, pc=pc, inlets=inlets)
@@ -489,7 +467,7 @@ class MetricsTest():
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
-        im = ps.filters.fill_closed_pores(im, conn="max", surface=True)
+        im = ps.filters.fill_invalid_pores(im, conn="max")
         inlets = ps.generators.borders(shape=im.shape, mode='faces')
 
         ibip = ps.simulations.ibip(im=im, inlets=inlets, return_sizes=True)

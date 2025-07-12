@@ -19,3 +19,4 @@ from ._snows import *
 from ._transforms import *
 from ._displacement import *
 from ._morphology import *
+from ._lt_methods import *
