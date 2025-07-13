@@ -6,7 +6,6 @@ import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as spim
 import scipy.spatial as sptl
-import scipy.stats as spst
 from numba import njit
 
 from porespy.tools import (
@@ -16,7 +15,6 @@ from porespy.tools import (
     extract_subsection,
     get_edt,
     get_tqdm,
-    insert_sphere,
     parse_shape,
     ps_ball,
     ps_disk,
