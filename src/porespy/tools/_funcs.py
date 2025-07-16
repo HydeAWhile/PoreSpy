@@ -59,7 +59,7 @@ tqdm = get_tqdm()
 settings = Settings()
 
 
-def parse_steps(steps, vals, mask=None, descending=True):
+def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
     r"""
     Converts given steps into a list of sizes
 
@@ -79,23 +79,48 @@ def parse_steps(steps, vals, mask=None, descending=True):
         is converted as `vals = vals[mask]` beforehand.
     descending : bool, optional
         If `True` (default), then the returned list of sizes is in descending order
+    log : bool, optional
+        If `True` then the steps are logarithmically space. This argument is only
+        considered if `steps` is an `int`. The default is `False`.
+    pad : tuple of ints
+        This will extend the range of bins by the given number of steps using the
+        spacing of the adjacent points.  `pad=(1, 1)` will exten the range of the
+        bins by 1 both up and down, so `[1, 2, 3]` will become `[0, 1, 2, 3, 4]`.
 
     Returns
     -------
     bins : ndarray
         Array of values spanning the desired start and stop limits
     """
-    if mask is not None:
+    if mask is not None:  # Apply mask to vals if given
         vals = vals[mask]
-    if steps is None:
+    if steps is None:  # If steps is None, use ALL vals
         bins = np.unique(vals)
-    elif isinstance(steps, tuple):
+    elif isinstance(steps, tuple):  # If steps is a tuple, assume (start, stop, step)
         bins = np.arange(*steps)
-    elif type(steps) is int:
-        bins = np.linspace(1, vals.max(), steps)
-    else:
+    elif type(steps) is int:  # If an int then compute range
+        if log:
+            bins = np.logspace(
+                np.log10(vals.min()),
+                np.log10(vals.max()),
+                steps,
+            )
+        else:
+            bins = np.linspace(
+                vals.min(),
+                vals.max(),
+                steps,
+            )
+    else:  # If steps are given directly then just sort them
         bins = np.unique(steps)
-        bins = bins[bins > 0]
+    # Now pad the bins if requested
+    if pad[0] > 0:
+        delta = bins[1] - bins[0]
+        bins = np.hstack((bins[0] - delta, bins))
+    if pad[1] > 0:
+        delta = bins[-1] - bins[-2]
+        bins = np.hstack((bins, bins[-1] + delta))
+    # Finally, sort them up or down
     if descending:
         bins = bins[-1::-1]
     return bins
