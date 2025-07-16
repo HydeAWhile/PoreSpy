@@ -687,6 +687,23 @@ class FilterTest():
 
         assert np.all(trp1 == trp2)
 
+    def test_find_trapped_clusters_with_imbibition(self):
+        # This image has some surface pores which should not become trapped
+        # because outlets are all surfaces
+        im = ps.generators.blobs([100, 100], porosity=0.6, seed=1)
+        faces = ps.generators.borders(im.shape, mode='faces')
+        pc = ps.filters.capillary_transform(
+            im=im,
+            sigma=0.465,
+            theta=140,
+            voxel_size=1e-5,
+        )
+        imb = ps.simulations.imbibition(im=im, pc=pc, steps=50)
+        mask = ps.filters.find_trapped_clusters(im=im, seq=imb.im_seq, outlets=faces, method='labels')
+        assert np.sum(mask[faces]) == 0
+        mask = ps.filters.find_trapped_clusters(im=im, seq=imb.im_seq, outlets=faces, method='queue')
+        assert np.sum(mask[faces]) == 0
+
 
 if __name__ == '__main__':
     t = FilterTest()

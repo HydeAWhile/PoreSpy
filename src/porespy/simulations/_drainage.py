@@ -837,4 +837,4 @@ if __name__ == "__main__":
     ax[1][0].imshow(imb9.im_seq/im)
     ax[1][0].set_title('fft, smooth')
     ax[1][1].imshow(imb10.im_seq/im)
-    ax[1][1].set_title('dt, not-smooth')
+    ax[1][1].set_title('fft, not-smooth')

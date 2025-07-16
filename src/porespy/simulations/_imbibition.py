@@ -317,13 +317,15 @@ def imbibition_dt(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=False)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False, pad=(1, 1))
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        seeds = dt >= r if smooth else dt > r
+        # seeds = ~(dt <= r)
+        # seeds = seeds*im
+        seeds = dt >= r
         # Perform dilation using dt
         tmp = edt(~seeds)
         wp = ~(tmp < r) if smooth else ~(tmp <= r)
@@ -426,6 +428,7 @@ def imbibition_fft(
         se = ps_round(r, ndim=im.ndim, smooth=smooth)
         seeds = ~fftmorphology(~im, se, mode='dilation')
         # Perform dilation using convolution
+        se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
         # Trimming disconnected wetting phase
         if inlets is not None:
@@ -562,8 +565,8 @@ def imbibition(
     if isinstance(steps, int):
         mask = np.isfinite(pc)*im
         Ps = np.logspace(
-            np.log10(pc[mask].max()),
-            np.log10(pc[mask].min()*0.99),
+            np.log10(pc[mask].max()*1.05),
+            np.log10(pc[mask].min()*0.95),
             steps,
         )
     elif steps is None:
@@ -574,12 +577,13 @@ def imbibition(
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=int)
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
-        # This can be made faster if I find a way to get only seeds on edge, so
-        # less spheres need to be drawn
-        invadable = (pc <= P)*im
+        # This can be made faster if I find a way to get only seeds on edge without
+        # doing erosion on the next step
+        invadable = (~(pc >= P))*im
         # Using FFT-based erosion to find edges.  When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
         # that need to be inserted.
@@ -610,6 +614,7 @@ def imbibition(
         if np.any(mask):
             im_seq[mask] = step
             im_pc[mask] = P
+            im_size[mask] = np.amin(radii)
     im_seq = make_contiguous(im_seq)
 
     trapped = None  # Initialize trapped to None in case outlets not given
@@ -779,3 +784,29 @@ if __name__ == '__main__':
     ax['(e)'].semilogx(Pc, Snwp, 'm-*', label='imbibition w residual & trapping')
 
     ax['(e)'].legend()
+
+
+    # %%
+    i = 50591
+    voxel_size = 1e-5
+    steps = 50
+    im = ps.generators.blobs([100, 100], porosity=0.6, seed=1)
+    dt = edt(im).astype(int)
+    steps = ps.tools.parse_steps(steps=50, vals=dt, mask=im, pad=(1, 1))
+    imb7 = imbibition_dt(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
+    imb8 = imbibition_dt(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
+    imb9 = imbibition_fft(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
+    imb10 = imbibition_fft(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
+
+    # assert np.all(imb7.im_seq == imb9.im_seq)
+    # assert np.all(imb8.im_seq == imb10.im_seq)
+
+    fig, ax = plt.subplots(2, 2)
+    ax[0][0].imshow(imb7.im_seq/im)
+    ax[0][0].set_title('dt, smooth')
+    ax[0][1].imshow(imb8.im_seq/im)
+    ax[0][1].set_title('dt, not-smooth')
+    ax[1][0].imshow(imb9.im_seq/im)
+    ax[1][0].set_title('fft, smooth')
+    ax[1][1].imshow(imb10.im_seq/im)
+    ax[1][1].set_title('fft, not-smooth')

@@ -47,15 +47,20 @@ def hg_porosimetry(im, steps=25, voxel_size=1.0):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-
+    import numpy as np
     import porespy as ps
 
     i = 50591
-    im = ps.generators.blobs([100, 100, 100], porosity=0.4, seed=0)
-    mip = hg_porosimetry(im, voxel_size=1e-5, steps=50)
+    voxel_size = 1e-5
+    steps = 50
+    im = ps.generators.blobs([100, 100], porosity=0.6, seed=i)
+    mip = hg_porosimetry(im, voxel_size=voxel_size, steps=steps)
 
     fig, ax = plt.subplots()
-    ax.semilogx(mip.pc_intrusion, mip.snwp_intrusion, 'b.-')
-    ax.semilogx(mip.pc_extrusion, mip.snwp_extrusion, 'r.-')
-    ax.set_xlim([1_000, 100_000])
+    ax.step(np.log10(mip.pc_intrusion), mip.snwp_intrusion, 'b.-', where='post')
+    ax.step(np.log10(mip.pc_extrusion), mip.snwp_extrusion, 'r.-', where='post')
     ax.set_ylim([0, 1.05])
+
+    fig, ax = plt.subplots(1, 2)
+    ax[0].imshow(drn.im_seq/im)
+    ax[1].imshow(imb.im_seq/im)

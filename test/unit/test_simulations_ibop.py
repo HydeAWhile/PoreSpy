@@ -232,6 +232,58 @@ class IBOPTest(GenericTest):
             im=im, dt=dt, steps=None, smooth=True).im_size
         # plt.imshow(sizes1)
 
+    def test_drainage_equals_drainage_dt(self):
+        edt = ps.tools.get_edt()
+        im = ps.generators.blobs(
+            shape=[100, 100],
+            porosity=0.7,
+            blobiness=1.5,
+            seed=16,
+        )
+        im = ps.filters.fill_invalid_pores(im)
+
+        # All methods are equivalent IF dt is integers
+        dt = edt(im).astype(int)
+        steps = np.unique(dt[im])
+
+        faces = ps.generators.borders(im.shape, mode='faces')
+
+        sizes1 = ps.simulations.drainage_dt(
+            im=im, dt=dt, inlets=faces, steps=steps).im_size
+        sizes2 = ps.simulations.drainage(
+            im=im, dt=dt, inlets=faces, steps=2/steps).im_size
+        assert np.all(sizes1 == sizes2)
+
+        # fig, ax = plt.subplots(1, 2)
+        # ax[0].imshow(sizes1)
+        # ax[1].imshow(sizes2)
+
+    def test_imbibition_equals_imbibition_dt(self):
+        edt = ps.tools.get_edt()
+        im = ps.generators.blobs(
+            shape=[100, 100],
+            porosity=0.7,
+            blobiness=1.5,
+            seed=16,
+        )
+        im = ps.filters.fill_invalid_pores(im)
+
+        # All methods are equivalent IF dt is integers
+        dt = edt(im).astype(int)
+        steps = np.unique(dt[im])
+
+        faces = ps.generators.borders(im.shape, mode='faces')
+
+        sizes1 = ps.simulations.imbibition_dt(
+            im=im, dt=dt, inlets=faces, steps=steps).im_size
+        seq1 = ps.filters.size_to_seq(size=sizes1, im=im, mode='imbibition')
+        seq2 = ps.simulations.imbibition(
+            im=im, dt=dt, inlets=faces, steps=2/steps).im_seq
+        assert np.all(seq1 == seq2)
+
+        # fig, ax = plt.subplots(1, 2)
+        # ax[0].imshow(seq1)
+        # ax[1].imshow(seq2)
 
 
 if __name__ == "__main__":
