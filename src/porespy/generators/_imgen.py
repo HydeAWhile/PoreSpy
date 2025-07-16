@@ -67,6 +67,20 @@ def conical_capillary(shape, r, axis=0):
     im : ndarray
         An image of the specified `shape` with the conical capillary indicated by
         `True` values.
+
+    Notes
+    -----
+    It may be useful to stack multiple images together to make converging/diverging
+    cones. This can be done with:
+
+    .. code:: python
+
+        fig, ax = plt.subplots()
+        c1 = cone([31, 31, 31], r=[15, 3], axis=2)
+        c2 = cone([31, 31, 31], r=[3, 8], axis=2)
+        c = np.vstack((c1, c2))
+        plt.imshow(ps.visualization.xray(c, axis=2))
+
     """
     im = np.ones(shape, dtype=bool)
     im = np.swapaxes(im, 0, axis)
