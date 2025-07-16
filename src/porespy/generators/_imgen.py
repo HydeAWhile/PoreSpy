@@ -57,8 +57,10 @@ def conical_capillary(shape, r, axis=0):
     ----------
     shape : list
         The shape of the image to create
-    r : list
-        The radii of the beginning and end of the tube
+    r : list of ints or int
+        The radii of the beginning and end of the tube. If an `int` is given the
+        a cylindrical capillary of radius `r` is created, which is the same as
+        `r = [r, r]`.
     axis : int
         The axis along with the tube should be oriented
 
@@ -82,9 +84,13 @@ def conical_capillary(shape, r, axis=0):
         plt.imshow(ps.visualization.xray(c, axis=2))
 
     """
+    if isinstance(r, int):
+        r = [r, r]
+    elif len(r) == 1:
+        r = [r[0], r[0]]
     im = np.ones(shape, dtype=bool)
     im = np.swapaxes(im, 0, axis)
-    if im.ndim == 1:
+    if im.ndim == 2:
         im[int(im.shape[0]/2), ...] = False
     else:
         im[int(im.shape[0]/2), int(im.shape[1]/2), :] = False

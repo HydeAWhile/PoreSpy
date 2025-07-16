@@ -698,6 +698,21 @@ class GeneratorTest():
         assert np.all(im[..., 0] == 0)
         assert np.all(np.around(im[..., -1], decimals=3) == 1.900)
 
+    def test_conical_capillary_2D(self):
+        im = ps.generators.conical_capillary([25, 25], r=(5, 10))
+        assert ps.filters.distance_transform_lin(im).max() == 10
+        assert im[:, 0].sum() < im[:, -1].sum()
+
+    def test_conical_capillary_3D(self):
+        im = ps.generators.conical_capillary([25, 25, 25], r=(5, 10))
+        assert ps.filters.distance_transform_lin(im).max() == 10
+        assert im[:, :, 0].sum() < im[:, :, -1].sum()
+
+        im = ps.generators.conical_capillary([25, 25, 25], r=(10, 5))
+        assert ps.filters.distance_transform_lin(im).max() == 10
+        assert im[:, :, -1].sum() < im[:, :, 0].sum()
+
+
 
 if __name__ == '__main__':
     t = GeneratorTest()
