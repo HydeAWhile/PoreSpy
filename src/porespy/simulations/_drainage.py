@@ -113,8 +113,7 @@ def drainage_dsi(
     nwp = np.zeros_like(im, dtype=bool)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r if smooth else dt > r
-        # edges = dt_int == r if smooth else (dt > r) * (dt_int <= (r + 1))
+        seeds = dt >= r
         edges = (dt < (r + 1))*seeds
         # if smooth:
         #     seeds = dt >= r
@@ -222,7 +221,7 @@ def drainage_dt_fft(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
@@ -311,7 +310,7 @@ def drainage_fft(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
+        se = ps_round(int(r), ndim=im.ndim, smooth=True)
         seeds = ~fftmorphology(~im, se, "dilation")
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
@@ -409,7 +408,7 @@ def drainage_dt(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
@@ -585,8 +584,8 @@ def drainage(
     if isinstance(steps, int):  # Use values in pc for invasion steps
         mask = np.isfinite(pc) * im
         Ps = np.logspace(
-            np.log10(pc[mask].min()),
-            np.log10(pc[mask].max()),
+            np.log10(pc[mask].min()*0.95),
+            np.log10(pc[mask].max())*1.05,
             steps,
         )
     elif steps is None:
@@ -814,3 +813,28 @@ if __name__ == "__main__":
         ax["(e)"].plot(np.log10(pc), s, "m-*", label="local thickness")
 
         ax["(e)"].legend()
+
+
+    # %%
+    i = 50591
+    voxel_size = 1e-5
+    steps = 50
+    im = ps.generators.blobs([100, 100], porosity=0.6, seed=1)
+    dt = edt(im).astype(int)
+    imb7 = drainage_dt(im=im, dt=dt, steps=None, inlets=None, smooth=True)
+    imb8 = drainage_dt(im=im, dt=dt, steps=None, inlets=None, smooth=False)
+    imb9 = drainage_fft(im=im, dt=dt, steps=None, inlets=None, smooth=True)
+    imb10 = drainage_fft(im=im, dt=dt, steps=None, inlets=None, smooth=False)
+
+    assert np.all(imb7.im_seq == imb9.im_seq)
+    assert np.all(imb8.im_seq == imb10.im_seq)
+
+    fig, ax = plt.subplots(2, 2)
+    ax[0][0].imshow(imb7.im_seq/im)
+    ax[0][0].set_title('dt, smooth')
+    ax[0][1].imshow(imb8.im_seq/im)
+    ax[0][1].set_title('dt, not-smooth')
+    ax[1][0].imshow(imb9.im_seq/im)
+    ax[1][0].set_title('fft, smooth')
+    ax[1][1].imshow(imb10.im_seq/im)
+    ax[1][1].set_title('dt, not-smooth')
