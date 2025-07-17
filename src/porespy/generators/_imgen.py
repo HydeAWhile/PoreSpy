@@ -91,18 +91,17 @@ def conical_capillary(shape, r, axis=0):
     im = np.ones(shape, dtype=bool)
     im = np.swapaxes(im, 0, axis)
     if im.ndim == 2:
-        im[int(im.shape[0]/2), ...] = False
+        im[..., int(im.shape[1]/2)] = False
     else:
-        im[int(im.shape[0]/2), int(im.shape[1]/2), :] = False
+        im[:, int(im.shape[1]/2), int(im.shape[2]/2)] = False
     dt = edt(im) + 0.5
     ax = 1 if len(shape) == 2 else 2
-    L = ramp(shape, inlet=1, outlet=shape[1], axis=ax)
-
+    L = ramp(im.shape, inlet=1, outlet=im.shape[1], axis=0)
     theta = np.arctan((r[1] - r[0])/im.shape[1])
     h = np.tan(theta)*L + r[0]
     cone = dt < h
     if r[0] > r[1]:
-        cone = np.flip(cone, axis=0)
+        cone = np.flip(cone, axis=1)
     cone = np.swapaxes(cone, 0, axis)
     return cone
 
