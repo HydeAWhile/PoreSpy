@@ -26,6 +26,7 @@ from porespy.tools import (
 __all__ = [
     "blobs",
     "borders",
+    "conical_capillary",
     "bundle_of_tubes",
     "cylinders",
     "cylindrical_plug",
@@ -46,6 +47,63 @@ __all__ = [
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
+
+
+def conical_capillary(shape, r, axis=0):
+    r"""
+    Generates a single conical hole with specified start and stop radii
+
+    Parameters
+    ----------
+    shape : list
+        The shape of the image to create
+    r : list of ints or int
+        The radii of the beginning and end of the tube. If an `int` is given the
+        a cylindrical capillary of radius `r` is created, which is the same as
+        `r = [r, r]`.
+    axis : int
+        The axis along with the tube should be oriented
+
+    Returns
+    -------
+    im : ndarray
+        An image of the specified `shape` with the conical capillary indicated by
+        `True` values.
+
+    Notes
+    -----
+    It may be useful to stack multiple images together to make converging/diverging
+    cones. This can be done with:
+
+    .. code:: python
+
+        fig, ax = plt.subplots()
+        c1 = cone([31, 31, 31], r=[15, 3], axis=2)
+        c2 = cone([31, 31, 31], r=[3, 8], axis=2)
+        c = np.vstack((c1, c2))
+        plt.imshow(ps.visualization.xray(c, axis=2))
+
+    """
+    if isinstance(r, int):
+        r = [r, r]
+    elif len(r) == 1:
+        r = [r[0], r[0]]
+    im = np.ones(shape, dtype=bool)
+    im = np.swapaxes(im, 0, axis)
+    if im.ndim == 2:
+        im[..., int(im.shape[1]/2)] = False
+    else:
+        im[:, int(im.shape[1]/2), int(im.shape[2]/2)] = False
+    dt = edt(im) + 0.5
+    ax = 1 if len(shape) == 2 else 2
+    L = ramp(im.shape, inlet=1, outlet=im.shape[1], axis=0)
+    theta = np.arctan((r[1] - r[0])/im.shape[1])
+    h = np.tan(theta)*L + r[0]
+    cone = dt < h
+    if r[0] > r[1]:
+        cone = np.flip(cone, axis=1)
+    cone = np.swapaxes(cone, 0, axis)
+    return cone
 
 
 def faces(shape, inlet: int = None, outlet: int = None):
