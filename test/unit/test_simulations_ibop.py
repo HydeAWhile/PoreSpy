@@ -162,7 +162,7 @@ class IBOPTest(GenericTest):
         assert np.all(seq1 == seq4)
 
         # Of if we specify integer steps
-        steps = np.arange(1, 50, -1)
+        steps = np.arange(1, 50)
         sizes1 = ps.simulations.imbibition_dt(im=im, steps=steps).im_size
         sizes2 = ps.simulations.imbibition_fft(im=im, steps=steps).im_size
         sizes3 = ps.simulations.imbibition_dsi(im=im, steps=steps).im_size
@@ -229,7 +229,7 @@ class IBOPTest(GenericTest):
 
         dt = edt(im)
         sizes1 = ps.simulations.drainage_dsi(
-            im=im, dt=dt, steps=None, smooth=True).im_size
+            im=im, dt=dt, steps=None).im_size
         # plt.imshow(sizes1)
 
     def test_drainage_equals_drainage_dt(self):
@@ -274,11 +274,17 @@ class IBOPTest(GenericTest):
 
         faces = ps.generators.borders(im.shape, mode='faces')
 
-        sizes1 = ps.simulations.imbibition_dt(
-            im=im, dt=dt, inlets=faces, steps=steps).im_size
-        seq1 = ps.filters.size_to_seq(size=sizes1, im=im, mode='imbibition')
+        seq1 = ps.simulations.imbibition_dt(
+            im=im, dt=dt, inlets=faces, steps=steps).im_seq
         seq2 = ps.simulations.imbibition(
             im=im, dt=dt, inlets=faces, steps=2/steps).im_seq
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(1, 3)
+        ax[0].imshow(seq1)
+        ax[0].set_title('DT-based')
+        ax[1].imshow(seq2)
+        ax[1].set_title('PC-based')
+        ax[2].imshow(seq1 - seq2)
         assert np.all(seq1 == seq2)
 
         # fig, ax = plt.subplots(1, 2)

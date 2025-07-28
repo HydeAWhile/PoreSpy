@@ -47,7 +47,6 @@ def drainage_dsi(
     outlets=None,
     dt=None,
     steps=None,
-    smooth=True,
 ):
     r"""
     Performs a distance transform based drainage simulation using direct sphere
@@ -76,9 +75,6 @@ def drainage_dsi(
         between 1 and the maximum size are used. A `tuple` is treated as the start
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
-    smooth : boolean
-        If `True` (default) then the spheres are drawn without any single voxel
-        protrusions on the faces.
 
     Returns
     -------
@@ -114,13 +110,7 @@ def drainage_dsi(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         seeds = dt >= r
-        edges = (dt < (r + 1))*seeds
-        # if smooth:
-        #     seeds = dt >= r
-        #     edges = dt_int == r
-        # else:
-        #     seeds = dt > r
-        #     edges = (dt > r) * (dt_int <= (r + 1))
+        edges = seeds * (dt_int <= (r + 1))
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
             edges *= seeds
@@ -131,7 +121,7 @@ def drainage_dsi(
                 coords=coords,
                 r=int(r),
                 v=True,
-                smooth=smooth,
+                smooth=False,
             )
         nwp[seeds] = True
         mask = nwp * (im_seq == -1)
@@ -160,7 +150,6 @@ def drainage_dt_fft(
     outlets=None,
     dt=None,
     steps=None,
-    smooth=True
 ):
     r"""
     Performs a distance transform based drainage simulation using distance transform
@@ -190,9 +179,6 @@ def drainage_dt_fft(
         between 1 and the maximum size are used. A `tuple` is treated as the start
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
-    smooth : boolean
-        If `True` (default) then the spheres are drawn without any single voxel
-        protrusions on the faces.
 
     Returns
     -------
@@ -226,7 +212,7 @@ def drainage_dt_fft(
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
+        se = ps_round(int(r), ndim=im.ndim, smooth=False)
         nwp = fftmorphology(seeds, se, "dilation")
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
@@ -255,7 +241,6 @@ def drainage_fft(
     outlets=None,
     dt=None,
     steps=None,
-    smooth=True,
 ):
     r"""
     Performs a distance transform based drainage simulation using fft-based
@@ -284,9 +269,6 @@ def drainage_fft(
         between 1 and the maximum size are used. A `tuple` is treated as the start
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
-    smooth : boolean
-        If `True` (default) then the spheres are drawn without any single voxel
-        protrusions on the faces.
 
     Returns
     -------
@@ -316,7 +298,7 @@ def drainage_fft(
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
+        se = ps_round(int(r), ndim=im.ndim, smooth=False)
         nwp = fftmorphology(seeds, se, "dilation")
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
@@ -343,10 +325,8 @@ def drainage_dt(
     im,
     inlets=None,
     outlets=None,
-    # residual=None,
     dt=None,
     steps=None,
-    smooth=True,
 ):
     r"""
     Performs a distance transform based drainage simulation using distance transform
@@ -376,9 +356,6 @@ def drainage_dt(
         between 1 and the maximum size are used. A `tuple` is treated as the start
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
-    smooth : boolean
-        If `True` (default) then the spheres are drawn without any single voxel
-        protrusions on the faces.
 
     Returns
     -------
@@ -414,7 +391,7 @@ def drainage_dt(
         if not np.any(seeds):
             continue
         tmp = edt(~seeds)
-        nwp = tmp < r if smooth else tmp <= r
+        nwp = tmp <= r
         # if residual is not None:
         #     blobs = trim_disconnected_voxels(residual, inlets=nwp)
         #     seeds = dt >= r
