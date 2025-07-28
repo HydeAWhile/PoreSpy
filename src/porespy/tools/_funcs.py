@@ -61,15 +61,17 @@ settings = Settings()
 
 def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
     r"""
-    Converts given steps into a list of sizes
+    Generates an array of step sizes to iterate through for the displacement
+    simulations
 
     Parameters
     ----------
     steps : int, tuple, list or ndarray, or None
-        If an `int` then `steps` is treated as the number of steps between 1 and the
-        maximum in `vals`. If a `tuple` is received then this is used as the first
-        and last values of an integer range. If a `list` or `ndarray` is received
-        they are used directly. If `None` then all unique values in `vals` are used.
+        If an `int` then `steps` is treated as the number of steps between minimum
+        and maximum in `vals`. If a `tuple` is received then this is passed to
+        `np.arange`. If `None` then all unique values in `vals` are used. If a
+        `list` or `ndarray` is received they are used directly without any further
+        processing like `descending` or `pad`.
     vals : ndarray
         An array containing the values to be scanned, such as a distance or
         capillary transform.
@@ -78,22 +80,25 @@ def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
         not provided then all values `vals` are used, but if provided, then `vals`
         is converted as `vals = vals[mask]` beforehand.
     descending : bool, optional
-        If `True` (default), then the returned list of sizes is in descending order
+        If `True` (default), then the returned list of steps is in descending order
     log : bool, optional
-        If `True` then the steps are logarithmically space. This argument is only
+        If `True` then the steps are logarithmically spaced. This argument is only
         considered if `steps` is an `int`. The default is `False`.
     pad : tuple of ints
-        This will extend the range of bins by the given number of steps using the
-        spacing of the adjacent points.  `pad=(1, 1)` will exten the range of the
-        bins by 1 both up and down, so `[1, 2, 3]` will become `[0, 1, 2, 3, 4]`.
+        This will extend the range of steps by the given number in each direction
+        using the spacing of the adjacent points. For example, `pad=(1, 1)` will
+        extend the range of the bins by 1 both up and down, so `[1, 2, 3]` will
+        become `[0, 1, 2, 3, 4]`. This is applied *after* putting the values into
+        ascending or descending order.
 
     Returns
     -------
-    bins : ndarray
+    steps : ndarray
         Array of values spanning the desired start and stop limits
     """
     if mask is not None:  # Apply mask to vals if given
         vals = vals[mask]
+
     if steps is None:  # If steps is None, use ALL vals
         bins = np.unique(vals)
     elif isinstance(steps, tuple):  # If steps is a tuple, assume (start, stop, step)
@@ -111,8 +116,13 @@ def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
                 vals.max(),
                 steps,
             )
-    else:  # If steps are given directly then just sort them
+    else:  # If steps are given directly then just sort them and return
         bins = np.unique(steps)
+        return bins
+
+    if descending:
+        bins = bins[-1::-1]
+
     # Now pad the bins if requested
     if pad[0] > 0:
         delta = bins[1] - bins[0]
@@ -120,9 +130,7 @@ def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
     if pad[1] > 0:
         delta = bins[-1] - bins[-2]
         bins = np.hstack((bins, bins[-1] + delta))
-    # Finally, sort them up or down
-    if descending:
-        bins = bins[-1::-1]
+
     return bins
 
 

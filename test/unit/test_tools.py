@@ -636,9 +636,15 @@ class ToolsTest():
         steps = ps.tools.parse_steps(steps=None, vals=dt, descending=False)
         assert np.all(steps == np.unique(dt))
 
-        steps = ps.tools.parse_steps(steps=None, vals=dt, pad=(1, 0))
-        assert len(steps) > len(np.unique(dt))
+        steps = ps.tools.parse_steps(steps=None, vals=dt, pad=(0, 1))
+        assert len(steps) == (len(np.unique(dt)) + 1)
         assert steps.min() < 0
+        assert steps.max() == dt.max()
+
+        steps = ps.tools.parse_steps(steps=None, vals=dt, pad=(1, 0))
+        assert len(steps) == (len(np.unique(dt)) + 1)
+        assert steps.min() == 0
+        assert steps.max() > dt.max()
 
     def test_parse_steps_tuple(self):
         im = self.blobs.copy()
