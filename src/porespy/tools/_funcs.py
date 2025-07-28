@@ -70,8 +70,7 @@ def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
         If an `int` then `steps` is treated as the number of steps between minimum
         and maximum in `vals`. If a `tuple` is received then this is passed to
         `np.arange`. If `None` then all unique values in `vals` are used. If a
-        `list` or `ndarray` is received they are used directly without any further
-        processing like `descending` or `pad`.
+        `list` or `ndarray` is received they are used directly.
     vals : ndarray
         An array containing the values to be scanned, such as a distance or
         capillary transform.
@@ -118,7 +117,6 @@ def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
             )
     else:  # If steps are given directly then just sort them and return
         bins = np.unique(steps)
-        return bins
 
     if descending:
         bins = bins[-1::-1]
