@@ -30,9 +30,9 @@ __all__ = [
     "drainage",
     # The following are reference implementations using different techniques
     "drainage_dt",
-    "drainage_fft",
-    "drainage_dt_fft",
-    "drainage_dsi",
+    "drainage_conv",
+    "drainage_dt_conv",
+    "drainage_bf",
 ]
 
 
@@ -41,12 +41,13 @@ tqdm = get_tqdm()
 strel = get_strel()
 
 
-def drainage_dsi(
+def drainage_bf(
     im,
     inlets=None,
     outlets=None,
     dt=None,
     steps=None,
+    smooth=False,
 ):
     r"""
     Performs a distance transform based drainage simulation using direct sphere
@@ -92,7 +93,7 @@ def drainage_dsi(
 
     Notes
     -----
-    The sphere insert steps will be executed in parallel if
+    The sphere insertion steps will be executed in parallel if
     ``porespy.settings.ncores > 1``
     """
     if settings.ncores > 1:
@@ -102,15 +103,14 @@ def drainage_dsi(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    dt_int = dt.astype(int)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=True)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=True, pad=(1, 1))
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r
-        edges = seeds * (dt_int <= (r + 1))
+        seeds = dt > r if smooth else dt >= r
+        edges = seeds * (dt <= (r + 1))
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
             edges *= seeds
@@ -121,7 +121,7 @@ def drainage_dsi(
                 coords=coords,
                 r=int(r),
                 v=True,
-                smooth=False,
+                smooth=smooth,
             )
         nwp[seeds] = True
         mask = nwp * (im_seq == -1)
@@ -144,12 +144,13 @@ def drainage_dsi(
     return results
 
 
-def drainage_dt_fft(
+def drainage_dt_conv(
     im,
     inlets=None,
     outlets=None,
     dt=None,
     steps=None,
+    smooth=False,
 ):
     r"""
     Performs a distance transform based drainage simulation using distance transform
@@ -202,17 +203,17 @@ def drainage_dt_fft(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=True)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=True, pad=(1, 1))
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r
+        seeds = dt > r if smooth else dt >= r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        se = ps_round(int(r), ndim=im.ndim, smooth=False)
+        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
         nwp = fftmorphology(seeds, se, "dilation")
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
@@ -235,12 +236,13 @@ def drainage_dt_fft(
     return results
 
 
-def drainage_fft(
+def drainage_conv(
     im,
     inlets=None,
     outlets=None,
     dt=None,
     steps=None,
+    smooth=False,
 ):
     r"""
     Performs a distance transform based drainage simulation using fft-based
@@ -287,18 +289,18 @@ def drainage_fft(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=True)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=True, pad=(1, 1))
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        se = ps_round(int(r), ndim=im.ndim, smooth=True)
+        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
         seeds = ~fftmorphology(~im, se, "dilation")
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        se = ps_round(int(r), ndim=im.ndim, smooth=False)
+        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
         nwp = fftmorphology(seeds, se, "dilation")
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
@@ -327,6 +329,7 @@ def drainage_dt(
     outlets=None,
     dt=None,
     steps=None,
+    smooth=False,
 ):
     r"""
     Performs a distance transform based drainage simulation using distance transform
@@ -380,18 +383,18 @@ def drainage_dt(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=True)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=True, pad=(1, 1))
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r
+        seeds = dt > r if smooth else dt >= r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
         tmp = edt(~seeds)
-        nwp = tmp <= r
+        nwp = tmp < r if smooth else tmp <= r
         # if residual is not None:
         #     blobs = trim_disconnected_voxels(residual, inlets=nwp)
         #     seeds = dt >= r
@@ -558,18 +561,15 @@ def drainage(
         pc = 2.0 / dt
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
-    if isinstance(steps, int):  # Use values in pc for invasion steps
-        mask = np.isfinite(pc) * im
-        Ps = np.logspace(
-            np.log10(pc[mask].min()*0.95),
-            np.log10(pc[mask].max())*1.05,
-            steps,
-        )
-    elif steps is None:
-        Ps = np.unique(pc[im])
-    else:
-        Ps = np.unique(steps)  # To ensure they are in ascending order
-
+    # Generate pressure steps
+    Ps = parse_steps(
+        steps=steps,
+        vals=pc,
+        mask=im,
+        descending=False,
+        log=True,
+        pad=(1, 1),
+    )
     # Initialize empty arrays to accumulate results of each loop
     nwp_mask = np.zeros_like(im, dtype=bool)
     im_seq = np.zeros_like(im, dtype=int)
@@ -598,7 +598,7 @@ def drainage(
             coords=np.vstack(coords),
             radii=radii.astype(int),
             v=True,
-            smooth=True,
+            smooth=False,
             overwrite=False,
         )
 
@@ -798,20 +798,13 @@ if __name__ == "__main__":
     steps = 50
     im = ps.generators.blobs([100, 100], porosity=0.6, seed=1)
     dt = edt(im).astype(int)
-    imb7 = drainage_dt(im=im, dt=dt, steps=None, inlets=None, smooth=True)
-    imb8 = drainage_dt(im=im, dt=dt, steps=None, inlets=None, smooth=False)
-    imb9 = drainage_fft(im=im, dt=dt, steps=None, inlets=None, smooth=True)
-    imb10 = drainage_fft(im=im, dt=dt, steps=None, inlets=None, smooth=False)
+    imb7 = drainage_dt(im=im, dt=dt, steps=None, inlets=None)
+    imb9 = drainage_conv(im=im, dt=dt, steps=None, inlets=None)
 
     assert np.all(imb7.im_seq == imb9.im_seq)
-    assert np.all(imb8.im_seq == imb10.im_seq)
 
-    fig, ax = plt.subplots(2, 2)
-    ax[0][0].imshow(imb7.im_seq/im)
-    ax[0][0].set_title('dt, smooth')
-    ax[0][1].imshow(imb8.im_seq/im)
-    ax[0][1].set_title('dt, not-smooth')
-    ax[1][0].imshow(imb9.im_seq/im)
-    ax[1][0].set_title('fft, smooth')
-    ax[1][1].imshow(imb10.im_seq/im)
-    ax[1][1].set_title('fft, not-smooth')
+    fig, ax = plt.subplots(1, 2)
+    ax[0].imshow(imb7.im_seq/im)
+    ax[0].set_title('dt, smooth')
+    ax[1].imshow(imb9.im_seq/im)
+    ax[1].set_title('fft, smooth')

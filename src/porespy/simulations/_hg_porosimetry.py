@@ -51,9 +51,12 @@ if __name__ == "__main__":
     import porespy as ps
 
     i = 50591
+    # i = 41629  # Interesting case where plateaus overlap closely
+    # i = np.random.randint(0, 100000, 1)
+    print(i)
     voxel_size = 1e-5
     steps = 50
-    im = ps.generators.blobs([100, 100], porosity=0.6, seed=i)
+    im = ps.generators.blobs([100, 100, 100], porosity=0.6, seed=i)
     mip = hg_porosimetry(im, voxel_size=voxel_size, steps=steps)
 
     fig, ax = plt.subplots()
@@ -61,6 +64,6 @@ if __name__ == "__main__":
     ax.step(np.log10(mip.pc_extrusion), mip.snwp_extrusion, 'r.-', where='post')
     ax.set_ylim([0, 1.05])
 
-    fig, ax = plt.subplots(1, 2)
-    ax[0].imshow(drn.im_seq/im)
-    ax[1].imshow(imb.im_seq/im)
+    # fig, ax = plt.subplots(1, 2)
+    # ax[0].imshow(drn.im_seq/im)
+    # ax[1].imshow(imb.im_seq/im)

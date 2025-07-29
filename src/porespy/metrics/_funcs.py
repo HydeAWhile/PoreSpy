@@ -1275,10 +1275,10 @@ def pc_map_to_pc_curve(
     fix_ends : bool (default is `True`)
         A flag to control whether to adjust the endpoints of the curve or not.
         The default is `True`, which will put add a point at the beginning and end
-        the curves corresponding to residual and trapped invading phase saturations.
-        This makes the curves look better when plotted. Disabling this correction
-        ensures that the (Pc, Snwp) data match the values in the displacement maps,
-        which is useful for making animations for instance.
+        of the curves corresponding to residual and trapped invading phase
+        saturations. This makes the curves look better when plotted. Disabling this
+        correction ensures that the (Pc, Snwp) data match the values in the
+        displacement maps, which is useful for making animations for instance.
 
     Returns
     -------

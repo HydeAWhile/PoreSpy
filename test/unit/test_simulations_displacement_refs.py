@@ -24,17 +24,17 @@ class TestDisplacementRefs():
             inlets=self.inlets,
             smooth=smooth,
         )
-        drn['fft'] = ps.simulations.drainage_fft(
+        drn['fft'] = ps.simulations.drainage_conv(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
         )
-        drn['dsi'] = ps.simulations.drainage_dsi(
+        drn['dsi'] = ps.simulations.drainage_bf(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
         )
-        drn['dt_fft'] = ps.simulations.drainage_dt_fft(
+        drn['dt_fft'] = ps.simulations.drainage_dt_conv(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
@@ -66,17 +66,17 @@ class TestDisplacementRefs():
             inlets=self.inlets,
             smooth=smooth,
         )
-        drn['fft'] = ps.simulations.drainage_fft(
+        drn['fft'] = ps.simulations.drainage_conv(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
         )
-        drn['dsi'] = ps.simulations.drainage_dsi(
+        drn['dsi'] = ps.simulations.drainage_bf(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
         )
-        drn['dt_fft'] = ps.simulations.drainage_dt_fft(
+        drn['dt_fft'] = ps.simulations.drainage_dt_conv(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
@@ -108,17 +108,17 @@ class TestDisplacementRefs():
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        drn['fft'] = ps.simulations.drainage_fft(
+        drn['fft'] = ps.simulations.drainage_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        drn['dsi'] = ps.simulations.drainage_dsi(
+        drn['dsi'] = ps.simulations.drainage_bf(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        drn['dt_fft'] = ps.simulations.drainage_dt_fft(
+        drn['dt_fft'] = ps.simulations.drainage_dt_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
@@ -150,17 +150,17 @@ class TestDisplacementRefs():
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        drn['fft'] = ps.simulations.drainage_fft(
+        drn['fft'] = ps.simulations.drainage_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        drn['dsi'] = ps.simulations.drainage_dsi(
+        drn['dsi'] = ps.simulations.drainage_bf(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        drn['dt_fft'] = ps.simulations.drainage_dt_fft(
+        drn['dt_fft'] = ps.simulations.drainage_dt_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
@@ -193,19 +193,19 @@ class TestDisplacementRefs():
             outlets=self.outlets,
             smooth=smooth,
         )
-        drn['fft'] = ps.simulations.drainage_fft(
+        drn['fft'] = ps.simulations.drainage_conv(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
             smooth=smooth,
         )
-        drn['dsi'] = ps.simulations.drainage_dsi(
+        drn['dsi'] = ps.simulations.drainage_bf(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
             smooth=smooth,
         )
-        drn['dt_fft'] = ps.simulations.drainage_dt_fft(
+        drn['dt_fft'] = ps.simulations.drainage_dt_conv(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
@@ -239,19 +239,19 @@ class TestDisplacementRefs():
             outlets=self.outlets,
             smooth=smooth,
         )
-        drn['fft'] = ps.simulations.drainage_fft(
+        drn['fft'] = ps.simulations.drainage_conv(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
             smooth=smooth,
         )
-        drn['dsi'] = ps.simulations.drainage_dsi(
+        drn['dsi'] = ps.simulations.drainage_bf(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
             smooth=smooth,
         )
-        drn['dt_fft'] = ps.simulations.drainage_dt_fft(
+        drn['dt_fft'] = ps.simulations.drainage_dt_conv(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
@@ -285,19 +285,19 @@ class TestDisplacementRefs():
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        drn['fft'] = ps.simulations.drainage_fft(
+        drn['fft'] = ps.simulations.drainage_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        drn['dsi'] = ps.simulations.drainage_dsi(
+        drn['dsi'] = ps.simulations.drainage_bf(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        drn['dt_fft'] = ps.simulations.drainage_dt_fft(
+        drn['dt_fft'] = ps.simulations.drainage_dt_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
@@ -331,19 +331,19 @@ class TestDisplacementRefs():
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        drn['fft'] = ps.simulations.drainage_fft(
+        drn['fft'] = ps.simulations.drainage_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        drn['dsi'] = ps.simulations.drainage_dsi(
+        drn['dsi'] = ps.simulations.drainage_bf(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        drn['dt_fft'] = ps.simulations.drainage_dt_fft(
+        drn['dt_fft'] = ps.simulations.drainage_dt_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
@@ -371,7 +371,7 @@ class TestDisplacementRefs():
     def test_imbibition_2D_no_trapping_smooth(self):
         imb = {}
         smooth = True
-        imb['dsi'] = ps.simulations.imbibition_dsi(
+        imb['dsi'] = ps.simulations.imbibition_bf(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
@@ -381,12 +381,12 @@ class TestDisplacementRefs():
             inlets=self.inlets,
             smooth=smooth,
         )
-        imb['fft'] = ps.simulations.imbibition_fft(
+        imb['fft'] = ps.simulations.imbibition_conv(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
         )
-        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+        imb['dt_fft'] = ps.simulations.imbibition_dt_conv(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
@@ -413,7 +413,7 @@ class TestDisplacementRefs():
     def test_imbibition_2D_no_trapping_not_smooth(self):
         imb = {}
         smooth = False
-        imb['dsi'] = ps.simulations.imbibition_dsi(
+        imb['dsi'] = ps.simulations.imbibition_bf(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
@@ -423,12 +423,12 @@ class TestDisplacementRefs():
             inlets=self.inlets,
             smooth=smooth,
         )
-        imb['fft'] = ps.simulations.imbibition_fft(
+        imb['fft'] = ps.simulations.imbibition_conv(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
         )
-        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+        imb['dt_fft'] = ps.simulations.imbibition_dt_conv(
             im=self.im,
             inlets=self.inlets,
             smooth=smooth,
@@ -455,7 +455,7 @@ class TestDisplacementRefs():
     def test_imbibition_3D_no_trapping_smooth(self):
         imb = {}
         smooth = True
-        imb['dsi'] = ps.simulations.imbibition_dsi(
+        imb['dsi'] = ps.simulations.imbibition_bf(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
@@ -465,12 +465,12 @@ class TestDisplacementRefs():
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        imb['fft'] = ps.simulations.imbibition_fft(
+        imb['fft'] = ps.simulations.imbibition_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+        imb['dt_fft'] = ps.simulations.imbibition_dt_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
@@ -497,7 +497,7 @@ class TestDisplacementRefs():
     def test_imbibition_3D_no_trapping_not_smooth(self):
         imb = {}
         smooth = False
-        imb['dsi'] = ps.simulations.imbibition_dsi(
+        imb['dsi'] = ps.simulations.imbibition_bf(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
@@ -507,12 +507,12 @@ class TestDisplacementRefs():
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        imb['fft'] = ps.simulations.imbibition_fft(
+        imb['fft'] = ps.simulations.imbibition_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
         )
-        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+        imb['dt_fft'] = ps.simulations.imbibition_dt_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             smooth=smooth,
@@ -539,7 +539,7 @@ class TestDisplacementRefs():
     def test_imbibition_2D_w_trapping_smooth(self):
         imb = {}
         smooth = True
-        imb['dsi'] = ps.simulations.imbibition_dsi(
+        imb['dsi'] = ps.simulations.imbibition_bf(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
@@ -551,13 +551,13 @@ class TestDisplacementRefs():
             outlets=self.outlets,
             smooth=smooth,
         )
-        imb['fft'] = ps.simulations.imbibition_fft(
+        imb['fft'] = ps.simulations.imbibition_conv(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
             smooth=smooth,
         )
-        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+        imb['dt_fft'] = ps.simulations.imbibition_dt_conv(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
@@ -585,7 +585,7 @@ class TestDisplacementRefs():
     def test_imbibition_2D_w_trapping_not_smooth(self):
         imb = {}
         smooth = False
-        imb['dsi'] = ps.simulations.imbibition_dsi(
+        imb['dsi'] = ps.simulations.imbibition_bf(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
@@ -597,13 +597,13 @@ class TestDisplacementRefs():
             outlets=self.outlets,
             smooth=smooth,
         )
-        imb['fft'] = ps.simulations.imbibition_fft(
+        imb['fft'] = ps.simulations.imbibition_conv(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
             smooth=smooth,
         )
-        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+        imb['dt_fft'] = ps.simulations.imbibition_dt_conv(
             im=self.im,
             inlets=self.inlets,
             outlets=self.outlets,
@@ -631,7 +631,7 @@ class TestDisplacementRefs():
     def test_imbibition_3D_w_trapping_smooth(self):
         imb = {}
         smooth = True
-        imb['dsi'] = ps.simulations.imbibition_dsi(
+        imb['dsi'] = ps.simulations.imbibition_bf(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
@@ -643,13 +643,13 @@ class TestDisplacementRefs():
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        imb['fft'] = ps.simulations.imbibition_fft(
+        imb['fft'] = ps.simulations.imbibition_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+        imb['dt_fft'] = ps.simulations.imbibition_dt_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
@@ -677,7 +677,7 @@ class TestDisplacementRefs():
     def test_imbibition_3D_w_trapping_not_smooth(self):
         imb = {}
         smooth = False
-        imb['dsi'] = ps.simulations.imbibition_dsi(
+        imb['dsi'] = ps.simulations.imbibition_bf(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
@@ -689,13 +689,13 @@ class TestDisplacementRefs():
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        imb['fft'] = ps.simulations.imbibition_fft(
+        imb['fft'] = ps.simulations.imbibition_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,
             smooth=smooth,
         )
-        imb['dt_fft'] = ps.simulations.imbibition_dt_fft(
+        imb['dt_fft'] = ps.simulations.imbibition_dt_conv(
             im=self.im3D,
             inlets=self.inlets3D,
             outlets=self.outlets3D,

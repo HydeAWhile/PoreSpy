@@ -43,7 +43,6 @@ def imbibition_dsi(
     outlets=None,
     dt=None,
     steps=None,
-    smooth=True,
 ):
     r"""
     Performs a distance transform based imbibition simulation using direct sphere
@@ -72,9 +71,6 @@ def imbibition_dsi(
         between 1 and the maximum size are used. A `tuple` is treated as the start
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
-    smooth : boolean
-        If `True` (default) then the spheres are drawn without any single voxel
-        protrusions on the faces.
 
     Returns
     -------
@@ -102,19 +98,14 @@ def imbibition_dsi(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    dt_int = dt.astype(int)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=False)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False, pad=(1, 1))
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        if smooth:
-            seeds = dt >= r
-            edges = dt_int == r
-        else:
-            seeds = dt > r
-            edges = (dt > r)*(dt_int <= (r + 1))
+        seeds = dt > r  # Perform erosion using dt
+        edges = seeds*(dt <= (r + 1))  # Find edges to reduce insertion sites
         coords = np.vstack(np.where(edges))
         nwp.fill(False)
         if coords.size > 0:
@@ -123,12 +114,12 @@ def imbibition_dsi(
                 coords=coords,
                 r=int(r),
                 v=True,
-                smooth=smooth,
+                smooth=False,
             )
         nwp[seeds] = True
         wp = (~nwp)*im
         if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets)
+            wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
@@ -155,7 +146,6 @@ def imbibition_dt_fft(
     outlets=None,
     dt=None,
     steps=None,
-    smooth=True,
 ):
     r"""
     Performs a distance transform based imbibition simulation using distance
@@ -185,9 +175,6 @@ def imbibition_dt_fft(
         between 1 and the maximum size are used. A `tuple` is treated as the start
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
-    smooth : boolean
-        If ``True`` (default) then the spheres are drawn without any single voxel
-        protrusions on the faces.
 
     Returns
     -------
@@ -197,9 +184,9 @@ def imbibition_dt_fft(
         =========== ===========================================================
         Attribute   Description
         =========== ===========================================================
-        ``im_seq``  The sequence map indicating the sequence or step number at
+        `im_seq`    The sequence map indicating the sequence or step number at
                     which each voxel was first invaded.
-        ``im_size`` The size map indicating the size of the sphere being drawn
+        `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
         =========== ===========================================================
 
@@ -211,19 +198,19 @@ def imbibition_dt_fft(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=False)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False, pad=(1, 1))
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt > r
         # Perform dilation using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=smooth)
+        se = ps_round(r, ndim=im.ndim, smooth=False)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
         # Trimming disconnected wetting phase
         if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets)
+            wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
         # TODO: Not sure this residual code works
         # if residual is not None:
         #     blobs = trim_disconnected_voxels(residual, inlets=wp)
@@ -260,7 +247,6 @@ def imbibition_dt(
     outlets=None,
     dt=None,
     steps=None,
-    smooth=True,
 ):
     r"""
     Performs a distance transform based imbibition simulation using distance
@@ -290,9 +276,6 @@ def imbibition_dt(
         between 1 and the maximum size are used. A `tuple` is treated as the start
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
-    smooth : boolean
-        If `True` (default) then the spheres are drawn without any single voxel
-        protrusions on the faces.
 
     Returns
     -------
@@ -302,10 +285,10 @@ def imbibition_dt(
         ========== ============================================================
         Attribute  Description
         ========== ============================================================
-        im_seq     A numpy array with each voxel value indicating the sequence
+        `im_seq`   A numpy array with each voxel value indicating the sequence
                    at which it was invaded.  Values of -1 indicate that it was
                    not invaded.
-        im_size    A numpy array with each voxel value indicating the radius of
+        `im_size`  A numpy array with each voxel value indicating the radius of
                    spheres being inserted when it was invaded.
         ========== ============================================================
 
@@ -323,16 +306,14 @@ def imbibition_dt(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        # seeds = ~(dt <= r)
-        # seeds = seeds*im
-        seeds = dt >= r
+        seeds = dt > r
         # Perform dilation using dt
         tmp = edt(~seeds)
-        wp = ~(tmp < r) if smooth else ~(tmp <= r)
-        wp[~im] = 0
+        wp = ~(tmp <= r)
+        wp[~im] = False
         # Trimming disconnected wetting phase
         if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets)
+            wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
         # TODO: Not sure this residual code works
         # if residual is not None:
         #     blobs = trim_disconnected_voxels(residual, inlets=wp)
@@ -369,7 +350,6 @@ def imbibition_fft(
     outlets=None,
     dt=None,
     steps=None,
-    smooth=True,
 ):
     r"""
     Performs a distance transform based imbibition simulation using fft-based
@@ -398,9 +378,6 @@ def imbibition_fft(
         between 1 and the maximum size are used. A `tuple` is treated as the start
         and stop of the integer values. A `list` or `ndarray` is used directly. If
         `None` (default) then each unique value in the distance transform is used.
-    smooth : boolean
-        If `True` (default) then the spheres are drawn without any single voxel
-        protrusions on the faces.
 
     Returns
     -------
@@ -410,29 +387,29 @@ def imbibition_fft(
         =========== ===========================================================
         Attribute   Description
         =========== ===========================================================
-        ``im_seq``  The sequence map indicating the sequence or step number at
+        `im_seq`    The sequence map indicating the sequence or step number at
                     which each voxels was first invaded.
-        ``im_size`` The size map indicating the size of the sphere being drawn
+        `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
         =========== ===========================================================
     """
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=False)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False, pad=(1, 1))
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        # Perform erosion using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=smooth)
+        # Perform erosion using convolution (by dilating the solid phase)
+        se = ps_round(r, ndim=im.ndim, smooth=False)
         seeds = ~fftmorphology(~im, se, mode='dilation')
         # Perform dilation using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=smooth)
+        se = ps_round(r, ndim=im.ndim, smooth=False)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
         # Trimming disconnected wetting phase
         if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets)
+            wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
         # TODO: Not sure this residual code works
         # if residual is not None:
         #     blobs = trim_disconnected_voxels(residual, inlets=wp)
@@ -484,22 +461,22 @@ def imbibition(
     pc : ndarray
         An array containing precomputed capillary pressure values in each
         voxel. This can include gravity effects or not. This can be generated
-        by ``capillary_transform``. If not provided then `2/dt` is used.
+        by `capillary_transform`. If not provided then `2/dt` is used.
     dt : ndarray (optional)
-        The distance transform of ``im``.  If not provided it will be
+        The distance transform of `im`.  If not provided it will be
         calculated, so supplying it saves time.
     inlets : ndarray
-        An image the same shape as ``im`` with ``True`` values indicating the
-        wetting fluid inlet(s).  If ``None`` then the wetting film is able to
+        An image the same shape as `im` with `True` values indicating the
+        wetting fluid inlet(s).  If `None` then the wetting film is able to
         appear anywhere within the domain.
     residual : ndarray, optional
-        A boolean mask the same shape as ``im`` with ``True`` values
+        A boolean mask the same shape as `im` with `True` values
         indicating to locations of residual wetting phase.
     steps : int or array_like (default = 25)
-        The range of pressures to apply. If an integer is given
-        then steps will be created between the lowest and highest pressures
-        in ``pc``. If a list is given, each value in the list is used
-        directly in order.
+        The range of pressures to apply. If an integer is given then logarithmically
+        spaced steps will be created between the lowest and highest pressures in
+        `pc`. If a `list` is given, each value in the list is used directly, in
+        order.
     min_size : int
         Any clusters of trapped voxels smaller than this size will be set to not
         trapped. This argument is only used if `outlets` is given. This is useful
@@ -509,9 +486,9 @@ def imbibition(
         but a value of 3 or 4 is recommended to activate this adjustment.
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
-        element used to determine voxel connectivity.  The default is `'min'` which
-        imposes the strictest criteria, so that voxels must share a face to be
-        considered connected.
+        element used to determine voxel connectivity when assessing trapping. The
+        default is `'min'` which imposes the strictest criteria, so that voxels
+        must share a face to be considered connected.
 
     Returns
     -------
@@ -540,9 +517,9 @@ def imbibition(
     Notes
     -----
     The simulation proceeds as though the non-wetting phase pressure is very
-    high and is slowly lowered. Then imbibition occurs into the smallest
-    accessible regions at each step. Closed or inaccessible pores are
-    assumed to be filled with wetting phase.
+    high and is incrementally lowered. Then imbibition occurs into the smallest
+    accessible regions at each step. Closed or inaccessible pores are assumed
+    to be filled with wetting phase.
 
     Examples
     --------
@@ -560,44 +537,42 @@ def imbibition(
         pc = 2/dt
 
     pc = np.copy(pc)
-    pc[~im] = 0  # Remove any infs or nans from pc computation
+    pc[~im] = 0  # Set solid to 0 to remove inf and nan
 
-    if isinstance(steps, int):
-        mask = np.isfinite(pc)*im
-        Ps = np.logspace(
-            np.log10(pc[mask].max()*1.05),
-            np.log10(pc[mask].min()*0.95),
-            steps,
-        )
-    elif steps is None:
-        Ps = np.unique(pc[im])[::-1]
-    else:
-        Ps = np.unique(steps)[::-1]  # To ensure they are in descending order
+    # Generate pressure steps
+    Ps = parse_steps(
+        steps=steps,
+        vals=pc,
+        mask=im,
+        descending=True,
+        log=True,
+        pad=(1, 1),
+    )
 
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=int)
+    nwp_mask = np.zeros_like(im, dtype=bool)
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
-        # This can be made faster if I find a way to get only seeds on edge without
-        # doing erosion on the next step
         invadable = (~(pc >= P))*im
         # Using FFT-based erosion to find edges.  When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
-        # that need to be inserted.
+        # that need to be inserted. It might be possible to find these edges
+        # a different way that is faster, like is done in the drainage function.
         edges = (~erode(invadable, r=1, smooth=False, method='conv'))*invadable
-        nwp_mask = np.zeros_like(im, dtype=bool)
+        nwp_mask.fill(False)
         if np.any(edges):
             coords = np.where(edges)
-            radii = dt[coords].astype(int) + 1  # I added this +1 as a hack
+            radii = dt[coords].astype(int)
             nwp_mask = _insert_disks_at_points_parallel(
                 im=nwp_mask,
                 coords=np.vstack(coords),
                 radii=radii,
                 v=True,
-                smooth=True,
+                smooth=False,
                 overwrite=True,
             )
             nwp_mask += invadable
@@ -648,6 +623,7 @@ def imbibition(
     results = Results()
     results.im_snwp = satn
     results.im_seq = im_seq
+    results.im_size = im_size
     results.im_pc = im_pc
     results.im_trapped = trapped
 
@@ -714,10 +690,9 @@ if __name__ == '__main__':
     cm.set_over('grey')
 
     i = np.random.randint(1, 100000)  # bad: 38364, good: 65270, 71698
-    i = 50591
-    # i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
-    # i = 38364
-    print(i)
+    i = 50591  # Trapping of invading phase is unphysical
+    i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
+    i = 71698
     im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
     im = ps.filters.fill_invalid_pores(im)
 
@@ -787,26 +762,26 @@ if __name__ == '__main__':
 
 
     # %%
-    i = 50591
-    voxel_size = 1e-5
-    steps = 50
-    im = ps.generators.blobs([100, 100], porosity=0.6, seed=1)
-    dt = edt(im).astype(int)
-    steps = ps.tools.parse_steps(steps=50, vals=dt, mask=im, pad=(1, 1))
-    imb7 = imbibition_dt(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
-    imb8 = imbibition_dt(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
-    imb9 = imbibition_fft(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
-    imb10 = imbibition_fft(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
+    # i = 50591
+    # voxel_size = 1e-5
+    # steps = 50
+    # im = ps.generators.blobs([100, 100], porosity=0.6, seed=1)
+    # dt = edt(im).astype(int)
+    # steps = ps.tools.parse_steps(steps=50, vals=dt, mask=im, pad=(1, 1))
+    # imb7 = imbibition_dt(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
+    # imb8 = imbibition_dt(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
+    # imb9 = imbibition_fft(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
+    # imb10 = imbibition_fft(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
 
-    # assert np.all(imb7.im_seq == imb9.im_seq)
-    # assert np.all(imb8.im_seq == imb10.im_seq)
+    # # assert np.all(imb7.im_seq == imb9.im_seq)
+    # # assert np.all(imb8.im_seq == imb10.im_seq)
 
-    fig, ax = plt.subplots(2, 2)
-    ax[0][0].imshow(imb7.im_seq/im)
-    ax[0][0].set_title('dt, smooth')
-    ax[0][1].imshow(imb8.im_seq/im)
-    ax[0][1].set_title('dt, not-smooth')
-    ax[1][0].imshow(imb9.im_seq/im)
-    ax[1][0].set_title('fft, smooth')
-    ax[1][1].imshow(imb10.im_seq/im)
-    ax[1][1].set_title('fft, not-smooth')
+    # fig, ax = plt.subplots(2, 2)
+    # ax[0][0].imshow(imb7.im_seq/im)
+    # ax[0][0].set_title('dt, smooth')
+    # ax[0][1].imshow(imb8.im_seq/im)
+    # ax[0][1].set_title('dt, not-smooth')
+    # ax[1][0].imshow(imb9.im_seq/im)
+    # ax[1][0].set_title('fft, smooth')
+    # ax[1][1].imshow(imb10.im_seq/im)
+    # ax[1][1].set_title('fft, not-smooth')
