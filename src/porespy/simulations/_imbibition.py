@@ -31,13 +31,13 @@ tqdm = get_tqdm()
 __all__ = [
     'imbibition',
     'imbibition_dt',
-    'imbibition_dt_fft',
-    'imbibition_fft',
-    'imbibition_dsi',
+    'imbibition_dt_conv',
+    'imbibition_conv',
+    'imbibition_bf',
 ]
 
 
-def imbibition_dsi(
+def imbibition_bf(
     im,
     inlets=None,
     outlets=None,
@@ -140,7 +140,7 @@ def imbibition_dsi(
     return results
 
 
-def imbibition_dt_fft(
+def imbibition_dt_conv(
     im,
     inlets=None,
     outlets=None,
@@ -309,7 +309,7 @@ def imbibition_dt(
         seeds = dt > r
         # Perform dilation using dt
         tmp = edt(~seeds)
-        wp = ~(tmp <= r)
+        wp = ~(tmp <=  r)
         wp[~im] = False
         # Trimming disconnected wetting phase
         if inlets is not None:
@@ -344,7 +344,7 @@ def imbibition_dt(
     return results
 
 
-def imbibition_fft(
+def imbibition_conv(
     im,
     inlets=None,
     outlets=None,
@@ -770,8 +770,8 @@ if __name__ == '__main__':
     # steps = ps.tools.parse_steps(steps=50, vals=dt, mask=im, pad=(1, 1))
     # imb7 = imbibition_dt(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
     # imb8 = imbibition_dt(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
-    # imb9 = imbibition_fft(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
-    # imb10 = imbibition_fft(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
+    # imb9 = imbibition_conv(im=im, dt=dt, steps=steps, inlets=None, smooth=True)
+    # imb10 = imbibition_conv(im=im, dt=dt, steps=steps, inlets=None, smooth=False)
 
     # # assert np.all(imb7.im_seq == imb9.im_seq)
     # # assert np.all(imb8.im_seq == imb10.im_seq)

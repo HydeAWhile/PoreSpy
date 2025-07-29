@@ -185,18 +185,18 @@ class IBOPTest(GenericTest):
         steps = np.unique(dt[im])
 
         sizes1 = ps.simulations.imbibition_dt(im=im, dt=dt, steps=steps).im_size
-        sizes2 = ps.simulations.imbibition_fft(im=im, dt=dt, steps=steps).im_size
-        sizes3 = ps.simulations.imbibition_dsi(im=im, dt=dt, steps=steps).im_size
-        sizes4 = ps.simulations.imbibition_dt_fft(im=im, dt=dt, steps=steps).im_size
+        sizes2 = ps.simulations.imbibition_conv(im=im, dt=dt, steps=steps).im_size
+        sizes3 = ps.simulations.imbibition_bf(im=im, dt=dt, steps=steps).im_size
+        sizes4 = ps.simulations.imbibition_dt_conv(im=im, dt=dt, steps=steps).im_size
         assert np.all(sizes1 == sizes2)
         assert np.all(sizes1 == sizes3)
         assert np.all(sizes1 == sizes4)
         plt.imshow(sizes1 - sizes2)
 
         seq1 = ps.simulations.imbibition_dt(im=im, dt=dt, steps=steps).im_seq
-        seq2 = ps.simulations.imbibition_fft(im=im, dt=dt, steps=steps).im_seq
-        seq3 = ps.simulations.imbibition_dsi(im=im, dt=dt, steps=steps).im_seq
-        seq4 = ps.simulations.imbibition_dt_fft(im=im, dt=dt, steps=steps).im_seq
+        seq2 = ps.simulations.imbibition_conv(im=im, dt=dt, steps=steps).im_seq
+        seq3 = ps.simulations.imbibition_bf(im=im, dt=dt, steps=steps).im_seq
+        seq4 = ps.simulations.imbibition_dt_conv(im=im, dt=dt, steps=steps).im_seq
         assert np.all(seq1 == seq2)
         assert np.all(seq1 == seq3)
         assert np.all(seq1 == seq4)
@@ -204,17 +204,17 @@ class IBOPTest(GenericTest):
         # Of if we specify integer steps
         steps = np.arange(1, 50)
         sizes1 = ps.simulations.imbibition_dt(im=im, steps=steps).im_size
-        sizes2 = ps.simulations.imbibition_fft(im=im, steps=steps).im_size
-        sizes3 = ps.simulations.imbibition_dsi(im=im, steps=steps).im_size
-        sizes4 = ps.simulations.imbibition_dt_fft(im=im, steps=steps).im_size
+        sizes2 = ps.simulations.imbibition_conv(im=im, steps=steps).im_size
+        sizes3 = ps.simulations.imbibition_bf(im=im, steps=steps).im_size
+        sizes4 = ps.simulations.imbibition_dt_conv(im=im, steps=steps).im_size
         assert np.all(sizes1 == sizes2)
         assert np.all(sizes1 == sizes3)
         assert np.all(sizes1 == sizes4)
 
         seq1 = ps.simulations.imbibition_dt(im=im, steps=steps).im_seq
-        seq2 = ps.simulations.imbibition_fft(im=im, steps=steps).im_seq
-        seq3 = ps.simulations.imbibition_dsi(im=im, steps=steps).im_seq
-        seq4 = ps.simulations.imbibition_dt_fft(im=im, steps=steps).im_seq
+        seq2 = ps.simulations.imbibition_conv(im=im, steps=steps).im_seq
+        seq3 = ps.simulations.imbibition_bf(im=im, steps=steps).im_seq
+        seq4 = ps.simulations.imbibition_dt_conv(im=im, steps=steps).im_seq
         assert np.all(seq1 == seq2)
         assert np.all(seq1 == seq3)
         assert np.all(seq1 == seq4)
@@ -236,11 +236,11 @@ class IBOPTest(GenericTest):
 
         sizes1 = ps.simulations.imbibition_dt(
             im=im, dt=dt, inlets=faces, steps=steps).im_size
-        sizes2 = ps.simulations.imbibition_fft(
+        sizes2 = ps.simulations.imbibition_conv(
             im=im, dt=dt, inlets=faces, steps=steps).im_size
-        sizes3 = ps.simulations.imbibition_dsi(
+        sizes3 = ps.simulations.imbibition_bf(
             im=im, dt=dt, inlets=faces, steps=steps).im_size
-        sizes4 = ps.simulations.imbibition_dt_fft(
+        sizes4 = ps.simulations.imbibition_dt_conv(
             im=im, dt=dt, inlets=faces, steps=steps).im_size
         assert np.all(sizes1 == sizes2)
         assert np.all(sizes1 == sizes3)
@@ -248,11 +248,11 @@ class IBOPTest(GenericTest):
 
         seq1 = ps.simulations.imbibition_dt(
             im=im, dt=dt, inlets=faces, steps=steps).im_seq
-        seq2 = ps.simulations.imbibition_fft(
+        seq2 = ps.simulations.imbibition_conv(
             im=im, dt=dt, inlets=faces, steps=steps).im_seq
-        seq3 = ps.simulations.imbibition_dsi(
+        seq3 = ps.simulations.imbibition_bf(
             im=im, dt=dt, inlets=faces, steps=steps).im_seq
-        seq4 = ps.simulations.imbibition_dt_fft(
+        seq4 = ps.simulations.imbibition_dt_conv(
             im=im, dt=dt, inlets=faces, steps=steps).im_seq
         assert np.all(seq1 == seq2)
         assert np.all(seq1 == seq3)
