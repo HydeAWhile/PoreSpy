@@ -11,6 +11,8 @@ from porespy.filters import (
     find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_voxels,
+    dilate,
+    erode,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
@@ -43,6 +45,7 @@ def imbibition_bf(
     outlets=None,
     dt=None,
     steps=None,
+    smooth=False,
 ):
     r"""
     Performs a distance transform based imbibition simulation using direct sphere
@@ -104,8 +107,9 @@ def imbibition_bf(
     nwp = np.zeros_like(im, dtype=bool)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt > r  # Perform erosion using dt
-        edges = seeds*(dt <= (r + 1))  # Find edges to reduce insertion sites
+        # Perform erosion using dt method
+        seeds = dt >= r if smooth else dt > r
+        edges = seeds * (dt <= (r + 1))  # Find edges to reduce insertion sites
         coords = np.vstack(np.where(edges))
         nwp.fill(False)
         if coords.size > 0:
@@ -114,7 +118,7 @@ def imbibition_bf(
                 coords=coords,
                 r=int(r),
                 v=True,
-                smooth=False,
+                smooth=smooth,
             )
         nwp[seeds] = True
         wp = (~nwp)*im
@@ -146,6 +150,7 @@ def imbibition_dt_conv(
     outlets=None,
     dt=None,
     steps=None,
+    smooth=False,
 ):
     r"""
     Performs a distance transform based imbibition simulation using distance
@@ -204,10 +209,105 @@ def imbibition_dt_conv(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        seeds = dt > r
+        seeds = dt >= r if smooth else dt > r
         # Perform dilation using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=False)
+        se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
+        # Trimming disconnected wetting phase
+        if inlets is not None:
+            wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
+        # TODO: Not sure this residual code works
+        # if residual is not None:
+        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
+        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
+        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
+        mask = wp*(im_seq == -1)
+        im_size[mask] = r
+        im_seq[mask] = i+1
+    # if residual is not None:
+    #     im_seq[im_seq > 0] += 1
+    #     im_seq[residual] = 1
+    #     im_size[residual] = np.inf
+    # Apply trapping as a post-processing step if outlets given
+    if outlets is not None:
+        trapped = find_trapped_clusters(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            conn='min',
+            method='labels',
+        )
+        im_seq[trapped] = -1
+        im_seq = make_contiguous(im_seq, mode='symmetric')
+        im_size[trapped] = -1
+    results = Results()
+    results.im_seq = im_seq*im
+    results.im_size = im_size*im
+    return results
+
+
+def imbibition_conv(
+    im,
+    inlets=None,
+    outlets=None,
+    dt=None,
+    steps=None,
+    smooth=False,
+):
+    r"""
+    Performs a distance transform based imbibition simulation using fft-based
+    convolution for both the erosion and dilation steps
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space on which to perform the simulation
+    inlets : ndarray (optional)
+        A boolean array with `True` values indicating the inlet locations for the
+        invading (wetting) fluid. If not provided then access limitations will
+        not be applied, meaning that the invading fluid can appear anywhere within
+        the domain.
+    outlets : ndarray (optional)
+        A boolean array with `True` values indicating the outlet locations through
+        which defending (non-wetting) phase would exit the domain. If not provided
+        then trapping of the non-wetting phase is ignored.
+    dt : ndarray, optional
+        The distance transform of the void space. This is optional, but providing
+        it if it is already available save some time. Also, it can be converted to
+        integer type or round to fewer decimal places to reduce the number of unique
+        sphere sizes to insert if `steps=None`.
+    steps : scalar or array_like
+        Controls which sphere sizes to invade. If an `int` then this many steps
+        between 1 and the maximum size are used. A `tuple` is treated as the start
+        and stop of the integer values. A `list` or `ndarray` is used directly. If
+        `None` (default) then each unique value in the distance transform is used.
+
+    Returns
+    -------
+    results : Dataclass-like object
+        An object with the following attributes:
+
+        =========== ===========================================================
+        Attribute   Description
+        =========== ===========================================================
+        `im_seq`    The sequence map indicating the sequence or step number at
+                    which each voxels was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
+                    when each voxel was first invaded.
+        =========== ===========================================================
+    """
+    im = np.array(im, dtype=bool)
+    if dt is None:
+        dt = edt(im)
+    bins = parse_steps(steps=steps, vals=dt[im], descending=False, pad=(1, 1))
+    im_seq = -np.ones_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        # Perform erosion using convolution (by dilating the solid phase)
+        seeds = erode(im=im, r=r, method='conv', smooth=smooth)
+        # Perform dilation using convolution
+        wp = im*~dilate(im=seeds, r=r, method='conv', smooth=smooth)
         # Trimming disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
@@ -247,6 +347,7 @@ def imbibition_dt(
     outlets=None,
     dt=None,
     steps=None,
+    smooth=True,
 ):
     r"""
     Performs a distance transform based imbibition simulation using distance
@@ -306,107 +407,11 @@ def imbibition_dt(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        seeds = dt > r
+        seeds = dt >= r if smooth else dt > r
         # Perform dilation using dt
         tmp = edt(~seeds)
-        wp = ~(tmp <=  r)
+        wp = ~(tmp < r) if smooth else ~(tmp <= r)
         wp[~im] = False
-        # Trimming disconnected wetting phase
-        if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
-        # TODO: Not sure this residual code works
-        # if residual is not None:
-        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
-        mask = wp*(im_seq == -1)
-        im_size[mask] = r
-        im_seq[mask] = i+1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = np.inf
-    # Apply trapping as a post-processing step if outlets given
-    if outlets is not None:
-        trapped = find_trapped_clusters(
-            im=im,
-            seq=im_seq,
-            outlets=outlets,
-            conn='min',
-            method='labels',
-        )
-        im_seq[trapped] = -1
-        im_seq = make_contiguous(im_seq, mode='symmetric')
-        im_size[trapped] = -1
-    results = Results()
-    results.im_seq = im_seq*im
-    results.im_size = im_size*im
-    return results
-
-
-def imbibition_conv(
-    im,
-    inlets=None,
-    outlets=None,
-    dt=None,
-    steps=None,
-):
-    r"""
-    Performs a distance transform based imbibition simulation using fft-based
-    convolution for both the erosion and dilation steps
-
-    Parameters
-    ----------
-    im : ndarray
-        The boolean image of the void space on which to perform the simulation
-    inlets : ndarray (optional)
-        A boolean array with `True` values indicating the inlet locations for the
-        invading (wetting) fluid. If not provided then access limitations will
-        not be applied, meaning that the invading fluid can appear anywhere within
-        the domain.
-    outlets : ndarray (optional)
-        A boolean array with `True` values indicating the outlet locations through
-        which defending (non-wetting) phase would exit the domain. If not provided
-        then trapping of the non-wetting phase is ignored.
-    dt : ndarray, optional
-        The distance transform of the void space. This is optional, but providing
-        it if it is already available save some time. Also, it can be converted to
-        integer type or round to fewer decimal places to reduce the number of unique
-        sphere sizes to insert if `steps=None`.
-    steps : scalar or array_like
-        Controls which sphere sizes to invade. If an `int` then this many steps
-        between 1 and the maximum size are used. A `tuple` is treated as the start
-        and stop of the integer values. A `list` or `ndarray` is used directly. If
-        `None` (default) then each unique value in the distance transform is used.
-
-    Returns
-    -------
-    results : Dataclass-like object
-        An object with the following attributes:
-
-        =========== ===========================================================
-        Attribute   Description
-        =========== ===========================================================
-        `im_seq`    The sequence map indicating the sequence or step number at
-                    which each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
-        =========== ===========================================================
-    """
-    im = np.array(im, dtype=bool)
-    if dt is None:
-        dt = edt(im)
-    bins = parse_steps(steps=steps, vals=dt[im], descending=False, pad=(1, 1))
-    im_seq = -np.ones_like(im, dtype=int)
-    im_size = np.zeros_like(im, dtype=float)
-    desc = inspect.currentframe().f_code.co_name  # Get current func name
-    for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        # Perform erosion using convolution (by dilating the solid phase)
-        se = ps_round(r, ndim=im.ndim, smooth=False)
-        seeds = ~fftmorphology(~im, se, mode='dilation')
-        # Perform dilation using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=False)
-        wp = im*~fftmorphology(seeds, se, mode='dilation')
         # Trimming disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
@@ -450,6 +455,7 @@ def imbibition(
     steps=25,
     min_size=0,
     conn='min',
+    smooth=False,
 ):
     r"""
     Performs an imbibition simulation using image-based sphere insertion
@@ -558,11 +564,12 @@ def imbibition(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         invadable = (~(pc >= P))*im
-        # Using FFT-based erosion to find edges.  When struct is small, this is
+        # Using FFT-based erosion to find edges. When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
         # that need to be inserted. It might be possible to find these edges
         # a different way that is faster, like is done in the drainage function.
-        edges = (~erode(invadable, r=1, smooth=False, method='conv'))*invadable
+        tmp = ~erode(invadable, r=1, smooth=False, method='conv')
+        edges = tmp*invadable
         nwp_mask.fill(False)
         if np.any(edges):
             coords = np.where(edges)
