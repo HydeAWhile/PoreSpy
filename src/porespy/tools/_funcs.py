@@ -59,7 +59,7 @@ tqdm = get_tqdm()
 settings = Settings()
 
 
-def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
+def parse_steps(steps, vals=None, mask=None, descending=True, log=False, pad=(0, 0)):
     r"""
     Generates an array of step sizes to iterate through for the displacement
     simulations
@@ -95,7 +95,7 @@ def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
     steps : ndarray
         Array of values spanning the desired start and stop limits
     """
-    if mask is not None:  # Apply mask to vals if given
+    if (mask is not None) and (vals is not None):  # Apply mask to vals if given
         vals = vals[mask]
 
     if steps is None:  # If steps is None, use ALL vals
@@ -115,8 +115,9 @@ def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
                 vals.max(),
                 steps,
             )
-    else:  # If steps are given directly then just sort them and return
+    else:  # If steps are given directly then just sort them
         bins = np.unique(steps)
+        pad = (0, 0)  # Remove padding if given
 
     if descending:
         bins = bins[-1::-1]
@@ -217,7 +218,7 @@ def get_slices_random(im, n=1000, lims=[10, 100], aspect=None):
 
 def get_slices_slabs(im, axis=0, span=50, step=None, mode='tile'):
     r"""
-    Generates a list of slice objects which can be used to obtain slabs of an image
+    Generates a list of `slice` objects which can be used to obtain slabs of an image
 
     Parameters
     ----------

@@ -352,6 +352,74 @@ class FilterTest():
         test = ps.filters.fftmorphology(im, strel=ball(3), mode='closing')
         assert np.all(truth == test)
 
+    def test_erode_2D_smooth(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = True
+        se = ps.tools.ps_round(r=r, ndim=im.ndim, smooth=smooth)
+        truth = spim.binary_erosion(im, structure=se, border_value=1)
+        test = ps.filters.erode(im=im, r=r, method='conv', smooth=smooth)
+        assert np.all(truth == test)
+
+    def test_erode_2D_not_smooth(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = False
+        se = ps.tools.ps_round(r=r, ndim=im.ndim, smooth=smooth)
+        truth = spim.binary_erosion(im, structure=se, border_value=1)
+        test = ps.filters.erode(im=im, r=r, method='conv', smooth=smooth)
+        assert np.all(truth == test)
+
+    def test_erode_2D_smooth_dt_vs_conv(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = True
+        test1 = ps.filters.erode(im=im, r=r, method='conv', smooth=smooth)
+        test2 = ps.filters.erode(im=im, r=r, method='dt', smooth=smooth)
+        assert np.all(test1 == test2)
+
+    def test_erode_2D_not_smooth_dt_vs_conv(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = False
+        test1 = ps.filters.erode(im=im, r=r, method='conv', smooth=smooth)
+        test2 = ps.filters.erode(im=im, r=r, method='dt', smooth=smooth)
+        assert np.all(test1 == test2)
+
+    def test_dilate_2D_smooth(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = True
+        se = ps.tools.ps_round(r=r, ndim=im.ndim, smooth=smooth)
+        truth = spim.binary_dilation(im, structure=se)
+        test = ps.filters.dilate(im=im, r=r, method='conv', smooth=smooth)
+        assert np.all(truth == test)
+
+    def test_dilate_2D_not_smooth(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = False
+        se = ps.tools.ps_round(r=r, ndim=im.ndim, smooth=smooth)
+        truth = spim.binary_dilation(im, structure=se)
+        test = ps.filters.dilate(im=im, r=r, method='conv', smooth=smooth)
+        assert np.all(truth == test)
+
+    def test_dilate_2D_smooth_dt_vs_conv(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = True
+        test1 = ps.filters.dilate(im=im, r=r, method='conv', smooth=smooth)
+        test2 = ps.filters.dilate(im=im, r=r, method='dt', smooth=smooth)
+        assert np.all(test1 == test2)
+
+    def test_dilate_2D_not_smooth_dt_vs_conv(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = False
+        test1 = ps.filters.dilate(im=im, r=r, method='conv', smooth=smooth)
+        test2 = ps.filters.dilate(im=im, r=r, method='dt', smooth=smooth)
+        assert np.all(test1 == test2)
+
     def test_reduce_peaks(self):
         im = ~ps.generators.lattice_spheres(shape=[50, 50], r=5, offset=3)
         peaks = ps.filters.reduce_peaks(im)

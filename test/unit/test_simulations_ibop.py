@@ -32,10 +32,10 @@ class IBOPTest(GenericTest):
         r1 = ps.simulations.drainage(im=self.im2D, inlets=inlets, steps=None)
         outlets = ps.generators.faces(shape=self.im2D.shape, outlet=0)
         r2 = ps.simulations.drainage(
-            im=self.im2D, inlets=inlets, outlets=outlets, steps=None
+            im=self.im2D, inlets=inlets, outlets=outlets, steps=None, smooth=False,
         )
         assert np.sum(r1.im_seq == -1) == 0
-        assert np.sum(r2.im_seq == -1) == 7073
+        assert np.sum(r2.im_seq == -1) == 7170
         temp = ps.filters.fill_invalid_pores(self.im2D)
         r3 = ps.simulations.drainage(im=temp, inlets=inlets, steps=None)
         assert np.sum(r3.im_seq == -1) == 0
@@ -54,45 +54,39 @@ class IBOPTest(GenericTest):
             shape=[100, 100],
             porosity=0.7,
             blobiness=1.5,
+            seed=0,
         )
 
-        # All methods are equivalent IF dt is integers
-        dt = edt(im).astype(int)
-        steps = np.unique(dt[im])
+        for smooth in [True, False]:
+            dt = edt(im)
+            # All methods are equivalent IF steps are integers
+            steps = np.unique(dt.astype(int)[im])
 
-        sizes1 = ps.simulations.drainage_dt(im=im, dt=dt, steps=steps).im_size
-        sizes2 = ps.simulations.drainage_conv(im=im, dt=dt, steps=steps).im_size
-        sizes3 = ps.simulations.drainage_bf(im=im, dt=dt, steps=steps).im_size
-        sizes4 = ps.simulations.drainage_dt_conv(im=im, dt=dt, steps=steps).im_size
-        assert np.all(sizes1 == sizes2)
-        assert np.all(sizes1 == sizes3)
-        assert np.all(sizes1 == sizes4)
+            sizes1 = ps.simulations.drainage_dt(
+                im=im, dt=dt, steps=steps, smooth=smooth).im_size
+            sizes2 = ps.simulations.drainage_conv(
+                im=im, dt=dt, steps=steps, smooth=smooth).im_size
+            sizes3 = ps.simulations.drainage_bf(
+                im=im, dt=dt, steps=steps, smooth=smooth).im_size
+            sizes4 = ps.simulations.drainage_dt_conv(
+                im=im, dt=dt, steps=steps, smooth=smooth).im_size
 
-        seq1 = ps.simulations.drainage_dt(im=im, dt=dt, steps=steps).im_seq
-        seq2 = ps.simulations.drainage_conv(im=im, dt=dt, steps=steps).im_seq
-        seq3 = ps.simulations.drainage_bf(im=im, dt=dt, steps=steps).im_seq
-        seq4 = ps.simulations.drainage_dt_conv(im=im, dt=dt, steps=steps).im_seq
-        assert np.all(seq1 == seq2)
-        assert np.all(seq1 == seq3)
-        assert np.all(seq1 == seq4)
+            assert np.all(sizes1 == sizes2)
+            assert np.all(sizes1 == sizes3)
+            assert np.all(sizes1 == sizes4)
 
-        # Or we can specify discrete steps
-        steps = np.arange(50, 1, -1)
-        sizes1 = ps.simulations.drainage_dt(im=im, steps=steps).im_size
-        sizes2 = ps.simulations.drainage_conv(im=im, steps=steps).im_size
-        sizes3 = ps.simulations.drainage_bf(im=im, steps=steps).im_size
-        sizes4 = ps.simulations.drainage_dt_conv(im=im, steps=steps).im_size
-        assert np.all(sizes1 == sizes2)
-        assert np.all(sizes1 == sizes3)
-        assert np.all(sizes1 == sizes4)
+            seq1 = ps.simulations.drainage_dt(
+                im=im, dt=dt, steps=steps, smooth=smooth).im_seq
+            seq2 = ps.simulations.drainage_conv(
+                im=im, dt=dt, steps=steps, smooth=smooth).im_seq
+            seq3 = ps.simulations.drainage_bf(
+                im=im, dt=dt, steps=steps, smooth=smooth).im_seq
+            seq4 = ps.simulations.drainage_dt_conv(
+                im=im, dt=dt, steps=steps, smooth=smooth).im_seq
 
-        seq1 = ps.simulations.drainage_dt(im=im, steps=steps).im_seq
-        seq2 = ps.simulations.drainage_conv(im=im, steps=steps).im_seq
-        seq3 = ps.simulations.drainage_bf(im=im, steps=steps).im_seq
-        seq4 = ps.simulations.drainage_dt_conv(im=im, steps=steps).im_seq
-        assert np.all(seq1 == seq2)
-        assert np.all(seq1 == seq3)
-        assert np.all(seq1 == seq4)
+            assert np.all(seq1 == seq2)
+            assert np.all(seq1 == seq3)
+            assert np.all(seq1 == seq4)
 
     def test_drainage_implementations_w_inlets(self):
         edt = ps.tools.get_edt()
@@ -102,62 +96,38 @@ class IBOPTest(GenericTest):
             blobiness=1.5,
         )
 
-        # All methods are equivalent IF dt is integers
-        dt = edt(im).astype(int)
-        steps = np.unique(dt[im])
+        dt = edt(im)
+        # All methods are equivalent IF steps are integers
+        steps = np.unique(dt.astype(int)[im])
         faces = ps.generators.borders(im.shape, mode='faces')
 
-        sizes1 = ps.simulations.drainage_dt(
-            im=im, dt=dt, inlets=faces, steps=steps).im_size
-        sizes2 = ps.simulations.drainage_conv(
-            im=im, dt=dt, inlets=faces, steps=steps).im_size
-        sizes3 = ps.simulations.drainage_bf(
-            im=im, dt=dt, inlets=faces, steps=steps).im_size
-        sizes4 = ps.simulations.drainage_dt_conv(
-            im=im, dt=dt, inlets=faces, steps=steps).im_size
-        assert np.all(sizes1 == sizes2)
-        assert np.all(sizes1 == sizes3)
-        assert np.all(sizes1 == sizes4)
+        for smooth in [True, False]:
 
-        seq1 = ps.simulations.drainage_dt(
-            im=im, dt=dt, inlets=faces, steps=steps).im_seq
-        seq2 = ps.simulations.drainage_conv(
-            im=im, dt=dt, inlets=faces, steps=steps).im_seq
-        seq3 = ps.simulations.drainage_bf(
-            im=im, dt=dt, inlets=faces, steps=steps).im_seq
-        seq4 = ps.simulations.drainage_dt_conv(
-            im=im, dt=dt, inlets=faces, steps=steps).im_seq
-        assert np.all(seq1 == seq2)
-        assert np.all(seq1 == seq3)
-        assert np.all(seq1 == seq4)
+            sizes1 = ps.simulations.drainage_dt(
+                im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_size
+            sizes2 = ps.simulations.drainage_conv(
+                im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_size
+            sizes3 = ps.simulations.drainage_bf(
+                im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_size
+            sizes4 = ps.simulations.drainage_dt_conv(
+                im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_size
+            assert np.all(sizes1 == sizes2)
+            assert np.all(sizes1 == sizes3)
+            assert np.all(sizes1 == sizes4)
 
-    def test_drainage_equals_drainage_dt(self):
-        edt = ps.tools.get_edt()
-        im = ps.generators.blobs(
-            shape=[100, 100],
-            porosity=0.7,
-            blobiness=1.5,
-            # seed=16,
-        )
-        im = ps.filters.fill_invalid_pores(im)
+            seq1 = ps.simulations.drainage_dt(
+                im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_seq
+            seq2 = ps.simulations.drainage_conv(
+                im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_seq
+            seq3 = ps.simulations.drainage_bf(
+                im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_seq
+            seq4 = ps.simulations.drainage_dt_conv(
+                im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_seq
+            assert np.all(seq1 == seq2)
+            assert np.all(seq1 == seq3)
+            assert np.all(seq1 == seq4)
 
-        # All methods are equivalent IF dt is integers
-        dt = edt(im).astype(int)
-        pc = 2/dt
-        pc[~im] = 0
-        steps = np.unique(dt[im])
-
-        faces = ps.generators.borders(im.shape, mode='faces')
-
-        sizes1 = ps.simulations.drainage_dt(
-            im=im, dt=dt, inlets=faces, steps=steps).im_size
-        sizes2 = ps.simulations.drainage(
-            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1]).im_size
-        # There are sometimes a few pixels that don't agree, not sure why yet.
-        # Use seed=16 in blobs to see
-        assert np.sum(sizes1 != sizes2) < 10
-
-    def test_drainage_bf_w_float_dt(self):
+    def test_drainage_equals_drainage_dt_smooth(self):
         edt = ps.tools.get_edt()
         im = ps.generators.blobs(
             shape=[100, 100],
@@ -165,11 +135,67 @@ class IBOPTest(GenericTest):
             blobiness=1.5,
             seed=16,
         )
+        im = ps.filters.fill_invalid_pores(im)
 
         dt = edt(im)
-        sizes1 = ps.simulations.drainage_bf(
-            im=im, dt=dt, steps=None).im_size
-        # plt.imshow(sizes1)
+        pc = 2/dt
+        pc[~im] = 0
+        steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int), pad=(1, 0))
+        steps[-1] = 0.1
+
+        faces = ps.generators.borders(im.shape, mode='faces')
+
+        sizes1 = ps.simulations.drainage_dt(
+            im=im, dt=dt, inlets=faces, steps=steps, smooth=True).im_size
+        sizes2 = ps.simulations.drainage(
+            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1], smooth=True).im_size
+        assert np.sum(sizes1 != sizes2) == 0
+
+        seq1 = ps.simulations.drainage_dt(
+            im=im, dt=dt, inlets=faces, steps=steps, smooth=True).im_seq
+        seq2 = ps.simulations.drainage(
+            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1], smooth=True).im_seq
+        assert np.sum(seq1 != seq2) == 0
+
+    def test_drainage_equals_drainage_dt_not_smooth(self):
+        edt = ps.tools.get_edt()
+        im = ps.generators.blobs(
+            shape=[100, 100],
+            porosity=0.7,
+            blobiness=1.5,
+            seed=16,
+        )
+        im = ps.filters.fill_invalid_pores(im)
+
+        dt = edt(im)
+        pc = 2/dt
+        pc[~im] = 0
+        steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int), pad=(1, 0))
+        steps[-1] = 0.1
+
+        faces = ps.generators.borders(im.shape, mode='faces')
+
+        sizes1 = ps.simulations.drainage_dt(
+            im=im, dt=dt, inlets=faces, steps=steps, smooth=False).im_size
+        sizes2 = ps.simulations.drainage(
+            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1], smooth=False).im_size
+        fig, ax = plt.subplots(1, 2)
+        ax[0].imshow(sizes1)
+        ax[0].set_title('drainge_dt')
+        ax[1].imshow(sizes2)
+        ax[1].set_title('drainge')
+        assert np.sum(sizes1 != sizes2) == 0
+
+        seq1 = ps.simulations.drainage_dt(
+            im=im, dt=dt, inlets=faces, steps=steps, smooth=False).im_seq
+        seq2 = ps.simulations.drainage(
+            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1], smooth=False).im_seq
+        fig, ax = plt.subplots(1, 2)
+        ax[0].imshow(sizes1)
+        ax[0].set_title('drainge_dt')
+        ax[1].imshow(sizes2)
+        ax[1].set_title('drainge')
+        assert np.sum(seq1 != seq2) == 0
 
     def test_imbibition_implementations_no_inlets(self):
         edt = ps.tools.get_edt()
@@ -181,8 +207,8 @@ class IBOPTest(GenericTest):
         )
 
         # All methods are equivalent IF dt is integers
-        dt = edt(im).astype(int)
-        steps = np.unique(dt[im])
+        dt = edt(im)
+        steps = np.unique(dt[im].astype(int))
 
         sizes1 = ps.simulations.imbibition_dt(im=im, dt=dt, steps=steps).im_size
         sizes2 = ps.simulations.imbibition_conv(im=im, dt=dt, steps=steps).im_size
@@ -191,7 +217,6 @@ class IBOPTest(GenericTest):
         assert np.all(sizes1 == sizes2)
         assert np.all(sizes1 == sizes3)
         assert np.all(sizes1 == sizes4)
-        plt.imshow(sizes1 - sizes2)
 
         seq1 = ps.simulations.imbibition_dt(im=im, dt=dt, steps=steps).im_seq
         seq2 = ps.simulations.imbibition_conv(im=im, dt=dt, steps=steps).im_seq
@@ -229,8 +254,8 @@ class IBOPTest(GenericTest):
         )
 
         # All methods are equivalent IF dt is integers
-        dt = edt(im).astype(int)
-        steps = np.unique(dt[im])
+        dt = edt(im)
+        steps = np.unique(dt[im].astype(int))
 
         faces = ps.generators.borders(im.shape, mode='faces')
 
@@ -268,9 +293,9 @@ class IBOPTest(GenericTest):
         )
         im = ps.filters.fill_invalid_pores(im)
 
-        # All methods are equivalent IF dt is integers
-        dt = edt(im).astype(int)
-        steps = np.unique(dt[im])
+        # All methods are equivalent IF steps integers
+        dt = edt(im)
+        steps = np.unique(dt[im].astype(int))
 
         faces = ps.generators.borders(im.shape, mode='faces')
 
@@ -279,7 +304,6 @@ class IBOPTest(GenericTest):
         seq2 = ps.simulations.imbibition(
             im=im, dt=dt, inlets=faces, steps=(2/steps)).im_size
 
-        plt.imshow(seq1 - seq2)
         assert np.all(seq1 == seq2)
 
 

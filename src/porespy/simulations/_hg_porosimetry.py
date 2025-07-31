@@ -51,7 +51,6 @@ if __name__ == "__main__":
     import porespy as ps
 
     i = 50591
-    # i = 41629  # Interesting case where plateaus overlap closely
     # i = np.random.randint(0, 100000, 1)
     print(i)
     voxel_size = 1e-5

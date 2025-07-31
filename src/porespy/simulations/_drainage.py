@@ -5,11 +5,12 @@ import numpy as np
 import numpy.typing as npt
 
 from porespy.filters import (
-    fftmorphology,
     find_small_clusters,
     find_trapped_clusters,
     pc_to_satn,
     trim_disconnected_voxels,
+    dilate,
+    erode,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
@@ -22,7 +23,6 @@ from porespy.tools import (
     get_tqdm,
     make_contiguous,
     parse_steps,
-    ps_round,
     settings,
 )
 
@@ -85,16 +85,16 @@ def drainage_bf(
         =========== ================================================================
         Attribute   Description
         =========== ================================================================
-        ``im_seq``  The sequence map indicating the sequence or step number at which
-                    each voxels was first invaded.
-        ``im_size`` The size map indicating the size of the sphere being drawn
+        `im_seq`    The sequence map indicating the tep number at which each voxels
+                    was first invaded.
+        `im_size`   The size map indicating the size of the sphere being drawn
                     when each voxel was first invaded.
         =========== ================================================================
 
     Notes
     -----
     The sphere insertion steps will be executed in parallel if
-    ``porespy.settings.ncores > 1``
+    `porespy.settings.ncores > 1`
     """
     if settings.ncores > 1:
         func = _insert_disk_at_points_parallel
@@ -109,7 +109,7 @@ def drainage_bf(
     nwp = np.zeros_like(im, dtype=bool)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt > r if smooth else dt >= r
+        seeds = dt >= r if smooth else dt > r
         edges = seeds * (dt <= (r + 1))
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
@@ -127,6 +127,7 @@ def drainage_bf(
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+
     if outlets is not None:
         trapped = find_trapped_clusters(
             im=im,
@@ -208,16 +209,16 @@ def drainage_dt_conv(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt > r if smooth else dt >= r
+        seeds = dt >= r if smooth else dt > r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
-        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
-        nwp = fftmorphology(seeds, se, "dilation")
+        nwp = dilate(im=seeds, r=r, method='conv', smooth=smooth)
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -294,17 +295,16 @@ def drainage_conv(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
-        seeds = ~fftmorphology(~im, se, "dilation")
+        seeds = erode(im=im, r=r, method='conv', smooth=smooth)
         if inlets is not None:
-            seeds = trim_disconnected_voxels(seeds, inlets=inlets)
+            seeds = trim_disconnected_voxels(seeds, inlets=inlets, conn='min')
         if not np.any(seeds):
             continue
-        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
-        nwp = fftmorphology(seeds, se, "dilation")
+        nwp = dilate(im=seeds, r=r, method='conv', smooth=smooth)
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -369,7 +369,7 @@ def drainage_dt(
         Attribute  Description
         ========== =================================================================
         im_seq     A numpy array with each voxel value indicating the sequence
-                   at which it was invaded.  Values of -1 indicate that it was
+                   at which it was invaded. Values of -1 indicate that it was
                    not invaded.
         im_size    A numpy array with each voxel value indicating the radius of
                    spheres being inserted when it was invaded.
@@ -388,7 +388,7 @@ def drainage_dt(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt > r if smooth else dt >= r
+        seeds = dt >= r if smooth else dt > r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
@@ -407,6 +407,7 @@ def drainage_dt(
     #     im_seq[im_seq > 0] += 1
     #     im_seq[residual] = 1
     #     im_size[residual] = -np.inf
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -435,6 +436,7 @@ def drainage(
     steps: int = None,
     conn: Literal["min", "max"] = "min",
     min_size: int = 0,
+    smooth: bool = True,
 ):
     r"""
     Simulate drainage using image-based sphere insertion, optionally including
@@ -580,7 +582,8 @@ def drainage(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, p in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         # Find all locations in image invadable at current pressure
-        invadable = (pc <= p) * im  # Equivalent to erosion
+        # Equivalent to erosion
+        invadable = (pc <= p) if smooth else (pc < p)
         # Trim locations not connected to the inlets, if given
         if inlets is not None:
             invadable = trim_disconnected_voxels(
@@ -588,7 +591,7 @@ def drainage(
                 inlets=inlets,
                 conn=conn,
             )
-        # Dilate the erosion to find locations of non-wetting phase
+        # Dilate the erosion using brute-force to find locations of non-wetting phase
         temp = invadable * (~seeds)  # Isolate new locations to speed up inserting
         coords = np.where(temp)  # Find (i, j, k) coordinates of new locations
         radii = dt[coords]  # Extract sphere size to insert at each new location
@@ -598,7 +601,7 @@ def drainage(
             coords=np.vstack(coords),
             radii=radii.astype(int),
             v=True,
-            smooth=False,
+            smooth=smooth,
             overwrite=False,
         )
 
@@ -617,7 +620,7 @@ def drainage(
                         coords=np.vstack(coords),
                         radii=radii.astype(int),
                         v=True,
-                        smooth=True,
+                        smooth=smooth,
                         overwrite=False,
                     )
         mask = nwp_mask * (im_seq == 0) * im
