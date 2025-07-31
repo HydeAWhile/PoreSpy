@@ -54,11 +54,14 @@ def erode(
         An image the same size as `im` with the foreground eroded by the specified
         amount.
     """
-    from porespy.tools import settings
     if method == 'dt':
         if dt is None:
-            dt = edt(im, parallel=settings.ncores)
-        ero = dt >= r if smooth else dt > r
+            dt = edt(im)
+        if dt.dtype == int:
+            tmp = ~(dt <= r)
+        else:
+            tmp = dt >= r if smooth else dt > r
+        ero = tmp * im
     elif method.startswith('conv'):
         se = ps_round(r=r, ndim=im.ndim, smooth=smooth)
         ero = ~(fftconvolve(~im, se, mode='same') > 0.1)
@@ -106,11 +109,10 @@ def dilate(
         An image the same size as `im` with the foreground eroded by the specified
         amount.
     """
-    from porespy.tools import settings
     im = im == 1
     if method == 'dt':
         if dt is None:
-            dt = edt(~im, parallel=settings.ncores)
+            dt = edt(~im)
         dil = dt < r if smooth else dt <= r
         dil += im
     elif method.startswith('conv'):
@@ -121,27 +123,40 @@ def dilate(
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-
+    import numpy as np
     import porespy as ps
 
-    im = ps.generators.blobs([200, 200], porosity=0.6, seed=5)
+    edt = ps.tools.get_edt()
 
-    ero1 = erode(im, 5, method='dt').astype(int)
+    im = ps.generators.blobs([200, 200], porosity=0.6, seed=5)
+    dt = edt(im)
+
+    ero_smooth = erode(im=im, r=5, method='conv', smooth=True).astype(int)
+    ero_smooth[~im] = -1
+
+    ero1 = erode(im=im, r=5, dt=dt, method='dt', smooth=True).astype(int)
     ero1[~im] = -1
 
-    ero2 = erode(im, 5, method='conv').astype(int)
-    ero2[~im] = -1
+    ero_not_smooth = erode(im=im, r=5, method='conv', smooth=False).astype(int)
+    ero_not_smooth[~im] = -1
+
+    ero3 = erode(im=im, r=5, dt=dt, method='dt', smooth=False).astype(int)
+    ero3[~im] = -1
+
+    # fig, ax = plt.subplots(1, 2)
+    # ax[0].imshow(im)
+    # ax[1].imshow(dt)
 
     fig, ax = plt.subplots(2, 2)
-    ax[0][0].imshow(ero1)
-    ax[0][1].imshow(ero2)
+    ax[0][0].imshow(ero_smooth)
+    ax[0][0].set_title('Conv, Smooth')
+    ax[0][1].imshow(ero1)
+    ax[0][1].set_title('DT, float')
+    ax[1][0].imshow(ero_not_smooth)
+    ax[1][0].set_title('Conv, Not Smooth')
+    ax[1][1].imshow(ero3)
+    ax[1][1].set_title('DT, float')
 
-    ero1 = erode(im, 10, method='dt').astype(int)
-    dil1 = dilate(ero1, 10, method='dt').astype(int)
-    dil1[~im] = -1
 
-    dil2 = dilate(ero1, 10, method='conv').astype(int)
-    dil2[~im] = -1
-
-    ax[1][0].imshow(dil1)
-    ax[1][1].imshow(dil2)
+    assert np.all(ero_smooth == ero1)
+    assert np.all(ero_not_smooth == ero3)
