@@ -480,7 +480,7 @@ class FilterTest():
 
     def test_snow_partitioning_n_2D(self):
         im = ps.generators.blobs(
-            shape=[500, 500], porosity=0.494604, blobiness=1, seed=0, periodic=False,)
+            shape=[500, 500], porosity=0.494604, blobiness=1, seed=0, periodic=False)
         assert im.sum()/im.size == 0.494604
         snow = ps.filters.snow_partitioning_n(im + 1, r_max=4, sigma=0.4)
         assert np.amax(snow.regions) == 136
