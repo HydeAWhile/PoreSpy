@@ -563,7 +563,8 @@ def imbibition(
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
-        invadable = (~(pc >= P))*im
+        invadable = ~(pc >= P)
+        invadable[~im] = False
         # Using FFT-based erosion to find edges. When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
         # that need to be inserted. It might be possible to find these edges

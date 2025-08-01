@@ -16,6 +16,7 @@ from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     Results,
     _insert_disk_at_points,
+    _insert_disks_at_points,
     _insert_disk_at_points_parallel,
     _insert_disks_at_points_parallel,
     get_edt,
@@ -110,6 +111,7 @@ def drainage_bf(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         seeds = dt >= r if smooth else dt > r
+        seeds[~im] = False
         edges = seeds * (dt <= (r + 1))
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
@@ -125,7 +127,7 @@ def drainage_bf(
             )
         nwp[seeds] = True
         mask = nwp * (im_seq == -1)
-        im_size[mask] = r
+        im_size[mask] = max(r, 1)
         im_seq[mask] = i + 1
 
     if outlets is not None:
@@ -134,7 +136,7 @@ def drainage_bf(
             seq=im_seq,
             outlets=outlets,
             conn="min",
-            method="cluster",
+            method="labels",
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode="symmetric")
@@ -210,13 +212,14 @@ def drainage_dt_conv(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         seeds = dt >= r if smooth else dt > r
+        seeds[~im] = False
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
             continue
         nwp = dilate(im=seeds, r=r, method='conv', smooth=smooth)
         mask = nwp * (im_seq == -1)
-        im_size[mask] = r
+        im_size[mask] = max(r, 1)
         im_seq[mask] = i + 1
 
     # Apply trapping as a post-processing step if outlets given
@@ -226,7 +229,7 @@ def drainage_dt_conv(
             seq=im_seq,
             outlets=outlets,
             conn="min",
-            method="cluster",
+            method="labels",
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode="symmetric")
@@ -296,13 +299,14 @@ def drainage_conv(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         seeds = erode(im=im, r=r, method='conv', smooth=smooth)
+        seeds[~im] = False
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets, conn='min')
         if not np.any(seeds):
             continue
         nwp = dilate(im=seeds, r=r, method='conv', smooth=smooth)
         mask = nwp * (im_seq == -1)
-        im_size[mask] = r
+        im_size[mask] = max(r, 1)
         im_seq[mask] = i + 1
 
     # Apply trapping as a post-processing step if outlets given
@@ -312,7 +316,7 @@ def drainage_conv(
             seq=im_seq,
             outlets=outlets,
             conn="min",
-            method="cluster",
+            method="labels",
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode="symmetric")
@@ -389,8 +393,9 @@ def drainage_dt(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         seeds = dt >= r if smooth else dt > r
+        seeds[~im] = False
         if inlets is not None:
-            seeds = trim_disconnected_voxels(seeds, inlets=inlets)
+            seeds = trim_disconnected_voxels(seeds, inlets=inlets, conn='min')
         if not np.any(seeds):
             continue
         tmp = edt(~seeds)
@@ -401,7 +406,7 @@ def drainage_dt(
         #     seeds = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
         #     nwp = edt(~seeds) < r
         mask = nwp * (im_seq == -1)
-        im_size[mask] = r
+        im_size[mask] = max(r, 1)
         im_seq[mask] = i + 1
     # if residual is not None:
     #     im_seq[im_seq > 0] += 1
@@ -415,7 +420,7 @@ def drainage_dt(
             seq=im_seq,
             outlets=outlets,
             conn="min",
-            method="cluster",
+            method="labels",
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode="symmetric")
@@ -584,6 +589,7 @@ def drainage(
         # Find all locations in image invadable at current pressure
         # Equivalent to erosion
         invadable = (pc <= p) if smooth else (pc < p)
+        invadable[~im] = False
         # Trim locations not connected to the inlets, if given
         if inlets is not None:
             invadable = trim_disconnected_voxels(
@@ -595,34 +601,41 @@ def drainage(
         temp = invadable * (~seeds)  # Isolate new locations to speed up inserting
         coords = np.where(temp)  # Find (i, j, k) coordinates of new locations
         radii = dt[coords]  # Extract sphere size to insert at each new location
-        # Insert spheres of given radii at new locations
-        nwp_mask = _insert_disks_at_points_parallel(
-            im=nwp_mask,
-            coords=np.vstack(coords),
-            radii=radii.astype(int),
-            v=True,
-            smooth=smooth,
-            overwrite=False,
-        )
+        if len(coords) > 0:
+            # Insert spheres of given radii at new locations
+            nwp_mask.fill(False)
+            nwp_mask = _insert_disks_at_points_parallel(
+                im=nwp_mask,
+                coords=np.vstack(coords),
+                radii=radii.astype(int),
+                v=True,
+                smooth=smooth,
+                overwrite=False,
+            )
 
         # Deal with impact of residual, if present
         if residual is not None:
             if np.any(nwp_mask):
                 # Find invadable pixels connected to surviving residual
-                temp = trim_disconnected_voxels(residual, nwp_mask, conn=conn) * ~nwp_mask
+                temp = trim_disconnected_voxels(
+                    residual,
+                    nwp_mask,
+                    conn=conn,
+                ) * ~nwp_mask
                 if np.any(temp):
                     # Trim invadable pixels not connected to residual
                     invadable = trim_disconnected_voxels(invadable, temp, conn=conn)
                     coords = np.where(invadable)
                     radii = dt[coords].astype(int)
-                    nwp_mask = _insert_disks_at_points_parallel(
-                        im=nwp_mask,
-                        coords=np.vstack(coords),
-                        radii=radii.astype(int),
-                        v=True,
-                        smooth=smooth,
-                        overwrite=False,
-                    )
+                    if len(coords) > 0:
+                        nwp_mask = _insert_disks_at_points_parallel(
+                            im=nwp_mask,
+                            coords=np.vstack(coords),
+                            radii=radii.astype(int),
+                            v=True,
+                            smooth=smooth,
+                            overwrite=False,
+                        )
         mask = nwp_mask * (im_seq == 0) * im
         if np.any(mask):
             im_seq[mask] = step + 1
@@ -667,7 +680,6 @@ def drainage(
     results = Results()
     results.im_snwp = pc_to_satn(pc=im_pc, im=im, mode="drainage")
     results.im_seq = im_seq
-    # results.im_seq = pc_to_seq(pc=pc_inv, im=im, mode='drainage')
     results.im_pc = im_pc
     results.im_trapped = trapped
     if trapped is not None:
