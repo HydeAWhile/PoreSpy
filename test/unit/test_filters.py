@@ -767,9 +767,11 @@ class FilterTest():
             voxel_size=1e-5,
         )
         imb = ps.simulations.imbibition(im=im, pc=pc, steps=50)
-        mask = ps.filters.find_trapped_clusters(im=im, seq=imb.im_seq, outlets=faces, method='labels')
+        mask = ps.filters.find_trapped_clusters(
+            im=im, seq=imb.im_seq, outlets=faces, method='labels')
         assert np.sum(mask[faces]) == 0
-        mask = ps.filters.find_trapped_clusters(im=im, seq=imb.im_seq, outlets=faces, method='queue')
+        mask = ps.filters.find_trapped_clusters(
+            im=im, seq=imb.im_seq, outlets=faces, method='queue')
         assert np.sum(mask[faces]) == 0
 
 
