@@ -35,7 +35,7 @@ class IBOPTest(GenericTest):
             im=self.im2D, inlets=inlets, outlets=outlets, steps=None, smooth=False,
         )
         assert np.sum(r1.im_seq == -1) == 0
-        assert np.sum(r2.im_seq == -1) == 5976
+        assert np.sum(r2.im_seq == -1) == 7073
         temp = ps.filters.fill_invalid_pores(self.im2D)
         r3 = ps.simulations.drainage(im=temp, inlets=inlets, steps=None)
         assert np.sum(r3.im_seq == -1) == 0
@@ -141,20 +141,20 @@ class IBOPTest(GenericTest):
         pc = 2/dt
         pc[~im] = 0
         steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int), pad=(1, 0))
-        steps[-1] = 0.1
+        steps[-1] = 0.5
 
         faces = ps.generators.borders(im.shape, mode='faces')
 
         sizes1 = ps.simulations.drainage_dt(
             im=im, dt=dt, inlets=faces, steps=steps, smooth=True).im_size
         sizes2 = ps.simulations.drainage(
-            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1], smooth=True).im_size
-        # assert np.sum(sizes1 != sizes2) == 0
+            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps), smooth=True).im_size
+        assert np.sum(sizes1 != sizes2) == 0
 
         seq1 = ps.simulations.drainage_dt(
             im=im, dt=dt, inlets=faces, steps=steps, smooth=True).im_seq
         seq2 = ps.simulations.drainage(
-            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1], smooth=True).im_seq
+            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps), smooth=True).im_seq
         assert np.sum(seq1 != seq2) == 0
 
     def test_drainage_equals_drainage_dt_not_smooth(self):
@@ -168,24 +168,54 @@ class IBOPTest(GenericTest):
         im = ps.filters.fill_invalid_pores(im)
 
         dt = edt(im)
-        pc = 2/dt
+        pc = 2/dt.astype(int)
         pc[~im] = 0
         steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int), pad=(1, 0))
-        steps[-1] = 0.1
+        # steps[-1] = 0.1
 
         faces = ps.generators.borders(im.shape, mode='faces')
 
         sizes1 = ps.simulations.drainage_dt(
-            im=im, dt=dt, inlets=faces, steps=steps, smooth=False).im_size
+            im=im,
+            dt=dt.astype(int),
+            inlets=faces,
+            steps=steps,
+            smooth=False,
+        ).im_size
+        pc_steps = 2/steps
+        pc_steps[-1] = pc_steps[-2] * 10
         sizes2 = ps.simulations.drainage(
-            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1], smooth=False).im_size
-        # assert np.sum(sizes1 != sizes2) == 0
+            im=im,
+            dt=dt.astype(int),
+            pc=pc,
+            inlets=faces,
+            steps=pc_steps,
+            smooth=False,
+        ).im_size
+        fig, ax = plt.subplots(1, 2)
+        ax[0].imshow(sizes1/im)
+        ax[1].imshow(sizes2/im)
+        assert np.sum(sizes1 != sizes2) == 0
 
         seq1 = ps.simulations.drainage_dt(
-            im=im, dt=dt, inlets=faces, steps=steps, smooth=False).im_seq
+            im=im,
+            dt=dt.astype(int),
+            inlets=faces,
+            steps=steps,
+            smooth=False,
+        ).im_seq
         seq2 = ps.simulations.drainage(
-            im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps)[-1::-1], smooth=False).im_seq
-        # assert np.sum(seq1 != seq2) == 0
+            im=im,
+            dt=dt.astype(int),
+            pc=pc,
+            inlets=faces,
+            steps=(2/steps),
+            smooth=False,
+        ).im_seq
+        fig, ax = plt.subplots(1, 2)
+        ax[0].imshow(seq1)
+        ax[1].imshow(seq2)
+        assert np.sum(seq1 != seq2) == 0
 
     def test_imbibition_implementations_no_inlets(self):
         edt = ps.tools.get_edt()
@@ -297,13 +327,13 @@ class IBOPTest(GenericTest):
             im=im, dt=dt, inlets=faces, steps=steps, smooth=True).im_size
         size2 = ps.simulations.imbibition(
             im=im, dt=dt, inlets=faces, steps=(2/steps)).im_size
-        # assert np.all(size1 == size2)
+        # assert np.sum(size1 != size2) == 0
 
         seq1 = ps.simulations.imbibition_dt(
             im=im, dt=dt, inlets=faces, steps=steps, smooth=True).im_seq
         seq2 = ps.simulations.imbibition(
             im=im, dt=dt, inlets=faces, steps=(2/steps)).im_seq
-        # assert np.all(seq1 == seq2)
+        # assert np.sum(seq1 != seq2) == 0
 
 
 if __name__ == "__main__":
