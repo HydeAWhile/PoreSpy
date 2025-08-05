@@ -172,7 +172,7 @@ class IBOPTest(GenericTest):
         pc = 2/dt
         pc[~im] = 0
         steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int), pad=(1, 0))
-        steps[-1] = 0.5
+        steps[-1] = 1.0
         smooth = False
 
         faces = ps.generators.borders(im.shape, mode='faces')
@@ -181,6 +181,9 @@ class IBOPTest(GenericTest):
             im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth).im_size
         sizes2 = ps.simulations.drainage(
             im=im, dt=dt.astype(int), pc=pc, inlets=faces, steps=(2/steps), smooth=smooth).im_size
+        im_pc = ps.simulations.drainage(
+            im=im, dt=dt.astype(int), pc=pc, inlets=faces, steps=(2/steps), smooth=smooth).im_pc
+        sizes3 = 2/im_pc*im
         # assert np.sum(sizes1 != sizes2) == 0
 
         seq1 = ps.simulations.drainage_dt(
