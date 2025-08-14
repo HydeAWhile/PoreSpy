@@ -4,17 +4,78 @@ from edt import edt
 
 
 __all__ = [
-    "fibers",
+    "fibers_2D",
+    "fibers_1D",
 ]
 
 
-def fibers(shape, r, n=None, porosity=None):
+def fibers_1D(shape, r, porosity, overlap=None):
     r"""
+    Generates randomly located fibers which are all oriented in z-direction
 
-    [1]_ Beckman IP, Beckman PM, Cho H, Riveros G. Modeling uniform random
-         distributions of nonwoven fibers for computational analysis of
-         composite materials. Composite Structures. 301(12) 116242 (2022).
-         `doi<https://doi.org/10.1016/j.compstruct.2022.116242>`_
+    Parameters
+    ----------
+    shape : list
+        The shape of the image to generate.  This must be 3D.
+    r : int
+        The radius of the fibers to generate
+    porosity : float
+        The radius of the fibers
+
+    Returns
+    -------
+    im : ndarray
+        An `ndarray` of the given shape with fibers indicated by `False` and void
+        by `True`.
+
+    Notes
+    -----
+    ..  [1] Tomadakis MM, Sotirchos SV. Effective diffusivities and conductivities
+        of random dispersions of nonoverlapping and partially overlapping
+        unidirectional fibers. Journal of Chemical Physics. 99, 9820–9827 (1993).
+        ` doi<https://doi.org/10.1063/1.465464>`_
+
+    """
+    from porespy.generators import random_spheres, overlapping_spheres
+    if overlap is None:
+        im = overlapping_spheres(shape[:2], r=r, porosity=porosity)
+    else:
+        im = ~random_spheres(shape[:2], r=r, clearance=-overlap, phi=1-porosity)
+    im = np.tile(im, [shape[2], 1, 1])
+    im = np.rollaxis(im, 0, 3)
+    return im
+
+
+def fibers_2D(shape, r, n=None, porosity=None):
+    r"""
+    Generates randomly located fibers which are randomly oriented in the x-y plane
+    but aligned in the z-plane
+
+    Parameters
+    ----------
+    shape : list
+        The shape of the image to generate.  This must be 3D.
+    r : int
+        The radius of the fibers to generate
+    porosity : float
+        The radius of the fibers
+
+    Returns
+    -------
+    im : ndarray
+        An `ndarray` of the given shape with fibers indicated by `False` and void
+        by `True`.
+
+    Notes
+    -----
+    Drawing randomly oriented fibers with a uniform density is a surprizingly
+    tricky task. The problem was recently discussed and a solution proposed by
+    Beckman et al [1]_.
+
+    ..  [1] Beckman IP, Beckman PM, Cho H, Riveros G. Modeling uniform random
+        distributions of nonwoven fibers for computational analysis of
+        composite materials. Composite Structures. 301(12), 116242 (2022).
+        `doi<https://doi.org/10.1016/j.compstruct.2022.116242>`_
     """
 
     def add_n_lines(im, r, n):
@@ -41,6 +102,7 @@ def fibers(shape, r, n=None, porosity=None):
         return im
 
     if (n is None) and (porosity is not None):
+        shape = np.array(shape) + 2*r  # Add 2r so rounded fiber ends fall outside im
         porosity_orig = porosity
         im = np.zeros(shape, dtype=bool)
         iters = np.around(np.log(porosity)/(-4*r**2/im.size**(0.5))).astype(int)
@@ -48,7 +110,6 @@ def fibers(shape, r, n=None, porosity=None):
         im = add_n_lines(im=im, r=r, n=n)
         porosity = 1 - (im.sum()/im.size - porosity_orig)
         while porosity < .99:
-            print(n, porosity)
             iters = np.around(np.log(porosity)/(-2*r**2/im.size**(0.5))).astype(int)
             n = iters*10
             if n == 0:
@@ -57,6 +118,7 @@ def fibers(shape, r, n=None, porosity=None):
             im2 = add_n_lines(im=im2, r=r, n=n)
             im *= im2
             porosity = 1 - (im.sum()/im.size - porosity_orig)
+        im = im[r:-r, r:-r, r:-r]  # Remove padding
     else:
         im = np.zeros(shape)
         im = add_n_lines(im=im, r=r, n=n)
@@ -67,7 +129,7 @@ def fibers(shape, r, n=None, porosity=None):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    fibs = fibers([200, 200, 100], r=5, porosity=0.85)
+    fibs = fibers_2D([200, 200, 100], r=5, porosity=0.85)
     print(f"Porosity: {fibs.sum()/fibs.size}")
 
     fig, ax = plt.subplots(1, 3)
