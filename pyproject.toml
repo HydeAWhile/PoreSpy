@@ -39,6 +39,7 @@ dependencies = [
     "tqdm",
     "pywavelets",
     "setuptools",
+    "matplotlib-inline",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"

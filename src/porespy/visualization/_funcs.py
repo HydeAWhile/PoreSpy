@@ -5,6 +5,7 @@ from tqdm import tqdm
 from matplotlib import animation
 from copy import copy
 from porespy import settings
+import matplotlib_inline
 
 
 __all__ = [
@@ -58,9 +59,10 @@ def set_mpl_style():  # pragma: no cover
     plt.rc('figure', **figure_props)
     plt.rc('image', **image_props)
 
-    if ps.settings.notebook:
-        import IPython
-        IPython.display.set_matplotlib_formats('retina')
+    # if ps.settings.notebook:
+    #     import IPython
+    #     IPython.display.set_matplotlib_formats('retina')
+    matplotlib_inline.backend_inline.set_matplotlib_formats('retina')
 
 
 def satn_to_movie(im, satn, cmap='viridis',
