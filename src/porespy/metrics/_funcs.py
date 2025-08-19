@@ -167,7 +167,7 @@ def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
     return np.any(hits)
 
 
-def find_porosity_threshold(im, axis=0, conn="min"):
+def find_porosity_threshold(im, axis=0, dt=None, conn="min"):
     r"""
     Finds the porosity of the image at the percolation threshold
 
@@ -180,6 +180,9 @@ def find_porosity_threshold(im, axis=0, conn="min"):
         Image of the void space with `True` indicating void space
     axis : int
         The axis along which percolation is checked
+    dt : ndarray
+        The distance transform of the void space. If not provide it will be computed
+        so providing one can save time if it is available.
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
         element used to determine voxel connectivity.  The default if `'min'` which
@@ -225,23 +228,21 @@ def find_porosity_threshold(im, axis=0, conn="min"):
             R += step
         return R
 
-    dt = edt(im)
+    if dt is None:
+        dt = edt(im)
 
+    # Take large steps first, then medium and small steps to find final value faster
     R = _check_percolation(dt, R=1, step=10, axis=axis, conn=conn)
     R = _check_percolation(dt, R=max(1, R - 10), step=4, axis=axis, conn=conn)
     R = _check_percolation(dt, R=max(1, R - 4), step=1, axis=axis, conn=conn)
 
     im2 = dt >= (R - 1)
-    eps_thresh_total = porosity(im2)
-    eps_thresh_perc = percolating_porosity(im2, axis=axis)
-
-    from porespy.tools import Results
 
     r = Results()
     r.eps_orig = porosity(im)
-    r.eps_orig_perc = percolating_porosity(im, axis=axis)
-    r.eps_thresh = eps_thresh_total
-    r.eps_thresh_perc = eps_thresh_perc
+    r.eps_orig_perc = percolating_porosity(im, axis=axis, conn=conn)
+    r.eps_thresh = porosity(im2)
+    r.eps_thresh_perc = percolating_porosity(im2, axis=axis, conn=conn)
     r.R = R - 1
     return r
 
@@ -262,7 +263,7 @@ def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn="min"):
         element used to determine voxel connectivity.  The default if `'min'` which
         imposes the strictest criteria, so that voxels must share a face to be
         considered connected.
-    inlets, outlets : ndarray
+    inlets, outlets : ndarrays, optional
         Boolean arrays indicating the locations of the inlets and outlets. These
         are useful if the domain is not cubic or if special inlet and outlet
         locations are desired.
