@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 
-def fibers_1D(shape, r, porosity, overlap=None):
+def fibers_1D(shape, r, n, overlap=None):
     r"""
     Generates randomly located fibers which are all oriented in z-direction
 
@@ -19,8 +19,8 @@ def fibers_1D(shape, r, porosity, overlap=None):
         The shape of the image to generate.  This must be 3D.
     r : int
         The radius of the fibers to generate
-    porosity : float
-        The radius of the fibers
+    n : int
+        The number of fibers to draw
 
     Returns
     -------
@@ -33,16 +33,30 @@ def fibers_1D(shape, r, porosity, overlap=None):
     ..  [1] Tomadakis MM, Sotirchos SV. Effective diffusivities and conductivities
         of random dispersions of nonoverlapping and partially overlapping
         unidirectional fibers. Journal of Chemical Physics. 99, 9820–9827 (1993).
-        ` doi<https://doi.org/10.1063/1.465464>`_
+        `doi <https://doi.org/10.1063/1.465464>`_
 
     """
-    from porespy.generators import random_spheres, overlapping_spheres
+    from porespy.generators import random_spheres
     if overlap is None:
-        im = overlapping_spheres(shape[:2], r=r, porosity=porosity)
+        im = np.ones(np.array(shape[:2]) + r, dtype=bool)
+        locs = np.random.randint((0, 0), shape, (n, 2))
+        im[*list(locs.T)] = False
+        dt = edt(im)
+        im = dt >= (r + 0.001)
+        im = im[r:-r, r:-r]
     else:
-        im = ~random_spheres(shape[:2], r=r, clearance=-overlap, phi=1-porosity)
-    im = np.tile(im, [shape[2], 1, 1])
-    im = np.rollaxis(im, 0, 3)
+        im = ~random_spheres(
+            np.array(shape[:2]) + r,
+            r=0,
+            clearance=-overlap,
+            phi=1,
+            maxiter=n,
+            edges='extended',
+        )
+        im = im[r:-r, r:-r]
+    if len(shape) == 3:
+        im = np.tile(im, [shape[2], 1, 1])
+        im = np.rollaxis(im, 0, 3)
     return im
 
 
@@ -75,7 +89,7 @@ def fibers_2D(shape, r, n=None, porosity=None):
     ..  [1] Beckman IP, Beckman PM, Cho H, Riveros G. Modeling uniform random
         distributions of nonwoven fibers for computational analysis of
         composite materials. Composite Structures. 301(12), 116242 (2022).
-        `doi<https://doi.org/10.1016/j.compstruct.2022.116242>`_
+        `doi <https://doi.org/10.1016/j.compstruct.2022.116242>`_
     """
 
     def add_n_lines(im, r, n):
