@@ -2,11 +2,9 @@ import inspect
 from copy import copy
 
 import matplotlib.pyplot as plt
+import matplotlib_inline
 import numpy as np
 from matplotlib import animation
-from copy import copy
-from porespy import settings
-import matplotlib_inline
 
 from porespy.tools import settings
 
