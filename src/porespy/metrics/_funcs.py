@@ -12,6 +12,7 @@ from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from skimage.morphology import ball, cube, disk, skeletonize, square
 
+from porespy.generators import faces
 from porespy.filters import (
     find_closed_pores,
     find_surface_pores,
@@ -201,10 +202,17 @@ def find_porosity_threshold(im, axis=0, dt=None, conn="min"):
                          and surface pores
         eps_orig_perc    The percolating porosity of the original image (i.e. with
                          closed and surface pores filled)
-        eps_thresh       The total porosity of the image after eroding the void
-                         space results in no percolating paths
-        eps_thresh_perc  The percolating porosity of the eroded image (with closed
-                         and surface pores filled)
+        eps_thresh       The total porosity of the image just before the percolation 
+                         threshold was reached (i.e at the point where one
+                         additional dilation would result in no connected void
+                         space.)
+        eps_thresh_perc  The percolating porosity (with closed and surface pores 
+                         filled) just before the percolation threshold was reached 
+                         (i.e at the point where one additional dilation would 
+                         result in no connected void space.)
+        eps_thresh_post  The total porosity after the percolation threshold was
+                         reached (i.e. one step *after* the dilation which
+                         resulted in no connected pore space)
         R                The threshold to apply to the distance transform to
                          obtain the percolating image (i.e. im = dt >= R)
         ================ ===========================================================
@@ -237,12 +245,14 @@ def find_porosity_threshold(im, axis=0, dt=None, conn="min"):
     R = _check_percolation(dt, R=max(1, R - 4), step=1, axis=axis, conn=conn)
 
     im2 = dt >= (R - 1)
+    im3 = dt >= R
 
     r = Results()
     r.eps_orig = porosity(im)
     r.eps_orig_perc = percolating_porosity(im, axis=axis, conn=conn)
     r.eps_thresh = porosity(im2)
     r.eps_thresh_perc = percolating_porosity(im2, axis=axis, conn=conn)
+    r.eps_thresh_post = porosity(im3)
     r.R = R - 1
     return r
 
@@ -276,19 +286,16 @@ def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn="min"):
     """
     se = strel[im.ndim][conn]
     if (inlets is None) and (outlets is None):
-        im2 = np.swapaxes(im, 0, axis)
-        inlets = np.zeros_like(im2, dtype=bool)
-        inlets[0, ...] = True
-        outlets = np.zeros_like(im2, dtype=bool)
-        outlets[-1, ...] = True
-    labels, N = spim.label(im2, structure=se)
-    a = np.unique(labels * inlets)
+        inlets = faces(im.shape, inlet=axis)
+        outlets = faces(im.shape, outlet=axis)
+    labels, N = spim.label(im, structure=se)
+    a = np.unique(labels[inlets])
     a = a[a > 0]
-    b = np.unique(labels * outlets)
+    b = np.unique(labels[outlets])
     b = b[b > 0]
     hits = np.intersect1d(a, b)
     im3 = np.isin(labels, hits)
-    eps = porosity(im3)
+    eps = im3.sum()/im3.size
     return eps
 
 
