@@ -486,10 +486,7 @@ def drainage(
         disconnected clusters, so will create connections to some clusters
         that would otherwise be removed. The residual phase is indicated
         in the capillary pressure map by ``-np.inf`` values, since these voxels
-        are invaded at all applied capillary pressures. Note that the presence of
-        residual non-wetting phase makes it impossible to correctly deal with
-        trapping, so if both `residual` and `outlets` are given then an error is
-        raised.
+        are invaded at all applied capillary pressures.
     steps : int or array_like (default = 25)
         The range of pressures to apply. If an integer is given then the given
         number of steps will be created between the lowest and highest values in
@@ -562,9 +559,6 @@ def drainage(
     to view online example.
 
     """
-    if (residual is not None) and (outlets is not None):
-        raise Exception("Trapping cannot be properly assessed if residual present")
-
     im = np.array(im, dtype=bool)
 
     if dt is None:
@@ -661,8 +655,12 @@ def drainage(
     # Analyze trapping and adjust computed images accordingly
     trapped = None  # Initialize trapped to None in case outlets not given
     if outlets is not None:
+        if residual is not None:
+            tmp = im * ~residual
+        else:
+            tmp = im
         trapped = find_trapped_clusters(
-            im=im,
+            im=tmp,
             seq=im_seq,
             outlets=outlets,
             method="labels" if len(Ps) < 100 else "queue",
