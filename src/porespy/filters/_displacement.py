@@ -212,6 +212,7 @@ def find_trapped_clusters(
     im: npt.ArrayLike,
     seq: npt.ArrayLike,
     outlets: npt.ArrayLike,
+    min_size: int = 0,
     conn: Literal["min", "max"] = "min",
     method: Literal["queue", "labels"] = "labels",
 ):
@@ -231,6 +232,9 @@ def find_trapped_clusters(
     outlets : ndarray
         An image the same size as ``im`` with ``True`` indicating outlets
         and ``False`` elsewhere.
+    min_size : scalar
+        The threshold size of clusters.  Clusters with this many voxels or fewer
+        will be ignored.
     conn : str
         Controls the shape of the structuring element used to determine if voxels
         are connected.  Options are:
@@ -288,7 +292,12 @@ def find_trapped_clusters(
     else:
         raise Exception(f"{method} is not a supported method")
 
-    return (seq_temp == -1) * im
+    trapped = (seq_temp == -1) * im
+
+    if min_size > 0:
+        trapped = trim_small_clusters(im=trapped, min_size=min_size)
+
+    return trapped
 
 
 def _find_trapped_clusters_labels(

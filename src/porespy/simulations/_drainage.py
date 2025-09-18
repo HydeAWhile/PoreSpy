@@ -587,10 +587,22 @@ def drainage(
 
     # Initialize empty arrays to accumulate results of each loop
     nwp_mask = np.zeros_like(im, dtype=bool)
-    im_seq = np.zeros_like(im, dtype=int)
     im_pc = np.zeros_like(im, dtype=float)
     im_size = np.zeros_like(im, dtype=float)
     seeds = np.zeros_like(im, dtype=bool)
+    trapped = np.zeros_like(im, dtype=bool)
+    im_seq = np.zeros_like(im, dtype=int)
+    if residual is not None:
+        im_seq[residual] = 1
+    if (outlets is not None) and (trapped is not None):
+        trapped = find_trapped_clusters(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            min_size=min_size,
+            method="labels" if len(Ps) < 100 else "queue",
+            conn=conn,
+        )
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, p in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
@@ -620,8 +632,13 @@ def drainage(
         # Deal with impact of residual, if present
         if residual is not None:
             if np.any(nwp_mask):
+                nwp_mask = nwp_mask * ~trapped
                 # Find invadable pixels connected to surviving residual
-                temp = trim_disconnected_voxels(residual, nwp_mask, conn=conn) * ~nwp_mask
+                temp = trim_disconnected_voxels(
+                    im=residual,
+                    inlets=nwp_mask,
+                    conn=conn,
+                ) * ~nwp_mask
                 if np.any(temp):
                     # Trim invadable pixels not connected to residual
                     invadable = trim_disconnected_voxels(invadable, temp, conn=conn)
@@ -635,6 +652,17 @@ def drainage(
                         smooth=True,
                         overwrite=False,
                     )
+            # Finally deal with trapping, if necessary
+            if outlets is not None:
+                trapped = find_trapped_clusters(
+                    im=im,
+                    seq=im_seq,
+                    outlets=outlets,
+                    min_size=min_size,
+                    method="labels" if len(Ps) < 100 else "queue",
+                    conn=conn,
+                )
+                nwp_mask[trapped] = 0
         mask = nwp_mask * (im_seq == 0) * im
         if np.any(mask):
             im_seq[mask] = step + 1
@@ -647,33 +675,22 @@ def drainage(
     # Set uninvaded voxels to inf
     im_pc[(im_seq == 0) * im] = np.inf
 
-    # Add residual is given
+    # Add residual if given
     if residual is not None:
         im_pc[residual] = -np.inf
-        im_seq[residual] = 0
+        im_seq[residual] = 1
 
     # Analyze trapping and adjust computed images accordingly
-    trapped = None  # Initialize trapped to None in case outlets not given
-    if outlets is not None:
-        if residual is not None:
-            tmp = im * ~residual
-        else:
-            tmp = im
+    # If residual was given trapping was assessed already
+    if (outlets is not None) and (residual is None):
         trapped = find_trapped_clusters(
-            im=tmp,
+            im=im,
             seq=im_seq,
             outlets=outlets,
+            min_size=min_size,
             method="labels" if len(Ps) < 100 else "queue",
             conn=conn,
         )
-        if min_size > 0:
-            temp = find_small_clusters(
-                im=im,
-                trapped=trapped,
-                min_size=min_size,
-                conn=conn,
-            )
-            trapped = temp.im_trapped
         trapped[im_seq == -1] = True
         im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf
         if residual is not None:  # Re-add residual to inv
@@ -685,7 +702,10 @@ def drainage(
     results.im_seq = im_seq
     # results.im_seq = pc_to_seq(pc=pc_inv, im=im, mode='drainage')
     results.im_pc = im_pc
-    results.im_trapped = trapped
+    try:
+        results.im_trapped = trapped
+    except NameError:
+        results.im_trapped = None
     if trapped is not None:
         results.im_seq[trapped] = -1
         results.im_snwp[trapped] = -1
@@ -702,10 +722,13 @@ def drainage(
     return results
 
 
+# %%
 if __name__ == "__main__":
     from copy import copy
 
     import matplotlib.pyplot as plt
+    from skimage.segmentation import clear_border
+    import scipy.ndimage as spim
 
     import porespy as ps
     ps.visualization.set_mpl_style()
@@ -723,15 +746,24 @@ if __name__ == "__main__":
         blobiness=1.5,
         seed=16,
     )
+    im = ~ps.generators.random_spheres([200, 200], r=10, clearance=20, phi=0.12, seed=1672, edges='extended')
     im = ps.filters.fill_invalid_pores(im)
     inlets = np.zeros_like(im)
     inlets[0, :] = True
     outlets = np.zeros_like(im)
     outlets[-1, :] = True
 
-    lt = ps.filters.local_thickness(im)
+    # lt = ps.filters.local_thickness(im)
+    # dt = edt(im)
+    # residual = lt > 25
+
+    # Generate blobs of residual nwp
+    r = 35
     dt = edt(im)
-    residual = lt > 25
+    seeds = dt >= r
+    nwpr = (edt(~seeds) < r)
+    residual = clear_border(spim.label(nwpr)[0]) > 0
+
     steps = 25
     pc = ps.filters.capillary_transform(
         im=im,
@@ -770,6 +802,9 @@ if __name__ == "__main__":
         im=im,
         pc=pc,
         steps=30,
+        inlets=inlets,
+        outlets=outlets,
+        residual=residual,
     )
 
     # %% Visualize the invasion configurations for each scenario
@@ -806,6 +841,6 @@ if __name__ == "__main__":
         pc, s = ps.metrics.pc_map_to_pc_curve(
             pc=drn5.im_pc, seq=drn5.im_seq, im=im, mode="drainage"
         )
-        ax["(e)"].plot(np.log10(pc), s, "m-*", label="local thickness")
+        ax["(e)"].plot(np.log10(pc), s, "m-*", label="drainage w residual + trapping")
 
         ax["(e)"].legend()
