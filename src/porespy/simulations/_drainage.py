@@ -738,31 +738,38 @@ if __name__ == "__main__":
     cm.set_over("k")
 
     # %% Run this cell to regenerate the variables in drainage
+    seed = np.random.randint(100000)  # 12129, 61227
     bg = "white"
     plots = True
     im = ps.generators.blobs(
         shape=[500, 500],
         porosity=0.7,
         blobiness=1.5,
-        seed=16,
+        seed=seed,
     )
-    im = ~ps.generators.random_spheres([200, 200], r=10, clearance=20, phi=0.12, seed=1672, edges='extended')
+    # im = ~ps.generators.random_spheres(
+    #     [500, 500],
+    #     r=10,
+    #     clearance=20,
+    #     phi=0.15,
+    #     # seed=1672,
+    #     edges='extended',
+    # )
     im = ps.filters.fill_invalid_pores(im)
     inlets = np.zeros_like(im)
     inlets[0, :] = True
     outlets = np.zeros_like(im)
     outlets[-1, :] = True
-
-    # lt = ps.filters.local_thickness(im)
-    # dt = edt(im)
-    # residual = lt > 25
-
-    # Generate blobs of residual nwp
-    r = 35
     dt = edt(im)
-    seeds = dt >= r
-    nwpr = (edt(~seeds) < r)
-    residual = clear_border(spim.label(nwpr)[0]) > 0
+
+    imb = ps.simulations.imbibition_dt(
+        im=im,
+        inlets=outlets,
+        outlets=inlets,
+    )
+
+    residual = imb.im_seq == -1
+    # residual = clear_border(spim.label(residual)[0]) > 0
 
     steps = 25
     pc = ps.filters.capillary_transform(
@@ -815,13 +822,17 @@ if __name__ == "__main__":
         )
         # drn1.im_pc[~im] = -1
         ax["(a)"].imshow(drn1.im_seq / im, origin="lower", cmap=cm, vmin=0)
+        ax["(a)"].axis(False)
 
         vmax = drn2.im_seq.max()
         ax["(b)"].imshow(drn2.im_seq / im, origin="lower", cmap=cm, vmin=0, vmax=vmax)
+        ax["(b)"].axis(False)
 
         ax["(c)"].imshow(drn3.im_seq / im, origin="lower", cmap=cm, vmin=0)
+        ax["(c)"].axis(False)
 
         ax["(d)"].imshow(drn5.im_seq / im, origin="lower", cmap=cm, vmin=0)
+        ax["(d)"].axis(False)
 
         pc, s = ps.metrics.pc_map_to_pc_curve(
             pc=drn1.im_pc, seq=drn1.im_seq, im=im, mode="drainage"
