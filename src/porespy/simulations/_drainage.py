@@ -633,15 +633,20 @@ def drainage(
         if residual is not None:
             if np.any(nwp_mask):
                 nwp_mask = nwp_mask * ~trapped
-                # Find invadable pixels connected to surviving residual
+                # Find nwp pixels connected to residual
                 temp = trim_disconnected_voxels(
                     im=residual,
                     inlets=nwp_mask,
                     conn=conn,
-                ) * ~nwp_mask
+                )  # * ~nwp_mask  # Not sure this is needed
                 if np.any(temp):
                     # Trim invadable pixels not connected to residual
-                    invadable = trim_disconnected_voxels(invadable, temp, conn=conn)
+                    invadable = (pc <= p) * im  # Find full set of invadable again
+                    invadable = trim_disconnected_voxels(
+                        im=invadable,
+                        inlets=temp,
+                        conn=conn,
+                    )
                     coords = np.where(invadable)
                     radii = dt[coords].astype(int)
                     nwp_mask = _insert_disks_at_points_parallel(
@@ -662,7 +667,7 @@ def drainage(
                     method="labels" if len(Ps) < 100 else "queue",
                     conn=conn,
                 )
-                nwp_mask[trapped] = 0
+                nwp_mask[trapped] = 0  # Set nwp in trapped regions to 0
         mask = nwp_mask * (im_seq == 0) * im
         if np.any(mask):
             im_seq[mask] = step + 1
