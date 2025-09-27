@@ -594,7 +594,7 @@ def drainage(
     im_seq = np.zeros_like(im, dtype=int)
     if residual is not None:
         im_seq[residual] = 1
-    if (outlets is not None) and (trapped is not None):
+    if (outlets is not None) and (residual is not None):
         trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
@@ -741,20 +741,20 @@ if __name__ == "__main__":
     seed = np.random.randint(100000)  # 12129, 61227
     bg = "white"
     plots = True
-    im = ps.generators.blobs(
-        shape=[500, 500],
-        porosity=0.7,
-        blobiness=1.5,
-        seed=seed,
-    )
-    # im = ~ps.generators.random_spheres(
-    #     [500, 500],
-    #     r=10,
-    #     clearance=20,
-    #     phi=0.15,
-    #     # seed=1672,
-    #     edges='extended',
+    # im = ps.generators.blobs(
+    #     shape=[500, 500],
+    #     porosity=0.7,
+    #     blobiness=1.5,
+    #     seed=seed,
     # )
+    im = ~ps.generators.random_spheres(
+        [600, 600],
+        r=15,
+        clearance=15,
+        seed=1,
+        edges='extended',
+        phi=0.2,
+    )
     im = ps.filters.fill_invalid_pores(im)
     inlets = np.zeros_like(im)
     inlets[0, :] = True

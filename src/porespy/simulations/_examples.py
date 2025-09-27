@@ -1,0 +1,72 @@
+import numpy as np
+
+
+if __name__ == "__main__":
+    from copy import copy
+    import porespy as ps
+    from edt import edt
+    import matplotlib.pyplot as plt
+
+    ps.visualization.set_mpl_style()
+    cm = copy(plt.cm.plasma)
+    cm.set_under('k')
+    cm.set_over('grey')
+    conn = 'min'
+
+    im = ~ps.generators.random_spheres(
+        [600, 600],
+        r=15,
+        clearance=15,
+        seed=1,
+        edges='extended',
+        phi=0.2,
+    )
+    inlets = ps.generators.faces(shape=im.shape, inlet=0)
+    outlets = ps.generators.faces(shape=im.shape, outlet=0)
+    dt = edt(im)
+    pc = ps.filters.capillary_transform(
+        im=im,
+        dt=dt,
+        sigma=0.01,
+        theta=180,
+        g=0,
+        voxel_size=1e-5,
+    )
+
+    drn1 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        outlets=outlets,
+        steps=50,
+        conn=conn,
+    )
+
+    imb2 = ps.simulations.imbibition(
+        im=im,
+        pc=pc,
+        inlets=outlets,
+        outlets=inlets,
+        residual=drn1.im_trapped,
+        steps=50,
+        conn=conn,
+    )
+
+    drn2 = ps.simulations.drainage(
+        im=im,
+        pc=pc,
+        inlets=inlets,
+        outlets=outlets,
+        residual=imb2.im_trapped,
+        steps=50,
+        conn=conn,
+    )
+
+# %%
+    tmp = np.copy(drn2.im_seq)
+    tmp[drn2.im_trapped] = tmp.max() + 1
+    tmp[~im] = -1
+
+    fig, ax = plt.subplots(figsize=[5, 5])
+    ax.imshow(tmp, cmap=cm, vmin=0, vmax=tmp.max() - 1, origin='lower')
+    ax.axis(False)
