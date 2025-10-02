@@ -597,7 +597,7 @@ def drainage(
     if (outlets is not None) and (residual is not None):
         trapped = find_trapped_clusters(
             im=im,
-            seq=im_seq,
+            seq=(im*2.0 - residual*1.0).astype(int),
             outlets=outlets,
             min_size=min_size,
             method="labels" if len(Ps) < 100 else "queue",
@@ -638,7 +638,7 @@ def drainage(
                     im=residual,
                     inlets=nwp_mask,
                     conn=conn,
-                )  # * ~nwp_mask  # Not sure this is needed
+                )
                 if np.any(temp):
                     # Trim invadable pixels not connected to residual
                     invadable = (pc <= p) * im  # Find full set of invadable again
@@ -659,15 +659,25 @@ def drainage(
                     )
             # Finally deal with trapping, if necessary
             if outlets is not None:
-                trapped = find_trapped_clusters(
+                # Now this works TOO well.  I need to remove the growth from the
+                # residual blobs BEFORE checking for trapping since these cause
+                # artificial trapping!
+                nwp_mask = trim_disconnected_voxels(
+                    im=nwp_mask * ~trapped,
+                    inlets=inlets,
+                    conn=conn,
+                )
+                trapped += find_trapped_clusters(
                     im=im,
-                    seq=im_seq,
+                    seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
                     outlets=outlets,
                     min_size=min_size,
                     method="labels" if len(Ps) < 100 else "queue",
                     conn=conn,
                 )
-                nwp_mask[trapped] = 0  # Set nwp in trapped regions to 0
+                trapped[residual] = False
+                nwp_mask[trapped] = False  # Set nwp in trapped regions to 0
+
         mask = nwp_mask * (im_seq == 0) * im
         if np.any(mask):
             im_seq[mask] = step + 1
@@ -686,7 +696,7 @@ def drainage(
         im_seq[residual] = 1
 
     # Analyze trapping and adjust computed images accordingly
-    # If residual was given trapping was assessed already
+    # If residual was given trapping was assessed already so skip this
     if (outlets is not None) and (residual is None):
         trapped = find_trapped_clusters(
             im=im,
@@ -776,7 +786,7 @@ if __name__ == "__main__":
     residual = imb.im_seq == -1
     # residual = clear_border(spim.label(residual)[0]) > 0
 
-    steps = 25
+    steps = 50
     pc = ps.filters.capillary_transform(
         im=im,
         dt=dt,
@@ -793,7 +803,7 @@ if __name__ == "__main__":
         im=im,
         pc=pc,
         inlets=inlets,
-        steps=30,
+        steps=steps,
         min_size=5,
     )
     drn2 = ps.simulations.drainage(
@@ -801,19 +811,19 @@ if __name__ == "__main__":
         pc=pc,
         inlets=inlets,
         outlets=outlets,
-        steps=30,
+        steps=steps,
     )
     drn3 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         residual=residual,
-        steps=30,
+        steps=steps,
     )
     drn5 = ps.simulations.drainage(
         im=im,
         pc=pc,
-        steps=30,
+        steps=steps,
         inlets=inlets,
         outlets=outlets,
         residual=residual,

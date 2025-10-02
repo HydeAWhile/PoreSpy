@@ -9,9 +9,11 @@ if __name__ == "__main__":
 
     ps.visualization.set_mpl_style()
     cm = copy(plt.cm.plasma)
-    cm.set_under('k')
-    cm.set_over('grey')
+    cm.set_under('grey')
+    # cm.set_over('grey')
+    cm.set_bad('k')
     conn = 'min'
+    steps = 50
 
     im = ~ps.generators.random_spheres(
         [600, 600],
@@ -27,7 +29,7 @@ if __name__ == "__main__":
     pc = ps.filters.capillary_transform(
         im=im,
         dt=dt,
-        sigma=0.01,
+        sigma=0.072,
         theta=180,
         g=0,
         voxel_size=1e-5,
@@ -38,7 +40,7 @@ if __name__ == "__main__":
         pc=pc,
         inlets=inlets,
         outlets=outlets,
-        steps=50,
+        steps=steps,
         conn=conn,
     )
 
@@ -48,7 +50,7 @@ if __name__ == "__main__":
         inlets=outlets,
         outlets=inlets,
         residual=drn1.im_trapped,
-        steps=50,
+        steps=steps,
         conn=conn,
     )
 
@@ -58,15 +60,15 @@ if __name__ == "__main__":
         inlets=inlets,
         outlets=outlets,
         residual=imb2.im_trapped,
-        steps=50,
+        steps=steps,
         conn=conn,
     )
 
 # %%
-    tmp = np.copy(drn2.im_seq)
-    tmp[drn2.im_trapped] = tmp.max() + 1
-    tmp[~im] = -1
+    tmp = np.copy(drn2.im_seq).astype(float)
+    # tmp[drn2.im_trapped] = tmp.max() + 1
+    tmp[~im] = np.nan
 
     fig, ax = plt.subplots(figsize=[5, 5])
-    ax.imshow(tmp, cmap=cm, vmin=0, vmax=tmp.max() - 1, origin='lower')
+    ax.imshow(tmp, cmap=cm, vmin=0, origin='lower')
     ax.axis(False)
