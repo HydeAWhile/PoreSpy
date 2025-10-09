@@ -632,7 +632,6 @@ def drainage(
         # Deal with impact of residual, if present
         if residual is not None:
             if np.any(nwp_mask):
-                nwp_mask = nwp_mask * ~trapped
                 # Find nwp pixels connected to residual
                 temp = trim_disconnected_voxels(
                     im=residual,
@@ -659,9 +658,6 @@ def drainage(
                     )
             # Finally deal with trapping, if necessary
             if outlets is not None:
-                # Now this works TOO well.  I need to remove the growth from the
-                # residual blobs BEFORE checking for trapping since these cause
-                # artificial trapping!
                 nwp_mask = trim_disconnected_voxels(
                     im=nwp_mask * ~trapped,
                     inlets=inlets,
