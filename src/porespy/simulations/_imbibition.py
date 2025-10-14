@@ -557,13 +557,16 @@ def imbibition(
     """
     im = np.array(im, dtype=bool)
 
+    if outlets is not None:
+        outlets = outlets * im
+        if np.sum(inlets * outlets):
+            raise Exception("Specified inlets and outlets overlap")
+
     if dt is None:
         dt = edt(im)
 
     if pc is None:
         pc = 2/dt
-
-    pc = np.copy(pc)
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
     if isinstance(steps, int):
@@ -581,16 +584,30 @@ def imbibition(
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
+    trapped = np.zeros_like(im)
+    if residual is not None:
+        im_seq[residual] = 1
+    if (outlets is not None) and (residual is not None):
+        trapped = find_trapped_clusters(
+            im=im,
+            seq=(im*2.0 - residual*1.0).astype(int),
+            outlets=outlets,
+            min_size=min_size,
+            method="labels" if len(Ps) < 100 else "queue",
+            conn=conn,
+        )
+    im_seq[trapped] = -1
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         # This can be made faster if I find a way to get only seeds on edge, so
         # less spheres need to be drawn
-        invadable = (pc <= P)*im
+        invadable = (pc <= P)*im  # This means 'invadable by non-wetting phase'
         # Using FFT-based erosion to find edges.  When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
         # that need to be inserted.
         edges = (~erode(invadable, r=1, smooth=False, method='conv'))*invadable
+        # edges = invadable
         nwp_mask = np.zeros_like(im, dtype=bool)
         if np.any(edges):
             coords = np.where(edges)
@@ -610,50 +627,68 @@ def imbibition(
                 inlets=inlets,
                 conn=conn,
             )*im
-        if residual is not None:
-            nwp_mask = nwp_mask * ~residual
+
+        # Deal with impact of residual, if present
+        if (residual is not None) and (outlets is not None):
+                nwp_mask = ~trim_disconnected_voxels(
+                    im=~nwp_mask * ~trapped,
+                    inlets=inlets,
+                    conn=conn,
+                )
+                trapped += find_trapped_clusters(
+                    im=im,
+                    seq=(nwp_mask*im*2.0 - residual*1.0).astype(int),
+                    outlets=outlets,
+                    min_size=min_size,
+                    method="labels" if len(Ps) < 100 else "queue",
+                    conn=conn,
+                )
+                trapped[residual] = False
+                nwp_mask[trapped] = True
+                im_seq[trapped] = -1
 
         mask = (nwp_mask == 0) * (im_seq == 0) * im
         if np.any(mask):
-            im_seq[mask] = step
+            im_seq[mask] = step + 1
             im_pc[mask] = P
-    im_seq = make_contiguous(im_seq)
 
-    trapped = None  # Initialize trapped to None in case outlets not given
-    if outlets is not None:
-        if inlets is not None:
-            outlets[inlets] = False  # Ensure outlets do not overlap inlets
+    # Set uninvaded voxels to -inf
+    im_pc[(im_seq == 0) * im] = -np.inf
+
+    # Add residual if given
+    if residual is not None:
+        im_pc[residual] = np.inf
+        im_seq[residual] = 1
+
+    # Check for trapping as a post-processing step if no residual
+    if (outlets is not None) and (residual is None):
         trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
+            min_size=min_size,
             method='labels' if len(Ps) < 100 else 'queue',
             conn=conn,
         )
-        if min_size > 0:
-            temp = find_small_clusters(
-                im=im,
-                trapped=trapped,
-                min_size=min_size,
-                conn=conn,
-            )
-            trapped = temp.im_trapped
+        trapped[im_seq == -1] = True
         im_pc[trapped] = -np.inf
-        im_seq[trapped] = -1
 
-    if residual is not None:
-        im_pc[residual] = np.inf
-        im_seq[residual] = 0
-
+    im_seq = make_contiguous(im_seq, mode='symmetric')
     satn = seq_to_satn(im=im, seq=im_seq, mode='imbibition')
-    # Collect data in a Results object
+
+    # Initialize Results object to collect data
     results = Results()
     results.im_snwp = satn
     results.im_seq = im_seq
     results.im_pc = im_pc
     results.im_trapped = trapped
 
-    pc_curve = pc_map_to_pc_curve(pc=im_pc, im=im, seq=im_seq, mode='imbibition')
+    pc_curve = pc_map_to_pc_curve(
+        pc=im_pc,
+        im=im,
+        seq=im_seq,
+        mode='imbibition',
+    )
     results.pc = pc_curve.pc
     results.snwp = pc_curve.snwp
     return results
@@ -714,25 +749,27 @@ if __name__ == '__main__':
     cm = copy(plt.cm.turbo)
     cm.set_under('k')
     cm.set_over('grey')
+    steps = 50
 
     i = np.random.randint(1, 100000)  # bad: 38364, good: 65270, 71698
     i = 50591
     # i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
     # i = 38364
     print(i)
-    im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
+    im = ps.generators.blobs([500, 500], porosity=0.8, blobiness=1.5, seed=i)
     im = ps.filters.fill_invalid_pores(im)
 
     inlets = ps.generators.faces(im.shape, inlet=0)
     outlets = ps.generators.faces(im.shape, outlet=0)
-    lt = ps.filters.local_thickness_dt(im)
-    residual = (lt < 8)*im
     pc = ps.filters.capillary_transform(im=im, voxel_size=1e-4)
 
-    imb1 = imbibition(im=im, pc=pc, inlets=inlets, min_size=1)
-    imb2 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, min_size=1)
-    imb3 = imbibition(im=im, pc=pc, inlets=inlets, residual=residual, min_size=1)
-    imb4 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, residual=residual, min_size=1)
+    drn = ps.simulations.drainage(im=im, pc=pc, inlets=inlets, outlets=outlets, steps=steps)
+    residual = drn.im_trapped
+
+    imb1 = imbibition(im=im, pc=pc, inlets=inlets, steps=steps, min_size=5)
+    imb2 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, steps=steps, min_size=5)
+    imb3 = imbibition(im=im, pc=pc, inlets=inlets, residual=residual, steps=steps, min_size=5)
+    imb4 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, residual=residual, steps=steps, min_size=5)
 
     # %%
 

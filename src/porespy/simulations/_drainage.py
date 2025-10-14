@@ -8,7 +8,7 @@ from porespy.filters import (
     fftmorphology,
     find_small_clusters,
     find_trapped_clusters,
-    pc_to_satn,
+    seq_to_satn,
     trim_disconnected_voxels,
 )
 from porespy.metrics import pc_map_to_pc_curve
@@ -553,13 +553,13 @@ def drainage(
     """
     im = np.array(im, dtype=bool)
 
-    if dt is None:
-        dt = edt(im)
-
     if outlets is not None:
         outlets = outlets * im
         if np.sum(inlets * outlets):
             raise Exception("Specified inlets and outlets overlap")
+
+    if dt is None:
+        dt = edt(im)
 
     if pc is None:
         pc = 2.0 / dt
@@ -578,12 +578,10 @@ def drainage(
         Ps = np.unique(steps)  # To ensure they are in ascending order
 
     # Initialize empty arrays to accumulate results of each loop
-    nwp_mask = np.zeros_like(im, dtype=bool)
     im_pc = np.zeros_like(im, dtype=float)
     im_size = np.zeros_like(im, dtype=float)
-    seeds = np.zeros_like(im, dtype=bool)
-    trapped = np.zeros_like(im, dtype=bool)
     im_seq = np.zeros_like(im, dtype=int)
+    trapped = np.zeros_like(im, dtype=bool)
     if residual is not None:
         im_seq[residual] = 1
     if (outlets is not None) and (residual is not None):
@@ -595,11 +593,16 @@ def drainage(
             method="labels" if len(Ps) < 100 else "queue",
             conn=conn,
         )
+    im_seq[trapped] = -1
+
+    # Initialize arrays used inside loop
+    nwp_mask = np.zeros_like(im, dtype=bool)
+    seeds = np.zeros_like(im, dtype=bool)
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
-    for step, p in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
+    for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         # Find all locations in image invadable at current pressure
-        invadable = (pc <= p) * im  # Equivalent to erosion
+        invadable = (pc <= P) * im  # Equivalent to erosion
         # Trim locations not connected to the inlets, if given
         if inlets is not None:
             invadable = trim_disconnected_voxels(
@@ -632,7 +635,7 @@ def drainage(
                 )
                 if np.any(temp):
                     # Trim invadable pixels not connected to residual
-                    invadable = (pc <= p) * im  # Find full set of invadable again
+                    invadable = (pc <= P) * im  # Find full set of invadable again
                     invadable = trim_disconnected_voxels(
                         im=invadable,
                         inlets=temp,
@@ -648,28 +651,29 @@ def drainage(
                         smooth=True,
                         overwrite=False,
                     )
-            # Finally deal with trapping, if necessary
-            if outlets is not None:
-                nwp_mask = trim_disconnected_voxels(
-                    im=nwp_mask * ~trapped,
-                    inlets=inlets,
-                    conn=conn,
-                )
-                trapped += find_trapped_clusters(
-                    im=im,
-                    seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
-                    outlets=outlets,
-                    min_size=min_size,
-                    method="labels" if len(Ps) < 100 else "queue",
-                    conn=conn,
-                )
-                trapped[residual] = False
-                nwp_mask[trapped] = False  # Set nwp in trapped regions to 0
+        # This could be nested inside above if-block, but is outdented for clarity
+        if (residual is not None) and (outlets is not None):
+            nwp_mask = trim_disconnected_voxels(
+                im=nwp_mask * ~trapped,
+                inlets=inlets,
+                conn=conn,
+            )
+            trapped += find_trapped_clusters(
+                im=im,
+                seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
+                outlets=outlets,
+                min_size=min_size,
+                method="labels" if len(Ps) < 100 else "queue",
+                conn=conn,
+            )
+            trapped[residual] = False
+            nwp_mask[trapped] = False  # Set nwp in trapped regions to 0
+            im_seq[trapped] = -1
 
         mask = nwp_mask * (im_seq == 0) * im
         if np.any(mask):
             im_seq[mask] = step + 1
-            im_pc[mask] = p
+            im_pc[mask] = P
             if np.size(radii) > 0:
                 im_size[mask] = np.amin(radii)
         # Add new locations to list of invaded locations
@@ -683,8 +687,7 @@ def drainage(
         im_pc[residual] = -np.inf
         im_seq[residual] = 1
 
-    # Analyze trapping and adjust computed images accordingly
-    # If residual was given trapping was assessed already so skip this
+    # Analyze trapping as a post-processing step if no residual
     if (outlets is not None) and (residual is None):
         trapped = find_trapped_clusters(
             im=im,
@@ -697,16 +700,16 @@ def drainage(
         trapped[im_seq == -1] = True
         im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf
 
-    # Initialize results object
+    im_seq = make_contiguous(im_seq, mode='symmetric')
+    satn = seq_to_satn(seq=im_seq, im=im, mode="drainage")
+
+    # Initialize results object to collect data
     results = Results()
-    results.im_snwp = pc_to_satn(pc=im_pc, im=im, mode="drainage")
+    results.im_snwp = satn
     results.im_seq = im_seq
-    # results.im_seq = pc_to_seq(pc=pc_inv, im=im, mode='drainage')
     results.im_pc = im_pc
-    try:
-        results.im_trapped = trapped
-    except NameError:
-        results.im_trapped = None
+    results.im_trapped = trapped
+
     if trapped is not None:
         results.im_seq[trapped] = -1
         results.im_snwp[trapped] = -1
@@ -714,12 +717,15 @@ def drainage(
     im_size[im_pc == np.inf] = np.inf
     im_size[im_pc == -np.inf] = -np.inf
     results.im_size = im_size
-    results.pc, results.snwp = pc_map_to_pc_curve(
+
+    pc_curve = pc_map_to_pc_curve(
         im=im,
         pc=results.im_pc,
         seq=results.im_seq,
         mode="drainage",
     )
+    results.pc = pc_curve.pc
+    results.snwp = pc_curve.snwp
     return results
 
 

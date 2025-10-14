@@ -16,12 +16,13 @@ if __name__ == "__main__":
     steps = 50
 
     im = ~ps.generators.random_spheres(
-        [600, 600],
-        r=15,
-        clearance=15,
-        seed=1,
-        edges='extended',
-        phi=0.2,
+        [400, 400],
+        r=10,
+        # phi=0.15,
+        clearance=10,
+        seed=16,
+        edges="extended",
+        phi=0.25,
     )
     inlets = ps.generators.faces(shape=im.shape, inlet=0)
     outlets = ps.generators.faces(shape=im.shape, outlet=0)
