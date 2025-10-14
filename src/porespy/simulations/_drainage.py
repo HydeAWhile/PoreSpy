@@ -32,7 +32,7 @@ __all__ = [
     "drainage_dt",
     "drainage_fft",
     "drainage_dt_fft",
-    "drainage_dsi",
+    "drainage_bf",
 ]
 
 
@@ -41,7 +41,7 @@ tqdm = get_tqdm()
 strel = get_strel()
 
 
-def drainage_dsi(
+def drainage_bf(
     im,
     inlets=None,
     outlets=None,
@@ -477,9 +477,7 @@ def drainage(
     outlets : ndarray, optional
         A boolean image with ``True`` values indicating the outlet locations.
         If this is provided then trapped voxels of wetting phase are found and
-        all the output images are adjusted accordingly. Note that trapping can
-        be assessed as a postprocessing step as well, so if this is not provided
-        trapping can still be considered.
+        all the output images are adjusted accordingly.
     residual : ndarray, optional
         A boolean array indicating the locations of any residual invading
         phase. This is added to the intermediate image prior to trimming
@@ -537,12 +535,6 @@ def drainage(
         swnp       1D array of non-wetting phase saturations for each applied
                    value of capillary pressure (``pc``).
         ========== ============================================================
-
-    Notes
-    -----
-    This algorithm only provides sensible results for gravity stabilized
-    configurations, meaning the more dense fluid is on the bottom. Be sure that
-    ``inlets`` are specified accordingly.
 
     References
     ----------
@@ -704,8 +696,6 @@ def drainage(
         )
         trapped[im_seq == -1] = True
         im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf
-        if residual is not None:  # Re-add residual to inv
-            im_pc[residual] = -np.inf  # Residual defender is always present
 
     # Initialize results object
     results = Results()

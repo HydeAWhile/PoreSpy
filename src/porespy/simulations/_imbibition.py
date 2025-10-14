@@ -33,11 +33,11 @@ __all__ = [
     'imbibition_dt',
     'imbibition_dt_fft',
     'imbibition_fft',
-    'imbibition_dsi',
+    'imbibition_bf',
 ]
 
 
-def imbibition_dsi(
+def imbibition_bf(
     im,
     inlets=None,
     outlets=None,
@@ -492,6 +492,10 @@ def imbibition(
         An image the same shape as ``im`` with ``True`` values indicating the
         wetting fluid inlet(s).  If ``None`` then the wetting film is able to
         appear anywhere within the domain.
+    outlets : ndarray, optional
+        A boolean image with ``True`` values indicating the outlet locations.
+        If this is provided then trapped voxels of non-wetting phase are found and
+        all the output images are adjusted accordingly.
     residual : ndarray, optional
         A boolean mask the same shape as ``im`` with ``True`` values
         indicating to locations of residual wetting phase.
