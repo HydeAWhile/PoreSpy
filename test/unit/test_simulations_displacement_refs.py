@@ -460,9 +460,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'bf'
         tmp = imb[a].im_seq == imb[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = imb[a].im_size == imb[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -636,9 +636,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'bf'
         tmp = imb[a].im_seq == imb[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = imb[a].im_size == imb[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -648,9 +648,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'fft'
         tmp = imb[a].im_seq == imb[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = imb[a].im_size == imb[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
     def test_imbibition_3D_w_trapping_smooth(self):
         imb = {}
@@ -728,9 +728,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'bf'
         tmp = imb[a].im_seq == imb[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = imb[a].im_size == imb[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
         a, b = 'dt', 'dt_fft'
         tmp = imb[a].im_seq == imb[b].im_seq
@@ -740,9 +740,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'fft'
         tmp = imb[a].im_seq == imb[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = imb[a].im_size == imb[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
     def test_drainage_ref_vs_full(self):
         pass

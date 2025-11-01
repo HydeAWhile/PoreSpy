@@ -111,10 +111,7 @@ def imbibition_bf(
     seeds_prev = np.zeros_like(im)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        if smooth:
-            seeds = (dt <= r)*im
-        else:
-            seeds = (dt < r)*im
+        seeds = (dt <= r)*im
         edges = seeds * ~seeds_prev * im
         coords = np.vstack(np.where(edges))
         nwp.fill(False)
@@ -221,7 +218,7 @@ def imbibition_dt_fft(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         # Perform dilation using convolution
         se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
@@ -321,7 +318,7 @@ def imbibition_dt(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         # Perform dilation using dt
         tmp = edt(~seeds, parallel=settings.ncores)
         wp = ~(tmp < r) if smooth else ~(tmp <= r)
@@ -415,9 +412,10 @@ def imbibition_fft(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=smooth)
+        se = ps_round(r, ndim=im.ndim, smooth=True)
         seeds = ~fftmorphology(~im, se, mode='dilation')
         # Perform dilation using convolution
+        se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
         # Trimming disconnected wetting phase
         if inlets is not None:

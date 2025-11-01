@@ -112,7 +112,7 @@ def drainage_bf(
     seeds_prev = np.zeros_like(im)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         edges = seeds * ~seeds_prev * im
@@ -215,7 +215,7 @@ def drainage_dt_fft(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
@@ -304,7 +304,7 @@ def drainage_fft(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        se = ps_round(int(r), ndim=im.ndim, smooth=smooth)
+        se = ps_round(int(r), ndim=im.ndim, smooth=True)
         seeds = ~fftmorphology(~im, se, "dilation")
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
@@ -402,7 +402,7 @@ def drainage_dt(
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         if inlets is not None:
             seeds = trim_disconnected_voxels(seeds, inlets=inlets)
         if not np.any(seeds):
