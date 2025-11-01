@@ -98,6 +98,7 @@ class TestDisplacementRefs():
         tmp = drn[a].im_seq == drn[b].im_seq
         assert np.all(tmp)
         tmp = drn[a].im_size == drn[b].im_size
+        print((tmp == False).sum(), ',', tmp.sum())
         assert np.all(tmp)
 
     def test_drainage_3D_no_trapping_not_smooth(self):
@@ -719,6 +720,12 @@ class TestDisplacementRefs():
         assert np.all(tmp)
         tmp = imb[a].im_size == imb[b].im_size
         assert np.all(tmp)
+
+    def test_drainage_ref_vs_full(self):
+        pass
+
+    def test_imbibition_ref_vs_full(self):
+        pass
 
 
 if __name__ == '__main__':

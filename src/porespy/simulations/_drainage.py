@@ -6,7 +6,6 @@ import numpy.typing as npt
 
 from porespy.filters import (
     fftmorphology,
-    find_small_clusters,
     find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_voxels,
@@ -50,8 +49,9 @@ def drainage_bf(
     smooth=True,
 ):
     r"""
-    Performs a distance transform based drainage simulation using direct sphere
-    insertion to accomplish dilation and distance transform thresholding for erosion
+    Performs a distance transform based drainage simulation using brute force to
+    directly insert spheres to accomplish dilation, then distance transform
+    thresholding for erosion
 
     Parameters
     ----------
@@ -114,14 +114,12 @@ def drainage_bf(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         if smooth:
-            seeds = dt >= r
-            edges = dt_int == r
+            invadable = dt >= r
         else:
-            seeds = dt > r
-            edges = (dt > r) * (dt_int <= (r + 1))
+            invadable = dt > r
         if inlets is not None:
-            seeds = trim_disconnected_voxels(seeds, inlets=inlets)
-            edges *= seeds
+            seeds = trim_disconnected_voxels(invadable, inlets=inlets)
+        edges = invadable * ???
         coords = np.vstack(np.where(edges))
         if coords.size > 0:
             nwp = func(
@@ -413,18 +411,9 @@ def drainage_dt(
             continue
         tmp = edt(~seeds, parallel=settings.ncores)
         nwp = tmp < r if smooth else tmp <= r
-        # if residual is not None:
-        #     blobs = trim_disconnected_voxels(residual, inlets=nwp)
-        #     seeds = dt >= r
-        #     seeds = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     nwp = edt(~seeds, parallel=settings.ncores) < r
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = -np.inf
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -593,7 +582,7 @@ def drainage(
             method="labels" if len(Ps) < 100 else "queue",
             conn=conn,
         )
-    im_seq[trapped] = -1
+        im_seq[trapped] = -1
 
     # Initialize arrays used inside loop
     nwp_mask = np.zeros_like(im, dtype=bool)

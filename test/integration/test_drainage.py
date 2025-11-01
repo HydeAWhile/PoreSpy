@@ -29,13 +29,14 @@ def test_drainage(plot=False):
     lt = ps.filters.local_thickness(im)
     dt = edt(im)
     residual = lt > 25
-    bins = 25
-    voxel_size = 1e-4
+    steps = 25
+    voxel_size = 1e-5
     sigma = 0.072
     theta = 180
     delta_rho = 1000
     g = 0
     bg = 'grey'
+    fix = True
 
     pc = ps.filters.capillary_transform(
         im=im,
@@ -52,42 +53,86 @@ def test_drainage(plot=False):
         im=im,
         pc=pc,
         inlets=inlets,
-        steps=25,
+        steps=steps,
     )
     drn2 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         outlets=outlets,
-        steps=25,
+        steps=steps,
     )
     drn3 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         residual=residual,
-        steps=25,
+        steps=steps,
     )
     drn4 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         outlets=outlets,
-        # residual=residual,
-        steps=25,
+        residual=residual,
+        steps=steps,
     )
+
+    pc_curve1 = ps.metrics.pc_map_to_pc_curve(
+        im=im,
+        pc=drn1.im_pc,
+        # seq=drn1.im_seq,
+        mode="drainage",
+        fix_ends=fix,
+    )
+    pc_curve2 = ps.metrics.pc_map_to_pc_curve(
+        im=im,
+        pc=drn2.im_pc,
+        # seq=drn2.im_seq,
+        mode="drainage",
+        fix_ends=fix,
+    )
+    pc_curve3 = ps.metrics.pc_map_to_pc_curve(
+        im=im,
+        pc=drn3.im_pc,
+        # seq=drn3.im_seq,
+        mode="drainage",
+        fix_ends=fix,
+    )
+    pc_curve4 = ps.metrics.pc_map_to_pc_curve(
+        im=im,
+        pc=drn4.im_pc,
+        # seq=drn4.im_seq,
+        mode="drainage",
+        fix_ends=fix,
+    )
+    plt.plot(pc_curve1.pc, pc_curve1.snwp)
+    plt.plot(pc_curve2.pc, pc_curve2.snwp)
+    plt.plot(pc_curve3.pc, pc_curve3.snwp)
+    plt.plot(pc_curve4.pc, pc_curve4.snwp)
 
     # Ensure initial saturations correspond to amount of residual present
     assert drn1.snwp[0] == 0
     assert drn2.snwp[0] == 0
     assert drn3.snwp[0] == 0.34427115020497745
-    # assert drn4.snwp[0] == 0.34427115020497745
+    assert drn4.snwp[0] == 0.34427115020497745
 
     # Ensure final saturations correspond to trapping
     assert drn1.snwp[-1] == 1
     assert drn2.snwp[-1] == 0.8419029640706647
     assert drn3.snwp[-1] == 1
-    # assert drn4.snwp[-1] == 0.7641877946017865
+    assert drn4.snwp[-1] == 0.7641877946017865
+
+    # Ensure initial capillary pressures are correct
+    assert drn1.pc[0] == -np.inf
+    assert drn2.pc[0] == -np.inf
+    assert drn3.pc[0] == -np.inf
+    assert drn4.pc[0] == -np.inf
+
+    assert drn1.pc[-1] == np.inf
+    assert drn2.pc[-1] == np.inf
+    assert drn3.pc[-1] == np.inf
+    assert drn4.pc[-1] == np.inf
 
     # %% Visualize the invasion configurations for each scenario
     if plot:
@@ -133,42 +178,42 @@ def test_drainage(plot=False):
         im=im,
         pc=pc,
         inlets=inlets,
-        steps=25,
+        steps=steps,
     )
     drn2 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         outlets=outlets,
-        steps=25,
+        steps=steps,
     )
     drn3 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         residual=residual,
-        steps=25,
+        steps=steps,
     )
     drn4 = ps.simulations.drainage(
         im=im,
         pc=pc,
         inlets=inlets,
         outlets=outlets,
-        # residual=residual,
-        steps=25,
+        residual=residual,
+        steps=steps,
     )
 
     # Ensure initial saturations correspond to amount of residual present
     assert drn1.snwp[0] == 0
     assert drn2.snwp[0] == 0
     assert drn3.snwp[0] == 0.34427115020497745
-    # assert drn4.snwp[0] == 0.34427115020497745
+    assert drn4.snwp[0] == 0.34427115020497745
 
     # Ensure final saturations correspond to trapping
     assert drn1.snwp[-1] == 1
     assert drn2.snwp[-1] == 0.9169855520745083
     assert drn3.snwp[-1] == 1
-    # assert drn4.snwp[-1] == 0.822690236704895
+    assert drn4.snwp[-1] == 0.838394750757649
 
 
 # %%

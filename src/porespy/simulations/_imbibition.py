@@ -46,8 +46,9 @@ def imbibition_bf(
     smooth=True,
 ):
     r"""
-    Performs a distance transform based imbibition simulation using direct sphere
-    insertion to accomplish dilation and distance transform thresholding for erosion
+    Performs a distance transform based imbibition simulation using brute force to
+    directly insert spheres to accomplish dilation, then distance transform
+    thresholding for erosion
 
     Parameters
     ----------

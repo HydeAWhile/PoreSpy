@@ -1268,7 +1268,7 @@ def pc_map_to_pc_curve(
         Options are 'drainage' and 'imbibition'.
     fix_ends : bool (default is `True`)
         A flag to control whether to adjust the endpoints of the curve or not.
-        The default is `True`, which will put add a point at the beginning and end
+        The default is `True`, which will add a point at the beginning and end of
         the curves corresponding to residual and trapped invading phase saturations.
         This makes the curves look better when plotted. Disabling this correction
         ensures that the (Pc, Snwp) data match the values in the displacement maps,
@@ -1316,8 +1316,8 @@ def pc_map_to_pc_curve(
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
         snwp = np.cumsum(counts) / im.sum()
-        # If pc does not have residual phase (-inf), then add new point at snwp=0
         if fix_ends:
+            # If pc has no residual phase (-inf), then add new point at snwp=0
             if pcs[0] != -np.inf:
                 pcs = np.hstack((pcs[0], pcs))
                 snwp = np.hstack(([0], snwp))
