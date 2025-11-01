@@ -103,19 +103,19 @@ def imbibition_bf(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    dt_int = dt.astype(int)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
+    seeds_prev = np.zeros_like(im)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         if smooth:
-            seeds = dt >= r
-            edges = dt_int == r
+            seeds = (dt <= r)*im
         else:
-            seeds = dt > r
-            edges = (dt > r)*(dt_int <= (r + 1))
+            seeds = (dt < r)*im
+        edges = seeds * ~seeds_prev * im
         coords = np.vstack(np.where(edges))
         nwp.fill(False)
         if coords.size > 0:
@@ -126,13 +126,14 @@ def imbibition_bf(
                 v=True,
                 smooth=smooth,
             )
-        nwp[seeds] = True
+        nwp[(~seeds)*im] = True
         wp = (~nwp)*im
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+        seeds_prev = seeds
     if outlets is not None:
         trapped = find_trapped_clusters(
             im=im,
@@ -213,6 +214,7 @@ def imbibition_dt_fft(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
@@ -226,18 +228,10 @@ def imbibition_dt_fft(
         # Trimming disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
-        # TODO: Not sure this residual code works
-        # if residual is not None:
-        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = np.inf
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -320,6 +314,7 @@ def imbibition_dt(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
@@ -334,18 +329,10 @@ def imbibition_dt(
         # Trimming disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
-        # TODO: Not sure this residual code works
-        # if residual is not None:
-        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = np.inf
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -421,6 +408,7 @@ def imbibition_fft(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
@@ -434,19 +422,10 @@ def imbibition_fft(
         # Trimming disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
-        # TODO: Not sure this residual code works
-        # if residual is not None:
-        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = np.inf
-    # Apply trapping as a post-processing step if outlets given
+
     if outlets is not None:
         trapped = find_trapped_clusters(
             im=im,

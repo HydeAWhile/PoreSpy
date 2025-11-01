@@ -68,9 +68,7 @@ def drainage_bf(
         trapping of the wetting phase is ignored.
     dt : ndarray, optional
         The distance transform of the void space. This is optional, but providing
-        it if it is already available save some time. Also, it can be converted to
-        integer type or round to fewer decimal places to reduce the number of unique
-        sphere sizes to insert if `steps=None`.
+        it if it is already available save some time.
     steps : scalar or array_like
         Controls which sphere sizes to invade. If an `int` then this many steps
         between 1 and the maximum size are used. A `tuple` is treated as the start
@@ -106,20 +104,18 @@ def drainage_bf(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    dt_int = dt.astype(int)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=True)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
+    seeds_prev = np.zeros_like(im)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        if smooth:
-            invadable = dt >= r
-        else:
-            invadable = dt > r
+        seeds = dt >= r if smooth else dt > r
         if inlets is not None:
-            seeds = trim_disconnected_voxels(invadable, inlets=inlets)
-        edges = invadable * ???
+            seeds = trim_disconnected_voxels(seeds, inlets=inlets)
+        edges = seeds * ~seeds_prev * im
         coords = np.vstack(np.where(edges))
         if coords.size > 0:
             nwp = func(
@@ -133,13 +129,16 @@ def drainage_bf(
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+        seeds_prev = np.copy(seeds)
+
+    # Deal with trapping
     if outlets is not None:
         trapped = find_trapped_clusters(
             im=im,
             seq=im_seq,
             outlets=outlets,
             conn="min",
-            method="cluster",
+            method="labels",
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode="symmetric")
@@ -178,9 +177,7 @@ def drainage_dt_fft(
         trapping of the wetting phase is ignored.
     dt : ndarray, optional
         The distance transform of the void space. This is optional, but providing
-        it if it is already available save some time. Also, it can be converted to
-        integer type or round to fewer decimal places to reduce the number of unique
-        sphere sizes to insert if `steps=None`.
+        it if it is already available save some time.
     steps : scalar or array_like
         Controls which sphere sizes to invade. If an `int` then this many steps
         between 1 and the maximum size are used. A `tuple` is treated as the start
@@ -212,6 +209,7 @@ def drainage_dt_fft(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=True)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
@@ -227,6 +225,7 @@ def drainage_dt_fft(
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -234,7 +233,7 @@ def drainage_dt_fft(
             seq=im_seq,
             outlets=outlets,
             conn="min",
-            method="cluster",
+            method="labels",
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode="symmetric")
@@ -272,9 +271,7 @@ def drainage_fft(
         trapping of the wetting phase is ignored.
     dt : ndarray, optional
         The distance transform of the void space. This is optional, but providing
-        it if it is already available save some time. Also, it can be converted to
-        integer type or round to fewer decimal places to reduce the number of unique
-        sphere sizes to insert if `steps=None`.
+        it if it is already available save some time.
     steps : scalar or array_like
         Controls which sphere sizes to invade. If an `int` then this many steps
         between 1 and the maximum size are used. A `tuple` is treated as the start
@@ -301,6 +298,7 @@ def drainage_fft(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=True)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
@@ -317,6 +315,7 @@ def drainage_fft(
         mask = nwp * (im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -324,7 +323,7 @@ def drainage_fft(
             seq=im_seq,
             outlets=outlets,
             conn="min",
-            method="cluster",
+            method="labels",
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode="symmetric")
@@ -364,9 +363,7 @@ def drainage_dt(
         trapping of the wetting phase is ignored.
     dt : ndarray, optional
         The distance transform of the void space. This is optional, but providing
-        it if it is already available save some time. Also, it can be converted to
-        integer type or round to fewer decimal places to reduce the number of unique
-        sphere sizes to insert if `steps=None`.
+        it if it is already available save some time.
     steps : scalar or array_like
         Controls which sphere sizes to invade. If an `int` then this many steps
         between 1 and the maximum size are used. A `tuple` is treated as the start
@@ -399,6 +396,7 @@ def drainage_dt(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=True)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
@@ -421,7 +419,7 @@ def drainage_dt(
             seq=im_seq,
             outlets=outlets,
             conn="min",
-            method="cluster",
+            method="labels",
         )
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode="symmetric")
@@ -457,7 +455,7 @@ def drainage(
         the invadability of each voxel. If not provided then it is calculated
         as `2/dt`.
     dt : ndarray (optional)
-        The distance transform of ``im``.  If not provided it will be
+        The distance transform of ``im``. If not provided it will be
         calculated, so supplying it saves time.
     inlets : ndarray, optional
         A boolean image the same shape as ``im``, with ``True`` values
