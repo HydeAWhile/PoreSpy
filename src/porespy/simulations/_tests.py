@@ -7,10 +7,16 @@ edt = ps.tools.get_edt()
 im = ps.generators.blobs([200, 200], porosity=0.75, seed=0)
 dt = edt(im).astype(int)
 
+# This file compares the 4 different types of "logic" of the drainage and imbibition
+# algorithms. The point is to make sure that each method produces EXACTLY the same
+# output for a given size and 'smoothness'. This was especially useful when
+# developing logic for finding the 'edges' for the brute-force method, and for
+# clarifying how to find the seeds for the dilation if smooth=True or not. This is
+# not run as an actual test (i.e. during the CI builds), but is here as a reference.
 
 # %% Look at drainage logic
 Rs = [13, 12]
-smooth = False
+smooth = True
 
 # bf
 nwp_bf = np.zeros_like(im)
@@ -57,8 +63,7 @@ assert np.all(seeds_bf == seeds_dt_fft)
 assert np.all(seeds_bf == seeds_fft)
 
 # %% Look at imbibition logic
-Rs = [12, 13]
-smooth = False
+Rs = Rs[-1::-1]
 
 # bf
 nwp_bf = np.zeros_like(im)
