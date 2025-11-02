@@ -584,21 +584,21 @@ def drainage(
 
     # Initialize arrays used inside loop
     nwp_mask = np.zeros_like(im, dtype=bool)
-    seeds = np.zeros_like(im, dtype=bool)
+    seeds_prev = np.zeros_like(im, dtype=bool)
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         # Find all locations in image invadable at current pressure
-        invadable = (pc <= P) * im  # Equivalent to erosion
+        seeds = (pc <= P) * im  # Equivalent to erosion
         # Trim locations not connected to the inlets, if given
         if inlets is not None:
-            invadable = trim_disconnected_voxels(
-                im=invadable,
+            seeds = trim_disconnected_voxels(
+                im=seeds,
                 inlets=inlets,
                 conn=conn,
             )
         # Dilate the erosion to find locations of non-wetting phase
-        temp = invadable * (~seeds)  # Isolate new locations to speed up inserting
+        temp = seeds * (~seeds_prev)  # Isolate new locations to speed up inserting
         coords = np.where(temp)  # Find (i, j, k) coordinates of new locations
         radii = dt[coords]  # Extract sphere size to insert at each new location
         # Insert spheres of given radii at new locations
@@ -614,30 +614,16 @@ def drainage(
         # Deal with impact of residual, if present
         if residual is not None:
             if np.any(nwp_mask):
-                # Find nwp pixels connected to residual
-                temp = trim_disconnected_voxels(
-                    im=residual,
-                    inlets=nwp_mask,
+                nwp_mask = join_residual_and_invasion_front(
+                    im=im,
+                    pc=pc,
+                    dt=dt,
+                    residual=residual,
+                    nwp_mask=nwp_mask,
+                    seeds_prev=seeds_prev,
+                    P=P,
                     conn=conn,
                 )
-                if np.any(temp):
-                    # Trim invadable pixels not connected to residual
-                    invadable = (pc <= P) * im  # Find full set of invadable again
-                    invadable = trim_disconnected_voxels(
-                        im=invadable,
-                        inlets=temp,
-                        conn=conn,
-                    )
-                    coords = np.where(invadable)
-                    radii = dt[coords].astype(int)
-                    nwp_mask = _insert_disks_at_points_parallel(
-                        im=nwp_mask,
-                        coords=np.vstack(coords),
-                        radii=radii.astype(int),
-                        v=True,
-                        smooth=True,
-                        overwrite=False,
-                    )
         # This could be nested inside above if-block, but is outdented for clarity
         if (residual is not None) and (outlets is not None):
             nwp_mask = trim_disconnected_voxels(
@@ -645,15 +631,15 @@ def drainage(
                 inlets=inlets,
                 conn=conn,
             )
-            trapped += find_trapped_clusters(
+            trapped = find_trapping_due_to_residual(
                 im=im,
-                seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
+                trapped=trapped,
+                residual=residual,
                 outlets=outlets,
-                min_size=min_size,
-                method="labels" if len(Ps) < 100 else "queue",
+                nwp_mask=nwp_mask,
                 conn=conn,
+                min_size=min_size,
             )
-            trapped[residual] = False
             nwp_mask[trapped] = False  # Set nwp in trapped regions to 0
             im_seq[trapped] = -1
 
@@ -664,7 +650,7 @@ def drainage(
             if np.size(radii) > 0:
                 im_size[mask] = np.amin(radii)
         # Add new locations to list of invaded locations
-        seeds += invadable
+        seeds_prev = np.copy(seeds)
 
     # Set uninvaded voxels to inf
     im_pc[(im_seq == 0) * im] = np.inf
@@ -714,6 +700,65 @@ def drainage(
     results.pc = pc_curve.pc
     results.snwp = pc_curve.snwp
     return results
+
+
+def join_residual_and_invasion_front(
+    im,
+    pc,
+    dt,
+    nwp_mask,
+    residual,
+    P,
+    seeds_prev,
+    conn,
+):
+    # Find nwp pixels connected to residual
+    temp = trim_disconnected_voxels(
+        im=residual,
+        inlets=nwp_mask,
+        conn=conn,
+    )
+    if np.any(temp):
+        # Trim invadable pixels not connected to residual
+        seeds = (pc <= P) * im  # Find full set of invadable seeds again
+        seeds = trim_disconnected_voxels(
+            im=seeds,
+            inlets=temp,
+            conn=conn,
+        )
+        # Convert to just edges
+        coords = np.where(seeds * (~seeds_prev))
+        radii = dt[coords].astype(int)
+        nwp_mask = _insert_disks_at_points_parallel(
+            im=nwp_mask,
+            coords=np.vstack(coords),
+            radii=radii.astype(int),
+            v=True,
+            smooth=True,
+            overwrite=False,
+        )
+    return nwp_mask
+
+
+def find_trapping_due_to_residual(
+    im,
+    nwp_mask,
+    trapped,
+    residual,
+    outlets,
+    conn,
+    min_size,
+):
+    trapped += find_trapped_clusters(
+        im=im,
+        seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
+        outlets=outlets,
+        min_size=min_size,
+        method="labels",
+        conn=conn,
+    )
+    trapped[residual] = False
+    return trapped
 
 
 # %%

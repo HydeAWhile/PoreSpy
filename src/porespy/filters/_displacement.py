@@ -329,8 +329,7 @@ def _find_trapped_clusters_labels(
     # Scan image for each value of sequence in the outlets
     bins = np.unique(seq[seq <= Lmax])[-1::-1]
     bins = bins[bins > 0]
-    desc = inspect.currentframe().f_code.co_name  # Get current func name
-    for i in tqdm(range(len(bins)), desc=desc, **settings.tqdm):
+    for i in range(len(bins)):
         s = bins[i]
         temp = seq >= s
         labels = spim.label(temp, structure=se)[0]
