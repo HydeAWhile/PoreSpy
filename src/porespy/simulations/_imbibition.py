@@ -1,7 +1,6 @@
 import inspect
 
 import numpy as np
-from edt import edt
 from numba import njit, prange
 
 from porespy.filters import (
@@ -19,6 +18,7 @@ from porespy.tools import (
     _insert_disk_at_points_parallel,
     _insert_disks_at_points_parallel,
     get_tqdm,
+    get_edt,
     make_contiguous,
     parse_steps,
     ps_round,
@@ -26,6 +26,7 @@ from porespy.tools import (
 )
 
 tqdm = get_tqdm()
+edt = get_edt()
 
 
 __all__ = [
@@ -46,9 +47,9 @@ def imbibition_bf(
     smooth=True,
 ):
     r"""
-    Performs a distance transform based imbibition simulation using brute force to
-    directly insert spheres to accomplish dilation, then distance transform
-    thresholding for erosion
+    Performs a distance transform based imbibition simulation using distance
+    transform thresholding for the erosion step and brute-force sphere insertion
+    for the dilation step.
 
     Parameters
     ----------
@@ -82,14 +83,20 @@ def imbibition_bf(
     results : Dataclass-like object
         An object with the following attributes:
 
-        =========== ===========================================================
+        =========== ================================================================
         Attribute   Description
-        =========== ===========================================================
-        `im_seq`    The sequence map indicating the sequence or step number at
-                    which each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
-        =========== ===========================================================
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
 
     Notes
     -----
@@ -104,14 +111,19 @@ def imbibition_bf(
     if dt is None:
         dt = edt(im)
     dt = dt.astype(int)
+
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
+
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
     seeds_prev = np.zeros_like(im)
+
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
+        # Perform erosion using dt
         seeds = (dt <= r)*im
+        # Perform dilation using bf
         edges = seeds * ~seeds_prev * im
         coords = np.vstack(np.where(edges))
         nwp.fill(False)
@@ -125,12 +137,14 @@ def imbibition_bf(
             )
         nwp[(~seeds)*im] = True
         wp = (~nwp)*im
+        # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
         seeds_prev = seeds
+
     if outlets is not None:
         trapped = find_trapped_clusters(
             im=im,
@@ -142,6 +156,7 @@ def imbibition_bf(
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
         im_size[trapped] = -1
+
     results = Results()
     results.im_seq = im_seq*im
     results.im_size = im_size*im
@@ -194,14 +209,20 @@ def imbibition_dt_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        =========== ===========================================================
+        =========== ================================================================
         Attribute   Description
-        =========== ===========================================================
-        ``im_seq``  The sequence map indicating the sequence or step number at
-                    which each voxel was first invaded.
-        ``im_size`` The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
-        =========== ===========================================================
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
 
     Notes
     -----
@@ -222,7 +243,7 @@ def imbibition_dt_fft(
         # Perform dilation using convolution
         se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
-        # Trimming disconnected wetting phase
+        # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
         mask = wp*(im_seq == -1)
@@ -241,6 +262,7 @@ def imbibition_dt_fft(
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
         im_size[trapped] = -1
+
     results = Results()
     results.im_seq = im_seq*im
     results.im_size = im_size*im
@@ -293,15 +315,20 @@ def imbibition_dt(
     results : Results object
         A dataclass-like object with the following attributes:
 
-        ========== ============================================================
-        Attribute  Description
-        ========== ============================================================
-        im_seq     A numpy array with each voxel value indicating the sequence
-                   at which it was invaded.  Values of -1 indicate that it was
-                   not invaded.
-        im_size    A numpy array with each voxel value indicating the radius of
-                   spheres being inserted when it was invaded.
-        ========== ============================================================
+        =========== ================================================================
+        Attribute   Description
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
 
     Notes
     -----
@@ -320,10 +347,10 @@ def imbibition_dt(
         # Perform erosion using dt
         seeds = dt >= r
         # Perform dilation using dt
-        tmp = edt(~seeds, parallel=settings.ncores)
+        tmp = edt(~seeds)
         wp = ~(tmp < r) if smooth else ~(tmp <= r)
         wp[~im] = 0
-        # Trimming disconnected wetting phase
+        # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
         mask = wp*(im_seq == -1)
@@ -393,14 +420,20 @@ def imbibition_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        =========== ===========================================================
+        =========== ================================================================
         Attribute   Description
-        =========== ===========================================================
-        ``im_seq``  The sequence map indicating the sequence or step number at
-                    which each voxels was first invaded.
-        ``im_size`` The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
-        =========== ===========================================================
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
     """
     im = np.array(im, dtype=bool)
     if dt is None:
@@ -417,7 +450,7 @@ def imbibition_fft(
         # Perform dilation using convolution
         se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
-        # Trimming disconnected wetting phase
+        # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
         mask = wp*(im_seq == -1)
