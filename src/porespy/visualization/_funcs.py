@@ -62,7 +62,7 @@ def set_mpl_style():  # pragma: no cover
     # if ps.settings.notebook:
     #     import IPython
     #     IPython.display.set_matplotlib_formats('retina')
-    matplotlib_inline.backend_inline.set_matplotlib_formats('retina')
+    # matplotlib_inline.backend_inline.set_matplotlib_formats('retina')
 
 
 def satn_to_movie(
