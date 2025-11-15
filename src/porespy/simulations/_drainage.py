@@ -49,9 +49,9 @@ def drainage_bf(
     smooth=True,
 ):
     r"""
-    Performs a distance transform based drainage simulation using brute force to
-    directly insert spheres to accomplish dilation, then distance transform
-    thresholding for erosion
+    Performs a distance transform based drainage simulation using distance transform
+    thresholding for the erosion step and brute-force sphere insertion for the
+    dilation step.
 
     Parameters
     ----------
@@ -60,7 +60,7 @@ def drainage_bf(
     inlets : ndarray (optional)
         A boolean array with `True` values indicating the inlet locations for the
         invading (non-wetting) fluid. If not provided then access limitations will
-        not be applied, meaning that the invading fluid cand appear anywhere within
+        not be applied, meaning that the invading fluid can appear anywhere within
         the domain.
     outlets : ndarray (optional)
         A boolean array with `True` values indicating the outlet locations through
@@ -68,7 +68,7 @@ def drainage_bf(
         trapping of the wetting phase is ignored.
     dt : ndarray, optional
         The distance transform of the void space. This is optional, but providing
-        it if it is already available save some time.
+        it if it is already available saved some time.
     steps : scalar or array_like
         Controls which sphere sizes to invade. If an `int` then this many steps
         between 1 and the maximum size are used. A `tuple` is treated as the start
@@ -86,10 +86,16 @@ def drainage_bf(
         =========== ================================================================
         Attribute   Description
         =========== ================================================================
-        ``im_seq``  The sequence map indicating the sequence or step number at which
-                    each voxels was first invaded.
-        ``im_size`` The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
         =========== ================================================================
 
     Notes
@@ -169,7 +175,7 @@ def drainage_dt_fft(
     inlets : ndarray (optional)
         A boolean array with `True` values indicating the inlet locations for the
         invading (non-wetting) fluid. If not provided then access limitations will
-        not be applied, meaning that the invading fluid cand appear anywhere within
+        not be applied, meaning that the invading fluid can appear anywhere within
         the domain.
     outlets : ndarray (optional)
         A boolean array with `True` values indicating the outlet locations through
@@ -195,10 +201,16 @@ def drainage_dt_fft(
         =========== ================================================================
         Attribute   Description
         =========== ================================================================
-        `im_seq`    The sequence map indicating the sequence or step number at which
-                    each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
         =========== ================================================================
 
     Notes
@@ -263,7 +275,7 @@ def drainage_fft(
     inlets : ndarray (optional)
         A boolean array with `True` values indicating the inlet locations for the
         invading (non-wetting) fluid. If not provided then access limitations will
-        not be applied, meaning that the invading fluid cand appear anywhere within
+        not be applied, meaning that the invading fluid can appear anywhere within
         the domain.
     outlets : ndarray (optional)
         A boolean array with `True` values indicating the outlet locations through
@@ -289,10 +301,16 @@ def drainage_fft(
         =========== ================================================================
         Attribute   Description
         =========== ================================================================
-        `im_seq`    The sequence map indicating the sequence or step number at which
-                    each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
         =========== ================================================================
     """
     im = np.array(im, dtype=bool)
@@ -355,7 +373,7 @@ def drainage_dt(
     inlets : ndarray (optional)
         A boolean array with `True` values indicating the inlet locations for the
         invading (non-wetting) fluid. If not provided then access limitations will
-        not be applied, meaning that the invading fluid cand appear anywhere within
+        not be applied, meaning that the invading fluid can appear anywhere within
         the domain.
     outlets : ndarray (optional)
         A boolean array with `True` values indicating the outlet locations through
@@ -378,15 +396,20 @@ def drainage_dt(
     results : Results object
         A dataclass-like object with the following attributes:
 
-        ========== =================================================================
-        Attribute  Description
-        ========== =================================================================
-        im_seq     A numpy array with each voxel value indicating the sequence
-                   at which it was invaded.  Values of -1 indicate that it was
-                   not invaded.
-        im_size    A numpy array with each voxel value indicating the radius of
-                   spheres being inserted when it was invaded.
-        ========== =================================================================
+        =========== ================================================================
+        Attribute   Description
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
 
     Notes
     -----
@@ -443,7 +466,7 @@ def drainage(
 ):
     r"""
     Simulate drainage using image-based sphere insertion, optionally including
-    gravity [4]_.
+    gravity [1]_.
 
     Parameters
     ----------
@@ -455,12 +478,12 @@ def drainage(
         the invadability of each voxel. If not provided then it is calculated
         as `2/dt`.
     dt : ndarray (optional)
-        The distance transform of ``im``. If not provided it will be
-        calculated, so supplying it saves time.
+        The distance transform of ``im``. If not provided it will be calculated,
+        so supplying it saves time.
     inlets : ndarray, optional
         A boolean image the same shape as ``im``, with ``True`` values
         indicating the inlet locations. If not specified then access limitations
-        are not applied so the result is essentially a local thickness filter.
+        are not applied so invading phase can appear anywhere within the domain.
     outlets : ndarray, optional
         A boolean image with ``True`` values indicating the outlet locations.
         If this is provided then trapped voxels of wetting phase are found and
@@ -504,37 +527,45 @@ def drainage(
     results : Results object
         A dataclass-like object with the following attributes:
 
-        ========== ============================================================
-        Attribute  Description
-        ========== ============================================================
-        im_seq     An ndarray with each voxel indicating the step number at
-                   which it was first invaded by non-wetting phase
-        im_snwp    A numpy array with each voxel value indicating the global
-                   value of the non-wetting phase saturation at the point it
-                   was invaded
-        im_size    A numpy array with each voxel containing the radius of the
-                   sphere, in voxels, that first overlapped it.
-        im_pc      A numpy array with each voxel value indicating the
-                   capillary pressure at which it was invaded.
-        im_trapped A numpy array with ``True`` values indicating trapped voxels
-                   if `outlets` was provided, otherwise will be `None`.
-        pc         1D array of capillary pressure values that were applied
-        swnp       1D array of non-wetting phase saturations for each applied
-                   value of capillary pressure (``pc``).
-        ========== ============================================================
+        ============ ===============================================================
+        Attribute    Description
+        ============ ===============================================================
+        `im_seq`     An ndarray with each voxel indicating the step number at
+                     which it was first invaded by non-wetting phase. -1 indicates
+                     uninavded, either due to the maximum pressure being too low,
+                     or trapping, while 0 indicates residual.
+        `im_pc`      A numpy array with each voxel value indicating the capillary
+                     pressure at which it was invaded. `inf` indicates uninvaded,
+                     either due to the maximum pressure being too low, or due to
+                     trapping.
+        `im_snwp`    A numpy array with each voxel value indicating the global
+                     value of the non-wetting phase saturation at the point it
+                     was invaded. -1 indicates uninavded, either due to the maximum
+                     pressure being too low, or trapping, while 0 indicates
+                     residual.
+        `im_size`    A numpy array with each voxel containing the radius of the
+                     sphere, in voxels, that first overlapped it. `inf` indicates
+                     uninavded, either due to the maximum pressure being too low,
+                     or trapping, while 0 indicates residual.
+        `im_trapped` A numpy array with ``True`` values indicating trapped voxels.
+                     If `outlets` was not provided it will be all `False`.
+        `pc`         1D array of capillary pressure values that were applied.
+        `swnp`       1D array of non-wetting phase saturations for each applied
+                     value of capillary pressure (``pc``).
+        ============ ===============================================================
 
     References
     ----------
-    .. [4] Chadwick EA, Hammen LH, Schulz VP, Bazylak A, Ioannidis MA, Gostick JT.
+    .. [1] Chadwick EA, Hammen LH, Schulz VP, Bazylak A, Ioannidis MA, Gostick JT.
        Incorporating the effect of gravity into image-based drainage simulations on
        volumetric images of porous media.
-       `Water Resources Research. <https://doi.org/10.1029/2021WR031509>`__.
-       58(3), e2021WR031509 (2022)
+       Water Resources Research. 58(3), e2021WR031509 (2022).
+       doi: `10.1029/2021WR031509 <https://doi.org/10.1029/2021WR031509>`_
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/simulations/reference/drainage.html>`__
+    <https://porespy.org/examples/simulations/reference/drainage.html>`_
     to view online example.
 
     """
@@ -581,27 +612,20 @@ def drainage(
             conn=conn,
         )
         im_seq[trapped] = -1
-
-    # Initialize arrays used inside loop
     nwp_mask = np.zeros_like(im, dtype=bool)
     seeds_prev = np.zeros_like(im, dtype=bool)
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
-        # Find all locations in image invadable at current pressure
-        seeds = (pc <= P) * im  # Equivalent to erosion
-        # Trim locations not connected to the inlets, if given
+        # Perform erosion to find all locations invadable at current pressure
+        seeds = (pc <= P) * im
+        # Trim locations not connected to the inlets
         if inlets is not None:
-            seeds = trim_disconnected_voxels(
-                im=seeds,
-                inlets=inlets,
-                conn=conn,
-            )
+            seeds = trim_disconnected_voxels(im=seeds, inlets=inlets, conn=conn)
         # Dilate the erosion to find locations of non-wetting phase
-        temp = seeds * (~seeds_prev)  # Isolate new locations to speed up inserting
-        coords = np.where(temp)  # Find (i, j, k) coordinates of new locations
+        edges = seeds * (~seeds_prev)  # Isolate edges to speed up inserting
+        coords = np.where(edges)  # Find (i, j, k) coordinates of edges
         radii = dt[coords]  # Extract sphere size to insert at each new location
-        # Insert spheres of given radii at new locations
         nwp_mask = _insert_disks_at_points_parallel(
             im=nwp_mask,
             coords=np.vstack(coords),
@@ -610,8 +634,7 @@ def drainage(
             smooth=True,
             overwrite=False,
         )
-
-        # Deal with impact of residual, if present
+        # Connect residual to invasion front
         if residual is not None:
             if np.any(nwp_mask):
                 nwp_mask = join_residual_and_invasion_front(
@@ -624,8 +647,8 @@ def drainage(
                     P=P,
                     conn=conn,
                 )
-        # This could be nested inside above if-block, but is outdented for clarity
-        if (residual is not None) and (outlets is not None):
+        # Find trapped wetting due to presence of residual
+        if all([inlets is not None, outlets is not None, residual is not None]):
             nwp_mask = trim_disconnected_voxels(
                 im=nwp_mask * ~trapped,
                 inlets=inlets,
@@ -655,10 +678,11 @@ def drainage(
     # Set uninvaded voxels to inf
     im_pc[(im_seq == 0) * im] = np.inf
 
-    # Add residual if given
+    # Update images with residual
     if residual is not None:
         im_pc[residual] = -np.inf
         im_seq[residual] = 1
+        im_size[residual] = 0
 
     # Analyze trapping as a post-processing step if no residual
     if (outlets is not None) and (residual is None):
@@ -673,13 +697,10 @@ def drainage(
         trapped[im_seq == -1] = True
         im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf
 
-    im_seq = make_contiguous(im_seq, mode='symmetric')
-    satn = seq_to_satn(seq=im_seq, im=im, mode="drainage")
-
     # Initialize results object to collect data
     results = Results()
-    results.im_snwp = satn
-    results.im_seq = im_seq
+    results.im_snwp = seq_to_satn(seq=im_seq, im=im, mode="drainage")
+    results.im_seq = make_contiguous(im_seq, mode='symmetric')
     results.im_pc = im_pc
     results.im_trapped = trapped
 
@@ -702,6 +723,7 @@ def drainage(
     return results
 
 
+# The following functions are helpers to make the drainage code more concise
 def join_residual_and_invasion_front(
     im,
     pc,
