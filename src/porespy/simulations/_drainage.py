@@ -681,7 +681,7 @@ def drainage(
     # Update images with residual
     if residual is not None:
         im_pc[residual] = -np.inf
-        im_seq[residual] = 1
+        im_seq[residual] = 0
         im_size[residual] = 0
 
     # Analyze trapping as a post-processing step if no residual
