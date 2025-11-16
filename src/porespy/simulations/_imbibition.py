@@ -641,22 +641,22 @@ def imbibition(
 
         # Deal with impact of residual, if present
         if (residual is not None) and (outlets is not None):
-                nwp_mask = ~trim_disconnected_voxels(
-                    im=~nwp_mask * ~trapped,
-                    inlets=inlets,
-                    conn=conn,
-                )
-                trapped += find_trapped_clusters(
-                    im=im,
-                    seq=(nwp_mask*im*2.0 - residual*1.0).astype(int),
-                    outlets=outlets,
-                    min_size=min_size,
-                    method="labels" if len(Ps) < 100 else "queue",
-                    conn=conn,
-                )
-                trapped[residual] = False
-                nwp_mask[trapped] = True
-                im_seq[trapped] = -1
+            nwp_mask = ~trim_disconnected_voxels(
+                im=~nwp_mask * ~trapped,
+                inlets=inlets,
+                conn=conn,
+            )
+            trapped += find_trapped_clusters(
+                im=im,
+                seq=(nwp_mask*im*2.0 - residual*1.0).astype(int),
+                outlets=outlets,
+                min_size=min_size,
+                method="labels" if len(Ps) < 100 else "queue",
+                conn=conn,
+            )
+            trapped[residual] = False
+            nwp_mask[trapped] = True
+            im_seq[trapped] = -1
 
         mask = (nwp_mask == 0) * (im_seq == 0) * im
         if np.any(mask):
@@ -683,6 +683,7 @@ def imbibition(
         )
         trapped[im_seq == -1] = True
         im_pc[trapped] = -np.inf
+        im_seq[trapped] = -1
 
     im_seq = make_contiguous(im_seq, mode='symmetric')
     satn = seq_to_satn(im=im, seq=im_seq, mode='imbibition')
