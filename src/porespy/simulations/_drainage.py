@@ -9,6 +9,7 @@ from porespy.filters import (
     find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_voxels,
+    find_disconnected_voxels,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
@@ -587,7 +588,7 @@ def drainage(
         mask = np.isfinite(pc) * im
         Ps = np.logspace(
             np.log10(pc[mask].min()),
-            np.log10(pc[mask].max()),
+            np.log10(pc[mask].max()*1.05),
             steps,
         )
     elif steps is None:
@@ -603,15 +604,12 @@ def drainage(
     if residual is not None:
         im_seq[residual] = 1
     if (outlets is not None) and (residual is not None):
-        trapped = find_trapped_clusters(
-            im=im,
-            seq=(im*2.0 - residual*1.0).astype(int),
-            outlets=outlets,
-            min_size=min_size,
-            method="labels" if len(Ps) < 100 else "queue",
+        trapped = find_disconnected_voxels(
+            im=im * ~residual,
+            inlets=outlets,
             conn=conn,
         )
-        im_seq[trapped] = -1
+    im_seq[trapped] = -1
     nwp_mask = np.zeros_like(im, dtype=bool)
     seeds_prev = np.zeros_like(im, dtype=bool)
 
@@ -634,6 +632,7 @@ def drainage(
             smooth=True,
             overwrite=False,
         )
+        nwp_mask[seeds] = True
         # Connect residual to invasion front
         if residual is not None:
             if np.any(nwp_mask):
@@ -654,15 +653,15 @@ def drainage(
                 inlets=inlets,
                 conn=conn,
             )
-            trapped = find_trapping_due_to_residual(
+            trapped += find_trapped_clusters(
                 im=im,
-                trapped=trapped,
-                residual=residual,
+                seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
                 outlets=outlets,
-                nwp_mask=nwp_mask,
-                conn=conn,
                 min_size=min_size,
+                method="labels",
+                conn=conn,
             )
+            trapped[residual] = False
             nwp_mask[trapped] = False  # Set nwp in trapped regions to 0
             im_seq[trapped] = -1
 
@@ -675,8 +674,10 @@ def drainage(
         # Add new locations to list of invaded locations
         seeds_prev = np.copy(seeds)
 
-    # Set uninvaded voxels to inf
-    im_pc[(im_seq == 0) * im] = np.inf
+    # Set uninvaded voxels to inf and -1
+    # mask = (im_seq == 0)*im
+    # im_pc[mask] = np.inf
+    # im_seq[mask] = -1
 
     # Update images with residual
     if residual is not None:
@@ -694,8 +695,9 @@ def drainage(
             method="labels" if len(Ps) < 100 else "queue",
             conn=conn,
         )
-        trapped[im_seq == -1] = True
-        im_pc[trapped] = np.inf  # Trapped defender only displaced as Pc -> inf
+        trapped[im_seq == -1] = True  # TODO: This probably isn't necessary?
+        im_pc[trapped] = np.inf  # Trapped defender only displaced at Pc -> inf
+        im_seq[trapped] = -1
 
     # Initialize results object to collect data
     results = Results()
@@ -712,14 +714,14 @@ def drainage(
     im_size[im_pc == -np.inf] = -np.inf
     results.im_size = im_size
 
-    pc_curve = pc_map_to_pc_curve(
-        im=im,
-        pc=results.im_pc,
-        seq=results.im_seq,
-        mode="drainage",
-    )
-    results.pc = pc_curve.pc
-    results.snwp = pc_curve.snwp
+    # pc_curve = pc_map_to_pc_curve(
+    #     im=im,
+    #     pc=results.im_pc,
+    #     seq=results.im_seq,
+    #     mode="drainage",
+    # )
+    # results.pc = pc_curve.pc
+    # results.snwp = pc_curve.snwp
     return results
 
 
@@ -762,27 +764,6 @@ def join_residual_and_invasion_front(
     return nwp_mask
 
 
-def find_trapping_due_to_residual(
-    im,
-    nwp_mask,
-    trapped,
-    residual,
-    outlets,
-    conn,
-    min_size,
-):
-    trapped += find_trapped_clusters(
-        im=im,
-        seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
-        outlets=outlets,
-        min_size=min_size,
-        method="labels",
-        conn=conn,
-    )
-    trapped[residual] = False
-    return trapped
-
-
 # %%
 if __name__ == "__main__":
     from copy import copy
@@ -795,27 +776,28 @@ if __name__ == "__main__":
     ps.visualization.set_mpl_style()
 
     cm = copy(plt.cm.turbo)
-    cm.set_under("grey")
-    cm.set_over("k")
+    cm.set_under('k')
+    cm.set_over('grey')
 
     # %% Run this cell to regenerate the variables in drainage
     seed = np.random.randint(100000)  # 12129, 61227
     bg = "white"
     plots = True
-    # im = ps.generators.blobs(
-    #     shape=[500, 500],
-    #     porosity=0.7,
-    #     blobiness=1.5,
-    #     seed=seed,
-    # )
-    im = ~ps.generators.random_spheres(
-        [600, 600],
-        r=15,
-        clearance=15,
-        seed=1,
-        edges='extended',
-        phi=0.2,
+    im = ps.generators.blobs(
+        shape=[500, 500],
+        porosity=0.708328,
+        blobiness=1.5,
+        seed=6,
+        periodic=False,
     )
+    # im = ~ps.generators.random_spheres(
+    #     [600, 600],
+    #     r=15,
+    #     clearance=15,
+    #     seed=1,
+    #     edges='extended',
+    #     phi=0.2,
+    # )
     im = ps.filters.fill_invalid_pores(im)
     inlets = np.zeros_like(im)
     inlets[0, :] = True
@@ -866,7 +848,7 @@ if __name__ == "__main__":
         residual=residual,
         steps=steps,
     )
-    drn5 = ps.simulations.drainage(
+    drn4 = ps.simulations.drainage(
         im=im,
         pc=pc,
         steps=steps,
@@ -878,41 +860,52 @@ if __name__ == "__main__":
     # %% Visualize the invasion configurations for each scenario
     if plots:
         fig, ax = plt.subplot_mosaic(
-            [["(a)", "(b)", "(e)", "(e)"], ["(c)", "(d)", "(e)", "(e)"]],
+            [['(a)', '(b)', '(e)', '(e)'],
+             ['(c)', '(d)', '(e)', '(e)']],
             figsize=[12, 8],
-        )
-        # drn1.im_pc[~im] = -1
-        ax["(a)"].imshow(drn1.im_seq / im, origin="lower", cmap=cm, vmin=0)
-        ax["(a)"].axis(False)
+         )
+        tmp = np.copy(drn1.im_seq).astype(float)
+        vmax = tmp.max()
+        tmp[tmp < 0] = vmax + 1
+        # tmp[tmp == 0] = np.nan
+        tmp[~im] = -1
+        ax['(a)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-        vmax = drn2.im_seq.max()
-        ax["(b)"].imshow(drn2.im_seq / im, origin="lower", cmap=cm, vmin=0, vmax=vmax)
-        ax["(b)"].axis(False)
+        tmp = np.copy(drn2.im_seq).astype(float)
+        vmax = tmp.max()
+        tmp[tmp < 0] = vmax + 1
+        # tmp[tmp == 0] = np.nan
+        tmp[~im] = -1
+        ax['(b)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-        ax["(c)"].imshow(drn3.im_seq / im, origin="lower", cmap=cm, vmin=0)
-        ax["(c)"].axis(False)
+        tmp = np.copy(drn3.im_seq).astype(float)
+        vmax = tmp.max()
+        tmp[tmp < 0] = vmax + 1
+        # tmp[tmp == 0] = np.nan
+        tmp[~im] = -1
+        ax['(c)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-        ax["(d)"].imshow(drn5.im_seq / im, origin="lower", cmap=cm, vmin=0)
-        ax["(d)"].axis(False)
+        tmp = np.copy(drn4.im_seq).astype(float)
+        vmax = tmp.max()
+        tmp[tmp < 0] = vmax + 1
+        # tmp[tmp == 0] = np.nan
+        tmp[~im] = -1
+        ax['(d)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
-        pc, s = ps.metrics.pc_map_to_pc_curve(
-            pc=drn1.im_pc, seq=drn1.im_seq, im=im, mode="drainage"
-        )
-        ax["(e)"].plot(np.log10(pc), s, "b->", label="drainage")
+        Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
+            pc=drn1.im_pc, seq=drn1.im_seq, im=im, mode='drainage')
+        ax['(e)'].semilogx(Pc, Snwp, 'b->', label='drainage')
 
-        pc, s = ps.metrics.pc_map_to_pc_curve(
-            pc=drn2.im_pc, seq=drn2.im_seq, im=im, mode="drainage"
-        )
-        ax["(e)"].plot(np.log10(pc), s, "r-<", label="drainage w trapping")
+        Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
+            pc=drn2.im_pc, seq=drn2.im_seq, im=im, mode='drainage')
+        ax['(e)'].semilogx(Pc, Snwp, 'r-<', label='drainage w trapping')
 
-        pc, s = ps.metrics.pc_map_to_pc_curve(
-            pc=drn3.im_pc, seq=drn3.im_seq, im=im, mode="drainage"
-        )
-        ax["(e)"].plot(np.log10(pc), s, "g-^", label="drainage w residual")
+        Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
+            pc=drn3.im_pc, seq=drn3.im_seq, im=im, mode='drainage')
+        ax['(e)'].semilogx(Pc, Snwp, 'g-^', label='drainage w residual')
 
-        pc, s = ps.metrics.pc_map_to_pc_curve(
-            pc=drn5.im_pc, seq=drn5.im_seq, im=im, mode="drainage"
-        )
-        ax["(e)"].plot(np.log10(pc), s, "m-*", label="drainage w residual + trapping")
+        Pc, Snwp = ps.metrics.pc_map_to_pc_curve(
+            pc=drn4.im_pc, seq=drn4.im_seq, im=im, mode='drainage')
+        ax['(e)'].semilogx(Pc, Snwp, 'm-*', label='drainage w residual & trapping')
 
-        ax["(e)"].legend()
+        ax['(e)'].legend()

@@ -6,10 +6,10 @@ from numba import njit, prange
 from porespy.filters import (
     erode,
     fftmorphology,
-    find_small_clusters,
     find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_voxels,
+    find_disconnected_voxels,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
@@ -584,7 +584,7 @@ def imbibition(
         mask = np.isfinite(pc)*im
         Ps = np.logspace(
             np.log10(pc[mask].max()),
-            np.log10(pc[mask].min()*0.99),
+            np.log10(pc[mask].min()*0.95),
             steps,
         )
     elif steps is None:
@@ -599,20 +599,19 @@ def imbibition(
     if residual is not None:
         im_seq[residual] = 1
     if (outlets is not None) and (residual is not None):
-        trapped = find_trapped_clusters(
-            im=im,
-            seq=(im*2.0 - residual*1.0).astype(int),
-            outlets=outlets,
-            min_size=min_size,
-            method="labels" if len(Ps) < 100 else "queue",
+        trapped = find_disconnected_voxels(
+            im=im * ~residual,
+            inlets=outlets,
             conn=conn,
         )
     im_seq[trapped] = -1
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
-        # This can be made faster if I find a way to get only seeds on edge, so
-        # less spheres need to be drawn
+        # step += 1
+        # P = Ps[step]
+        # TODO: This can be made faster if I find a way to get only seeds on edge,
+        # so less spheres need to be drawn
         invadable = (pc <= P)*im  # This means 'invadable by non-wetting phase'
         # Using FFT-based erosion to find edges.  When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
@@ -641,17 +640,15 @@ def imbibition(
 
         # Deal with impact of residual, if present
         if (residual is not None) and (outlets is not None):
+            # Remove any wp which is blocked by previously trapped nwp
             nwp_mask = ~trim_disconnected_voxels(
-                im=~nwp_mask * ~trapped,
+                im=(~nwp_mask)*(~trapped),
                 inlets=inlets,
                 conn=conn,
             )
-            trapped += find_trapped_clusters(
-                im=im,
-                seq=(nwp_mask*im*2.0 - residual*1.0).astype(int),
-                outlets=outlets,
-                min_size=min_size,
-                method="labels" if len(Ps) < 100 else "queue",
+            trapped += find_disconnected_voxels(
+                im=im*(nwp_mask)*(~residual),
+                inlets=outlets,
                 conn=conn,
             )
             trapped[residual] = False
@@ -663,13 +660,15 @@ def imbibition(
             im_seq[mask] = step + 1
             im_pc[mask] = P
 
-    # Set uninvaded voxels to -inf
-    im_pc[(im_seq == 0) * im] = -np.inf
+    # Set uninvaded voxels to -inf and -1
+    # mask = (im_seq == 0)*im
+    # im_pc[mask] = -np.inf
+    # im_seq[mask] = -1
 
     # Add residual if given
     if residual is not None:
         im_pc[residual] = np.inf
-        im_seq[residual] = 1
+        im_seq[residual] = 0
 
     # Check for trapping as a post-processing step if no residual
     if (outlets is not None) and (residual is None):
@@ -681,7 +680,6 @@ def imbibition(
             method='labels' if len(Ps) < 100 else 'queue',
             conn=conn,
         )
-        trapped[im_seq == -1] = True
         im_pc[trapped] = -np.inf
         im_seq[trapped] = -1
 
@@ -695,14 +693,14 @@ def imbibition(
     results.im_pc = im_pc
     results.im_trapped = trapped
 
-    pc_curve = pc_map_to_pc_curve(
-        pc=im_pc,
-        im=im,
-        seq=im_seq,
-        mode='imbibition',
-    )
-    results.pc = pc_curve.pc
-    results.snwp = pc_curve.snwp
+    # pc_curve = pc_map_to_pc_curve(
+    #     pc=im_pc,
+    #     im=im,
+    #     seq=im_seq,
+    #     mode='imbibition',
+    # )
+    # results.pc = pc_curve.pc
+    # results.snwp = pc_curve.snwp
     return results
 
 
@@ -773,7 +771,8 @@ if __name__ == '__main__':
 
     inlets = ps.generators.faces(im.shape, inlet=0)
     outlets = ps.generators.faces(im.shape, outlet=0)
-    pc = ps.filters.capillary_transform(im=im, voxel_size=1e-4)
+    dt = edt(im)
+    pc = ps.filters.capillary_transform(im=im, dt=dt, voxel_size=1e-4)
 
     drn = ps.simulations.drainage(im=im, pc=pc, inlets=inlets, outlets=outlets, steps=steps)
     residual = drn.im_trapped
@@ -793,28 +792,28 @@ if __name__ == '__main__':
     tmp = np.copy(imb1.im_seq).astype(float)
     vmax = tmp.max()
     tmp[tmp < 0] = vmax + 1
-    tmp[tmp == 0] = np.nan
+    # tmp[tmp == 0] = np.nan
     tmp[~im] = -1
     ax['(a)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
     tmp = np.copy(imb2.im_seq).astype(float)
     vmax = tmp.max()
     tmp[tmp < 0] = vmax + 1
-    tmp[tmp == 0] = np.nan
+    # tmp[tmp == 0] = np.nan
     tmp[~im] = -1
     ax['(b)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
     tmp = np.copy(imb3.im_seq).astype(float)
     vmax = tmp.max()
     tmp[tmp < 0] = vmax + 1
-    tmp[tmp == 0] = np.nan
+    # tmp[tmp == 0] = np.nan
     tmp[~im] = -1
     ax['(c)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
     tmp = np.copy(imb4.im_seq).astype(float)
     vmax = tmp.max()
     tmp[tmp < 0] = vmax + 1
-    tmp[tmp == 0] = np.nan
+    # tmp[tmp == 0] = np.nan
     tmp[~im] = -1
     ax['(d)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 

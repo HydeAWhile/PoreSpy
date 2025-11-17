@@ -350,12 +350,12 @@ def boxcount(im, bins=10):
         for i in range(0, im.shape[0], d):
             for j in range(0, im.shape[1], d):
                 if len(im.shape) == 2:
-                    temp = im[i : i + d, j : j + d]
+                    temp = im[i:i + d, j:j + d]
                     result += np.any(temp)
                     result -= np.all(temp)
                 else:
                     for k in range(0, im.shape[2], d):
-                        temp = im[i : i + d, j : j + d, k : k + d]
+                        temp = im[i:i + d, j:j + d, k:k + d]
                         result += np.any(temp)
                         result -= np.all(temp)
         N.append(result)
@@ -1267,12 +1267,14 @@ def pc_map_to_pc_curve(
         Indicates whether the invasion was a drainage or an imbibition process.
         Options are 'drainage' and 'imbibition'.
     fix_ends : bool (default is `True`)
-        A flag to control whether to adjust the endpoints of the curve or not.
-        The default is `True`, which will add a point at the beginning and end of
-        the curves corresponding to residual and trapped invading phase saturations.
-        This makes the curves look better when plotted. Disabling this correction
-        ensures that the (Pc, Snwp) data match the values in the displacement maps,
-        which is useful for making animations for instance.
+        If `True` (default) this puts values at + and - infinity corresponding to
+        maximum and minimum non-wetting phase saturations. This helps when plotting
+        as it adds plateaus.
+    pc_min, pc_max : float
+        Minimum and maximum values to clip the capillary pressures. This is useful
+        if the minimum or maximum capillary pressure values are -/+ infinity, which
+        means they do not show up when plotting.  Using `pc_min=1` and `pc_max=1e6`
+        for instance, will make plateaus render when plotting.
 
     Returns
     -------
@@ -1311,36 +1313,45 @@ def pc_map_to_pc_curve(
         # seq = np.reshape(seq, im.shape)
 
     if mode.startswith("dr"):
-        seq = seq.astype(float)
-        seq[seq == -1] = np.inf
+
+        # sims = [drn1, drn2, drn3, drn4]
+        # cs = ['b', 'r', 'g', 'y']
+        # i = 0
+        # pc, seq = sims[i].im_pc, sims[i].im_seq
+        # temp = np.digitize(x=pc[im], bins=np.unique(pc[im]))
+        # seq.fill(0)
+        # seq[im] = temp
+
+        # seq = seq.astype(float)
+        # seq[seq == -1] = np.inf
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
         snwp = np.cumsum(counts) / im.sum()
-        if fix_ends:
-            # If pc has no residual phase (-inf), then add new point at snwp=0
-            if pcs[0] != -np.inf:
-                pcs = np.hstack((pcs[0], pcs))
-                snwp = np.hstack(([0], snwp))
-            else:
-                pcs = np.hstack((pcs[0], pcs[1], pcs[1:]))
-                snwp = np.hstack((snwp[0], snwp[0], snwp[1:]))
-            if pcs[-1] == np.inf:  # If trapping occurred, as point at +inf
-                snwp[-1] = snwp[-2]
+
+    # sims = [imb1, imb2, imb3, imb4]
+    # cs = ['b', 'r', 'g', 'y']
+    # i = 3
+    # pc, seq = sims[i].im_pc, sims[i].im_seq
+    # temp = np.digitize(x=pc[im], bins=np.flip(np.unique(pc[im])))
+    # seq.fill(0)
+    # seq[im] = temp
 
     elif mode.startswith("imb"):
+        # seq = seq.astype(float)
         # seq[seq == -1] = -np.inf
-        swp_r = (seq[im] == 0).sum(dtype=np.int64) / im.sum(dtype=np.int64)
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        idx = np.argsort(pcs)[-1::-1]  # Because -inf, if present, is on wrong end
+        # Move -inf to end of pcs, and upate counts
+        idx = np.argsort(pcs)[-1::-1]
         pcs = pcs[idx]
         counts = counts[idx]
         snwp = 1 - np.cumsum(counts) / im.sum()
-        if fix_ends:
-            snwp = np.hstack(([1.0 - swp_r], snwp))
-            pcs = np.hstack((pcs[0], pcs))
-            if pcs[-1] == -np.inf:
-                snwp[-1] = snwp[-2]
+
+
+    # pcs = np.clip(pcs, a_min=pc_min, a_max=pc_max)
+    # plt.step(np.log10(pcs), snwp, f'{cs[i]}o-', where='post')
+    # plt.xlim([2, 4])
+    # plt.ylim([-0.05, 1.05])
 
     # Apply clipping to Pc values
     if pc_min or pc_max:
