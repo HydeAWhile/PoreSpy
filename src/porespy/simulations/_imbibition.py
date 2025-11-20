@@ -661,9 +661,9 @@ def imbibition(
             im_pc[mask] = P
 
     # Set uninvaded voxels to -inf and -1
-    # mask = (im_seq == 0)*im
-    # im_pc[mask] = -np.inf
-    # im_seq[mask] = -1
+    mask = (im_seq == 0)*im
+    im_pc[mask] = -np.inf
+    im_seq[mask] = -1
 
     # Add residual if given
     if residual is not None:

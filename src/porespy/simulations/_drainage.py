@@ -688,9 +688,9 @@ def drainage(
         seeds_prev = np.copy(seeds)
 
     # Set uninvaded voxels to inf and -1
-    # mask = (im_seq == 0)*im
-    # im_pc[mask] = np.inf
-    # im_seq[mask] = -1
+    mask = (im_seq == 0)*im
+    im_pc[mask] = np.inf
+    im_seq[mask] = -1
 
     # Update images with residual
     if residual is not None:
