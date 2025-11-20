@@ -282,6 +282,10 @@ class SeqTest():
         inlets = ps.generators.faces(im.shape, inlet=0)
         pc = ps.filters.capillary_transform(im, voxel_size=1e-5)
         drn = ps.simulations.drainage(im=im, pc=pc, steps=25, inlets=inlets)
+        seq = ps.filters.pc_to_seq(im=im, pc=drn.im_pc, mode='drainage')
+        seq2 = np.digitize(x=drn.im_pc.flatten(), bins=np.unique(drn.im_pc[im]))
+        seq2 = np.reshape(seq2, im.shape)*im
+        assert np.all(seq == seq2)
 
     def test_size_to_seq(self):
         im = self.im2D

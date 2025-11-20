@@ -1333,16 +1333,6 @@ def pc_map_to_pc_curve(
                 pcs = np.hstack((pcs, np.inf))
                 snwp = np.hstack((snwp, snwp[-1]))
 
-    # sims = [imb1, imb2, imb3, imb4]
-    # cs = ['b', 'r', 'g', 'y']
-    # i = 3
-    # pc, seq = sims[i].im_pc, sims[i].im_seq
-    # temp = np.digitize(x=pc[im], bins=np.flip(np.unique(pc[im])))
-    # seq.fill(0)
-    # seq[im] = temp
-    # seq = imb2.im_seq
-    # pc = imb2.im_pc
-
     elif mode.startswith("imb"):
         seq = seq.astype(float)
         seq[pc == np.inf] = np.inf  # Set residual pixels in seq to inf

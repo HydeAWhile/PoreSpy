@@ -727,14 +727,14 @@ def drainage(
     im_size[im_pc == -np.inf] = -np.inf
     results.im_size = im_size
 
-    # pc_curve = pc_map_to_pc_curve(
-    #     im=im,
-    #     pc=results.im_pc,
-    #     seq=results.im_seq,
-    #     mode="drainage",
-    # )
-    # results.pc = pc_curve.pc
-    # results.snwp = pc_curve.snwp
+    pc_curve = pc_map_to_pc_curve(
+        im=im,
+        pc=results.im_pc,
+        seq=results.im_seq,
+        mode="drainage",
+    )
+    results.pc = pc_curve.pc
+    results.snwp = pc_curve.snwp
     return results
 
 

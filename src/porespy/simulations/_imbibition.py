@@ -698,14 +698,14 @@ def imbibition(
         results.im_snwp[trapped] = -1
         results.im_pc[trapped] = -np.inf
 
-    # pc_curve = pc_map_to_pc_curve(
-    #     pc=im_pc,
-    #     im=im,
-    #     seq=im_seq,
-    #     mode='imbibition',
-    # )
-    # results.pc = pc_curve.pc
-    # results.snwp = pc_curve.snwp
+    pc_curve = pc_map_to_pc_curve(
+        pc=im_pc,
+        im=im,
+        seq=im_seq,
+        mode='imbibition',
+    )
+    results.pc = pc_curve.pc
+    results.snwp = pc_curve.snwp
     return results
 
 
