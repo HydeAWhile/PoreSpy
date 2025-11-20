@@ -17,9 +17,9 @@ def test_imbibition(plot=False):
         periodic=False,
     )
     inlets = np.zeros_like(im)
-    inlets[0, :] = True
+    inlets[-1, :] = True
     outlets = np.zeros_like(im)
-    outlets[-1, :] = True
+    outlets[0, :] = True
     im = ps.filters.trim_nonpercolating_paths(
         im=im,
         inlets=inlets,
@@ -77,42 +77,55 @@ def test_imbibition(plot=False):
         steps=steps,
     )
 
+    pc_imb = [None]
+    for sim in [imb1, imb2, imb3, imb4]:
+        pc_imb.append(
+            ps.metrics.pc_map_to_pc_curve(
+                im=im,
+                pc=sim.im_pc,
+                seq=sim.im_seq,
+                mode='imbibition',
+            )
+        )
+
     # Ensure initial saturations correspond to amount of residual present
-    assert imb1.snwp[0] == 1
-    assert imb2.snwp[0] == 1
+    assert pc_imb[1].snwp[0] == 1
+    assert pc_imb[2].snwp[0] == 1
     snwp_r = 1 - (imb3.im_pc == np.inf).sum()/im.sum()
-    assert imb3.snwp[0] == snwp_r
-    assert imb4.snwp[0] == snwp_r
-    snwp_r2 = 1 - (imb3.im_seq == -1).sum()/im.sum()
-    assert snwp_r == snwp_r2
+    assert pc_imb[3].snwp[0] == snwp_r
+    assert pc_imb[4].snwp[0] == snwp_r
 
     # Ensure final saturations correspond to trapping
-    assert imb1.snwp[-1] == 0  # No trapping, should reach 1.0
-    assert imb2.snwp[-1] == 0.33124470498598424
-    assert imb3.snwp[-1] == 0  # No trapping, should reach 1.0
-    assert imb4.snwp[-1] > 0
+    assert pc_imb[1].snwp[-1] == 0  # No trapping, should reach 1.0
+    assert pc_imb[2].snwp[-1] == 0.3813888430856357
+    assert pc_imb[3].snwp[-1] == 0  # No trapping, should reach 1.0
+    assert pc_imb[4].snwp[-1] == 0.5103000460559608
 
     # Ensure initial capillary pressures are correct
-    assert np.isfinite(imb1.pc[0])
-    assert np.isfinite(imb2.pc[0])
-    assert imb3.pc[0] == np.inf
-    assert imb4.pc[0] == np.inf
+    assert np.isfinite(pc_imb[1].pc[0])
+    assert np.isfinite(pc_imb[2].pc[0])
+    assert pc_imb[3].pc[0] == np.inf
+    assert pc_imb[4].pc[0] == np.inf
 
-    assert np.isfinite(imb1.pc[-1])
-    assert imb2.pc[-1] == -np.inf
-    assert np.isfinite(imb3.pc[-1])
-    assert imb4.pc[-1] == -np.inf
+    assert np.isfinite(pc_imb[1].pc[-1])
+    assert pc_imb[2].pc[-1] == -np.inf
+    assert np.isfinite(pc_imb[3].pc[-1])
+    assert pc_imb[4].pc[-1] == -np.inf
 
     # %% Visualize the invasion configurations for each scenario
     if plot:
+        from copy import copy
+        cm = copy(plt.cm.viridis)
+        cm.set_under('grey')
+
         fig, ax = plt.subplots(2, 2, facecolor=bg)
-        ax[0][0].imshow(imb1.im_snwp/im, origin='lower')
+        ax[0][0].imshow(imb1.im_snwp/im, origin='lower', vmin=0, vmax=1, cmap=cm)
         ax[0][0].set_title("No trapping, no residual")
-        ax[0][1].imshow(imb2.im_snwp/im, origin='lower')
+        ax[0][1].imshow(imb2.im_snwp/im, origin='lower', vmin=0, vmax=1, cmap=cm)
         ax[0][1].set_title("With trapping, no residual")
-        ax[1][0].imshow(imb3.im_snwp/im, origin='lower')
+        ax[1][0].imshow(imb3.im_snwp/im, origin='lower', vmin=0, vmax=1, cmap=cm)
         ax[1][0].set_title("No trapping, with residual")
-        ax[1][1].imshow(imb4.im_snwp/im, origin='lower')
+        ax[1][1].imshow(imb4.im_snwp/im, origin='lower', vmin=0, vmax=1, cmap=cm)
         ax[1][1].set_title("With trapping, with residual")
 
     # %% Plot the capillary pressure curves for each scenario
@@ -120,13 +133,13 @@ def test_imbibition(plot=False):
         plt.figure(facecolor=bg)
         ax = plt.axes()
         ax.set_facecolor(bg)
-        plt.step(np.log10(imb1.pc), imb1.snwp, 'b-o', where='post',
+        plt.step(np.log10(pc_imb[1].pc), pc_imb[1].snwp, 'b-o', where='post',
                  label="No trapping, no residual")
-        plt.step(np.log10(imb2.pc), imb2.snwp, 'r--o', where='post',
+        plt.step(np.log10(pc_imb[2].pc), pc_imb[2].snwp, 'r--o', where='post',
                  label="With trapping, no residual")
-        plt.step(np.log10(imb3.pc), imb3.snwp, 'g--o', where='post',
+        plt.step(np.log10(pc_imb[3].pc), pc_imb[3].snwp, 'g--o', where='post',
                  label="No trapping, with residual")
-        plt.step(np.log10(imb4.pc), imb4.snwp, 'm--o', where='post',
+        plt.step(np.log10(pc_imb[4].pc), pc_imb[4].snwp, 'm--o', where='post',
                  label="With trapping, with residual")
         plt.legend()
 
@@ -138,7 +151,7 @@ def test_imbibition(plot=False):
         sigma=sigma,
         theta=theta,
         g=g,
-        rho_nwp=delta_rho,
+        rho_nwp=delta_rho,  # Negative so gravity stabilized direction
         rho_wp=0,
         voxel_size=voxel_size,
     )
@@ -172,17 +185,28 @@ def test_imbibition(plot=False):
         steps=steps,
     )
 
+    pc_imb = [None]
+    for sim in [imb1, imb2, imb3, imb4]:
+        pc_imb.append(
+            ps.metrics.pc_map_to_pc_curve(
+                im=im,
+                pc=sim.im_pc,
+                seq=sim.im_seq,
+                mode='imbibition',
+            )
+        )
+
     # Ensure initial saturations correspond to amount of residual present
-    assert imb1.snwp[-1] == 0
-    assert imb2.snwp[-1] == 0
-    assert imb3.snwp[-1] == 0.34427115020497745
-    assert imb4.snwp[-1] == 0.34427115020497745
+    assert pc_imb[1].snwp[0] == 1
+    assert pc_imb[2].snwp[0] == 1
+    assert pc_imb[3].snwp[0] == 0.941218947763443
+    assert pc_imb[4].snwp[0] == 0.941218947763443
 
     # Ensure final saturations correspond to trapping
-    assert imb1.snwp[-1] == 1
-    assert imb2.snwp[-1] == 0.9209031517060606  # Changed from 0.9169855520745083
-    assert imb3.snwp[-1] == 1
-    assert imb4.snwp[-1] == 0.7872726342303822  # Changed from 0.838394750757649
+    assert pc_imb[1].snwp[-1] == 0
+    assert pc_imb[2].snwp[-1] == 0.07163123390173587
+    assert pc_imb[3].snwp[-1] == 0
+    assert pc_imb[4].snwp[-1] == 0.2155987559204653
 
     if plot:
         fig, ax = plt.subplots(2, 2, facecolor=bg)
@@ -199,13 +223,13 @@ def test_imbibition(plot=False):
         plt.figure(facecolor=bg)
         ax = plt.axes()
         ax.set_facecolor(bg)
-        plt.step(np.log10(imb1.pc), imb1.snwp, 'b-o', where='post',
+        plt.step(np.log10(pc_imb[1].pc), pc_imb[1].snwp, 'b-o', where='post',
                  label="No trapping, no residual")
-        plt.step(np.log10(imb2.pc), imb2.snwp, 'r--o', where='post',
+        plt.step(np.log10(pc_imb[2].pc), pc_imb[2].snwp, 'r--o', where='post',
                  label="With trapping, no residual")
-        plt.step(np.log10(imb3.pc), imb3.snwp, 'g--o', where='post',
+        plt.step(np.log10(pc_imb[3].pc), pc_imb[3].snwp, 'g--o', where='post',
                  label="No trapping, with residual")
-        plt.step(np.log10(imb4.pc), imb4.snwp, 'm--o', where='post',
+        plt.step(np.log10(pc_imb[4].pc), pc_imb[4].snwp, 'm--o', where='post',
                  label="With trapping, with residual")
         plt.legend()
 

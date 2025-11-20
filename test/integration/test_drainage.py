@@ -77,6 +77,7 @@ def test_drainage(plot=False):
         residual=residual,
         steps=steps,
     )
+
     sims = [drn1, drn2, drn3, drn4]
     i = 0
     pc_drn1 = ps.metrics.pc_map_to_pc_curve(
@@ -248,7 +249,7 @@ def test_drainage(plot=False):
     assert pc_drn1.snwp[-1] == 1
     assert pc_drn2.snwp[-1] == 0.9209031517060606  # Changed from 0.9169855520745083
     assert pc_drn3.snwp[-1] == 1
-    assert pc_drn4.snwp[-1] == 0.7872726342303822  # Changed from 0.838394750757649
+    assert pc_drn4.snwp[-1] == 0.7872669483092913  # Changed from 0.838394750757649
 
     if plot:
         from copy import copy

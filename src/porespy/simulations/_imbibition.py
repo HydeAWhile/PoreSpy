@@ -693,6 +693,11 @@ def imbibition(
     results.im_pc = im_pc
     results.im_trapped = trapped
 
+    if trapped is not None:
+        results.im_seq[trapped] = -1
+        results.im_snwp[trapped] = -1
+        results.im_pc[trapped] = -np.inf
+
     # pc_curve = pc_map_to_pc_curve(
     #     pc=im_pc,
     #     im=im,
@@ -756,17 +761,21 @@ if __name__ == '__main__':
     import porespy as ps
     ps.visualization.set_mpl_style()
 
-    cm = copy(plt.cm.turbo)
+    cm = copy(plt.cm.plasma)
     cm.set_under('k')
     cm.set_over('grey')
     steps = 50
 
     i = np.random.randint(1, 100000)  # bad: 38364, good: 65270, 71698
-    i = 50591
     # i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
     # i = 38364
-    print(i)
-    im = ps.generators.blobs([500, 500], porosity=0.8, blobiness=1.5, seed=i)
+    im = ps.generators.blobs(
+        shape=[1000, 1000],  # [1000, 1000]
+        porosity=0.75,  # 0.75
+        blobiness=2.5,  # 2.5
+        seed=4,  # 4
+        periodic=False,  # False
+    )
     im = ps.filters.fill_invalid_pores(im)
 
     inlets = ps.generators.faces(im.shape, inlet=0)

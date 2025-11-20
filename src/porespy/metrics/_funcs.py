@@ -1313,24 +1313,14 @@ def pc_map_to_pc_curve(
         # seq = np.reshape(seq, im.shape)
 
     if mode.startswith("dr"):
-
-        # sims = [drn1, drn2, drn3, drn4]
-        # cs = ['b', 'r', 'g', 'y']
-        # i = 0
-        # pc, seq = sims[i].im_pc, sims[i].im_seq
-        # temp = np.digitize(x=pc[im], bins=np.unique(pc[im]))
-        # seq.fill(0)
-        # seq[im] = temp
-
-        # pc = drn1.im_pc
-        # seq = drn1.im_seq
-
         seq = seq.astype(float)
         seq[pc == np.inf] = np.inf
         seq[pc == -np.inf] = -np.inf
+        # This could be done with pc instead of seq, but using seq makes it work
+        # for injection as well as drainage
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        # Deal w trapping
+        # If trapping present, don't include last counts in cumsum
         mask = pcs < np.inf
         snwp = np.cumsum(counts[mask]) / im.sum()
         snwp = np.hstack((snwp, [snwp[-1]]*sum(~mask)))
@@ -1350,27 +1340,40 @@ def pc_map_to_pc_curve(
     # temp = np.digitize(x=pc[im], bins=np.flip(np.unique(pc[im])))
     # seq.fill(0)
     # seq[im] = temp
+    # seq = imb2.im_seq
+    # pc = imb2.im_pc
 
     elif mode.startswith("imb"):
         seq = seq.astype(float)
-        seq[seq == -1] = -np.inf
+        seq[pc == np.inf] = np.inf  # Set residual pixels in seq to inf
+        seq[pc == -np.inf] = -np.inf  # Set trapped pixels in seql to -inf
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        # Move -inf to end of pcs, and upate counts
+        # Move +/-inf to opposite ends of pcs, and upate counts accordingly
         idx = np.argsort(pcs)[-1::-1]
         pcs = pcs[idx]
         counts = counts[idx]
-        snwp = 1 - np.cumsum(counts) / im.sum()
 
-
-    # pcs = np.clip(pcs, a_min=pc_min, a_max=pc_max)
-    # plt.step(np.log10(pcs), snwp, f'{cs[i]}o-', where='post')
-    # plt.xlim([2, 4])
-    # plt.ylim([-0.05, 1.05])
+        mask = pcs > -np.inf
+        snwp = 1 - np.cumsum(counts[mask]) / im.sum()
+        snwp = np.hstack((snwp, [snwp[-1]]*sum(~mask)))
+        if fix_ends:
+            if pcs[0] < np.inf:
+                pcs = np.hstack((pcs[0], pcs))
+                snwp = np.hstack((1.0, snwp))
+            if (pcs[-1] > -np.inf) and (snwp[-1] > 0):
+                pcs = np.hstack((pcs, -np.inf))
+                snwp = np.hstack((snwp, snwp[-1]))
 
     # Apply clipping to Pc values
     if pc_min or pc_max:
         pcs = np.clip(pcs, a_min=pc_min, a_max=pc_max)
+        if pcs.min() > pc_min:
+            pcs = np.hstack((pc_min, pcs))
+            snwp = np.hstack((snwp[0], snwp))
+        if pcs.min() < pc_max:
+            pcs = np.hstack((pcs, pc_max))
+            snwp = np.hstack((snwp, snwp[-1]))
 
     results = Results()
     results.pc = pcs

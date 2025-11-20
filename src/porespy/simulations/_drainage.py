@@ -628,7 +628,7 @@ def drainage(
         # Dilate the erosion to find locations of non-wetting phase
         edges = seeds * (~seeds_prev)  # Isolate edges to speed up inserting
         coords = np.where(edges)  # Find (i, j, k) coordinates of edges
-        radii = dt[coords]  # Extract sphere size to insert at each new location
+        radii = dt[coords]  # Extract sphere sizes to insert at each new location
         nwp_mask = _insert_disks_at_points_parallel(
             im=nwp_mask,
             coords=np.vstack(coords),
@@ -637,10 +637,10 @@ def drainage(
             smooth=True,
             overwrite=False,
         )
-        nwp_mask[seeds] = True
+        nwp_mask[seeds] = True  # Fill in center in case spheres did not reach
         # Connect residual to invasion front
         if residual is not None:
-            if np.any(nwp_mask):
+            if np.any(nwp_mask):  # Add residual blobs to invasion front if touching
                 nwp_mask = join_residual_and_invasion_front(
                     im=im,
                     pc=pc,
@@ -653,17 +653,25 @@ def drainage(
                 )
         # Find trapped wetting due to presence of residual
         if all([inlets is not None, outlets is not None, residual is not None]):
+            # Find any wetting phase which is pinned between residual and invading
+            # front, and set it to uninvaded
             nwp_mask = trim_disconnected_voxels(
                 im=nwp_mask * ~trapped,
                 inlets=inlets,
                 conn=conn,
             )
-            trapped += find_trapped_clusters(
-                im=im,
-                seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
-                outlets=outlets,
-                min_size=min_size,
-                method="labels",
+            # Find trapped clusters in the normal way
+            # trapped += find_trapped_clusters(
+            #     im=im,
+            #     seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
+            #     outlets=outlets,
+            #     min_size=min_size,
+            #     method="labels",
+            #     conn=conn,
+            # )
+            trapped += find_disconnected_voxels(
+                im=im * ~nwp_mask * ~residual,
+                inlets=outlets,
                 conn=conn,
             )
             trapped[residual] = False
