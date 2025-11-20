@@ -279,6 +279,7 @@ class SeqTest():
 
     def test_pc_to_seq_equal_actual_seq(self):
         im = ps.generators.blobs([300, 300], porosity=0.65, seed=0)
+        im = ps.filters.fill_invalid_pores(im)
         inlets = ps.generators.faces(im.shape, inlet=0)
         pc = ps.filters.capillary_transform(im, voxel_size=1e-5)
         drn = ps.simulations.drainage(im=im, pc=pc, steps=25, inlets=inlets)

@@ -2,11 +2,10 @@ import inspect
 from copy import copy
 
 import matplotlib.pyplot as plt
-import matplotlib_inline
 import numpy as np
 from matplotlib import animation
 
-from porespy.tools import settings
+from porespy.tools import settings, get_tqdm
 
 __all__ = [
     'set_mpl_style',
@@ -14,6 +13,9 @@ __all__ = [
     'satn_to_panels',
     'prep_for_imshow',
 ]
+
+
+tqdm = get_tqdm()
 
 
 def set_mpl_style():  # pragma: no cover

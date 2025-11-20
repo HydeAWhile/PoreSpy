@@ -782,8 +782,6 @@ if __name__ == "__main__":
     from copy import copy
 
     import matplotlib.pyplot as plt
-    from skimage.segmentation import clear_border
-    import scipy.ndimage as spim
 
     import porespy as ps
     ps.visualization.set_mpl_style()

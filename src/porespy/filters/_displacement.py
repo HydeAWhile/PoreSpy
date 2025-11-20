@@ -1,5 +1,4 @@
 import heapq as hq
-import inspect
 import logging
 from typing import Literal
 
@@ -8,7 +7,7 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 from numba import njit
 
-from porespy.tools import Results, get_strel, get_tqdm, make_contiguous, settings
+from porespy.tools import Results, get_strel, get_tqdm, make_contiguous
 
 from ._funcs import flood, region_size
 
@@ -57,14 +56,14 @@ __all__ = [
 #         voxels when looking for neighbor values to place into un-trapped voxels.
 #         Options are:
 
-#         ========= ==================================================================
+#         ========= =================================================================
 #         Option    Description
-#         ========= ==================================================================
+#         ========= =================================================================
 #         'min'     This corresponds to a cross with 4 neighbors in 2D and 6
 #                   neighbors in 3D.
 #         'max'     This corresponds to a square or cube with 8 neighbors in 2D and
 #                   26 neighbors in 3D.
-#         ========= ==================================================================
+#         ========= =================================================================
 
 #     """
 #     se = strel[im.ndim][conn].copy()
@@ -413,7 +412,8 @@ def _trapped_regions_inner_loop(
                 trapped[pt[1], pt[2], pt[3]] = False
                 minseq = pt[0]
             # Add neighboring points to heap and edge
-            neighbors = _find_valid_neighbors(i=pt[1], j=pt[2], k=pt[3], im=edge, conn=conn)
+            neighbors = _find_valid_neighbors(
+                i=pt[1], j=pt[2], k=pt[3], im=edge, conn=conn)
             for n in neighbors:
                 hq.heappush(bd, [seq[n], n[0], n[1], n[2]])
                 edge[n[0], n[1], n[2]] = True
@@ -422,7 +422,14 @@ def _trapped_regions_inner_loop(
 
 
 @njit
-def _find_valid_neighbors(i, j, im, k=0, conn="min", valid=False):  # pragma: no cover
+def _find_valid_neighbors(
+    i,
+    j,
+    im,
+    k=0,
+    conn="min",
+    valid=False,
+):  # pragma: no cover
     if im.ndim == 2:
         xlim, ylim = im.shape
         if conn == "min":
