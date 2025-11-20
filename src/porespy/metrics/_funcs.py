@@ -1322,11 +1322,26 @@ def pc_map_to_pc_curve(
         # seq.fill(0)
         # seq[im] = temp
 
-        # seq = seq.astype(float)
-        # seq[seq == -1] = np.inf
+        # pc = drn1.im_pc
+        # seq = drn1.im_seq
+
+        seq = seq.astype(float)
+        seq[pc == np.inf] = np.inf
+        seq[pc == -np.inf] = -np.inf
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        snwp = np.cumsum(counts) / im.sum()
+        # Deal w trapping
+        mask = pcs < np.inf
+        snwp = np.cumsum(counts[mask]) / im.sum()
+        snwp = np.hstack((snwp, [snwp[-1]]*sum(~mask)))
+
+        if fix_ends:
+            if pcs[0] > -np.inf:  # Fix lower left side
+                pcs = np.hstack((pcs[0], pcs))
+                snwp = np.hstack((0.0, snwp))
+            if (pcs[-1] < np.inf) and (snwp[-1] < 1):
+                pcs = np.hstack((pcs, np.inf))
+                snwp = np.hstack((snwp, snwp[-1]))
 
     # sims = [imb1, imb2, imb3, imb4]
     # cs = ['b', 'r', 'g', 'y']
@@ -1337,8 +1352,8 @@ def pc_map_to_pc_curve(
     # seq[im] = temp
 
     elif mode.startswith("imb"):
-        # seq = seq.astype(float)
-        # seq[seq == -1] = -np.inf
+        seq = seq.astype(float)
+        seq[seq == -1] = -np.inf
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
         # Move -inf to end of pcs, and upate counts

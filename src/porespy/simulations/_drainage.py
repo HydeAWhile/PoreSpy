@@ -606,6 +606,11 @@ def drainage(
     if (outlets is not None) and (residual is not None):
         trapped = find_disconnected_voxels(
             im=im * ~residual,
+            inlets=inlets,
+            conn=conn,
+        )
+        trapped += find_disconnected_voxels(
+            im=im * ~residual,
             inlets=outlets,
             conn=conn,
         )
@@ -775,20 +780,20 @@ if __name__ == "__main__":
     import porespy as ps
     ps.visualization.set_mpl_style()
 
-    cm = copy(plt.cm.turbo)
+    cm = copy(plt.cm.plasma)
     cm.set_under('k')
     cm.set_over('grey')
+    bg = "white"
+    plots = True
 
     # %% Run this cell to regenerate the variables in drainage
     seed = np.random.randint(100000)  # 12129, 61227
-    bg = "white"
-    plots = True
     im = ps.generators.blobs(
-        shape=[500, 500],
-        porosity=0.708328,
-        blobiness=1.5,
-        seed=6,
-        periodic=False,
+        shape=[1000, 1000],  # [1000, 1000]
+        porosity=0.75,  # 0.75
+        blobiness=2.5,  # 2.5
+        seed=4,  # 4
+        periodic=False,  # False
     )
     # im = ~ps.generators.random_spheres(
     #     [600, 600],
@@ -810,11 +815,9 @@ if __name__ == "__main__":
         inlets=outlets,
         outlets=inlets,
     )
-
     residual = imb.im_seq == -1
-    # residual = clear_border(spim.label(residual)[0]) > 0
 
-    steps = 50
+    steps = 25
     pc = ps.filters.capillary_transform(
         im=im,
         dt=dt,
@@ -840,6 +843,7 @@ if __name__ == "__main__":
         inlets=inlets,
         outlets=outlets,
         steps=steps,
+        min_size=5,
     )
     drn3 = ps.simulations.drainage(
         im=im,
@@ -847,6 +851,7 @@ if __name__ == "__main__":
         inlets=inlets,
         residual=residual,
         steps=steps,
+        min_size=5,
     )
     drn4 = ps.simulations.drainage(
         im=im,
@@ -855,6 +860,7 @@ if __name__ == "__main__":
         inlets=inlets,
         outlets=outlets,
         residual=residual,
+        min_size=5,
     )
 
     # %% Visualize the invasion configurations for each scenario
