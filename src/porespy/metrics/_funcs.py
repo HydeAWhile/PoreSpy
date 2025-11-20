@@ -1358,10 +1358,10 @@ def pc_map_to_pc_curve(
     # Apply clipping to Pc values
     if pc_min or pc_max:
         pcs = np.clip(pcs, a_min=pc_min, a_max=pc_max)
-        if pcs.min() > pc_min:
+        if pc_min and pcs.min() > pc_min:
             pcs = np.hstack((pc_min, pcs))
             snwp = np.hstack((snwp[0], snwp))
-        if pcs.min() < pc_max:
+        if pc_max and pcs.min() < pc_max:
             pcs = np.hstack((pcs, pc_max))
             snwp = np.hstack((snwp, snwp[-1]))
 
