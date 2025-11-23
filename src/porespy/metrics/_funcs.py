@@ -202,13 +202,13 @@ def find_porosity_threshold(im, axis=0, dt=None, conn="min"):
                          and surface pores
         eps_orig_perc    The percolating porosity of the original image (i.e. with
                          closed and surface pores filled)
-        eps_thresh       The total porosity of the image just before the percolation 
+        eps_thresh       The total porosity of the image just before the percolation
                          threshold was reached (i.e at the point where one
                          additional dilation would result in no connected void
                          space.)
-        eps_thresh_perc  The percolating porosity (with closed and surface pores 
-                         filled) just before the percolation threshold was reached 
-                         (i.e at the point where one additional dilation would 
+        eps_thresh_perc  The percolating porosity (with closed and surface pores
+                         filled) just before the percolation threshold was reached
+                         (i.e at the point where one additional dilation would
                          result in no connected void space.)
         eps_thresh_post  The total porosity after the percolation threshold was
                          reached (i.e. one step *after* the dilation which
