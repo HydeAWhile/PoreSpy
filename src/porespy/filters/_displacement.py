@@ -1,5 +1,4 @@
 import heapq as hq
-import inspect
 import logging
 from typing import Literal
 
@@ -8,7 +7,7 @@ import numpy.typing as npt
 import scipy.ndimage as spim
 from numba import njit
 
-from porespy.tools import Results, get_strel, get_tqdm, make_contiguous, settings
+from porespy.tools import Results, get_strel, get_tqdm, make_contiguous
 
 from ._funcs import flood, region_size
 
@@ -57,14 +56,14 @@ __all__ = [
 #         voxels when looking for neighbor values to place into un-trapped voxels.
 #         Options are:
 
-#         ========= ==================================================================
+#         ========= =================================================================
 #         Option    Description
-#         ========= ==================================================================
+#         ========= =================================================================
 #         'min'     This corresponds to a cross with 4 neighbors in 2D and 6
 #                   neighbors in 3D.
 #         'max'     This corresponds to a square or cube with 8 neighbors in 2D and
 #                   26 neighbors in 3D.
-#         ========= ==================================================================
+#         ========= =================================================================
 
 #     """
 #     se = strel[im.ndim][conn].copy()
@@ -212,6 +211,7 @@ def find_trapped_clusters(
     im: npt.ArrayLike,
     seq: npt.ArrayLike,
     outlets: npt.ArrayLike,
+    min_size: int = 0,
     conn: Literal["min", "max"] = "min",
     method: Literal["queue", "labels"] = "labels",
 ):
@@ -231,6 +231,9 @@ def find_trapped_clusters(
     outlets : ndarray
         An image the same size as ``im`` with ``True`` indicating outlets
         and ``False`` elsewhere.
+    min_size : scalar
+        The threshold size of clusters.  Clusters with this many voxels or fewer
+        will be ignored.
     conn : str
         Controls the shape of the structuring element used to determine if voxels
         are connected.  Options are:
@@ -288,7 +291,12 @@ def find_trapped_clusters(
     else:
         raise Exception(f"{method} is not a supported method")
 
-    return (seq_temp == -1) * im
+    trapped = (seq_temp == -1) * im
+
+    if min_size > 0:
+        trapped = trim_small_clusters(im=trapped, min_size=min_size)
+
+    return trapped
 
 
 def _find_trapped_clusters_labels(
@@ -320,8 +328,7 @@ def _find_trapped_clusters_labels(
     # Scan image for each value of sequence in the outlets
     bins = np.unique(seq[seq <= Lmax])[-1::-1]
     bins = bins[bins > 0]
-    desc = inspect.currentframe().f_code.co_name  # Get current func name
-    for i in tqdm(range(len(bins)), desc=desc, **settings.tqdm):
+    for i in range(len(bins)):
         s = bins[i]
         temp = seq >= s
         labels = spim.label(temp, structure=se)[0]
@@ -405,7 +412,8 @@ def _trapped_regions_inner_loop(
                 trapped[pt[1], pt[2], pt[3]] = False
                 minseq = pt[0]
             # Add neighboring points to heap and edge
-            neighbors = _find_valid_neighbors(i=pt[1], j=pt[2], k=pt[3], im=edge, conn=conn)
+            neighbors = _find_valid_neighbors(
+                i=pt[1], j=pt[2], k=pt[3], im=edge, conn=conn)
             for n in neighbors:
                 hq.heappush(bd, [seq[n], n[0], n[1], n[2]])
                 edge[n[0], n[1], n[2]] = True
@@ -414,7 +422,14 @@ def _trapped_regions_inner_loop(
 
 
 @njit
-def _find_valid_neighbors(i, j, im, k=0, conn="min", valid=False):  # pragma: no cover
+def _find_valid_neighbors(
+    i,
+    j,
+    im,
+    k=0,
+    conn="min",
+    valid=False,
+):  # pragma: no cover
     if im.ndim == 2:
         xlim, ylim = im.shape
         if conn == "min":
