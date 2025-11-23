@@ -109,7 +109,7 @@ def fibers_2D(shape, r, n=None, porosity=None):
             X = X[0][mask], X[1][mask]
             if im.ndim == 3:
                 X = X[0], X[1], np.random.randint(im.shape[2])
-            im[*X] = True
+            im[tuple(X)] = True
         if r is not None:
             dt = edt(im == 0)
             im = dt >= r
