@@ -29,6 +29,4 @@ jobs:
       shell: bash
       run: |
         bump-my-version bump pre_n --commit --message "Bump version number on dev"
-        git push origin HEAD:dev
-        # git push --tags
-        
+        git push origin HEAD:dev        
