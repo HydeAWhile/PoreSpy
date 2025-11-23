@@ -1,12 +1,9 @@
 name: Deploy to PyPI
 
 on:
-  workflow_dispatch:
-    inputs:
-        version:
-            description: 'Version (major/minor/patch/alpha/beta/release)'
-            required: true
-            default: 'patch'
+  push:
+    branches:
+      - release
 
 jobs:
   deploy:
@@ -17,10 +14,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v5
       with:
-        ref: dev
-        fetch-depth: 0
-        fetch-tags: true
-        token: ${{ secrets.PAT }}        
+        ref: release      
 
     - name: Install uv
       uses: astral-sh/setup-uv@v6
@@ -32,18 +26,6 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --extra build
-
-    # - name: Bump up version and create tag
-    #   run: |
-    #     uv run hatch version ${{ github.event.inputs.version }}
-    #     echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
-
-    # - name: Commit version bump + push tag
-    #   uses: stefanzweifel/git-auto-commit-action@v6
-    #   with:
-    #     commit_message: Bump version to ${{ env.VERSION }}
-    #     commit_author: GitHub Actions <actions@github.com>
-    #     tagging_message: ${{ env.VERSION }}
 
     - name: Build and publish to PyPI 📦
       run: |
