@@ -1,9 +1,12 @@
 name: Deploy to PyPI
 
 on:
-  push:
-    branches:
-      - release
+  workflow_dispatch:
+    inputs:
+        version:
+            description: 'Version (major/minor/patch/alpha/beta/release)'
+            required: true
+            default: 'patch'
 
 jobs:
   deploy:
