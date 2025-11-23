@@ -39,8 +39,8 @@ def fibers_1D(shape, r, n, overlap=None):
     from porespy.generators import random_spheres
     if overlap is None:
         im = np.ones(np.array(shape[:2]) + r, dtype=bool)
-        locs = np.random.randint((0, 0), shape, (n, 2))
-        im[*list(locs.T)] = False
+        locs = np.random.randint((0, 0), shape[:2], (n, 2))
+        im[tuple(locs.T)] = False
         dt = edt(im)
         im = dt >= (r + 0.001)
         im = im[r:-r, r:-r]
