@@ -221,6 +221,15 @@ docstring-code-format = true
 # enabled.
 docstring-code-line-length = "dynamic"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+path = "src/porespy/__version__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/porespy"]
+
 [tool.bumpversion]
 current_version = "3.0.0-dev42"
 parse = """(?x)
