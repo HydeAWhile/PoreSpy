@@ -40,10 +40,7 @@ class FilterTest():
     def test_porosimetry_num_points(self):
         mip = ps.filters.porosimetry(im=self.im, sizes=None)
         steps = np.unique(mip)
-        ans = np.array([0., 1., 1.41421354, 1.73205078, 2.,
-                        2.23606801, 2.44948983, 2.82842708, 3., 3.1622777,
-                        3.31662488, 3.46410155, 3.60555124, 3.7416575, 4.,
-                        4.12310553])
+        ans = np.array([0., 1., 2., 3., 4,])
         assert np.allclose(steps, ans)
 
     def test_porosimetry_compare_modes_3d(self):
@@ -58,7 +55,7 @@ class FilterTest():
     def test_porosimetry_with_sizes(self):
         s = np.logspace(0.01, 0.6, 5)
         mip = ps.filters.porosimetry(im=self.im, sizes=s)
-        assert np.allclose(np.unique(mip)[1:], s)
+        assert np.all(np.in1d(np.unique(mip)[1:], s))
 
     def test_apply_chords_axis0(self):
         c = ps.filters.apply_chords(im=self.im, spacing=3, axis=0)

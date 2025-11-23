@@ -1,6 +1,6 @@
 [project]
 name = "porespy"
-dynamic = ["version"]
+version = "3.0.0-dev41"
 description = "A set of tools for analyzing 3D images of porous materials"
 authors = [{ name = "PoreSpy Team", email = "jgostick@gmail.com" }]
 maintainers = [
@@ -28,11 +28,11 @@ dependencies = [
     "edt",
     "matplotlib",
     "numba",
-    "numpy<2.0",
+    "numpy",
     "pandas",
     "psutil",
     "rich",
-    "scikit-image<0.25.0",
+    "scikit-image",
     "scipy",
     "tqdm",
     "setuptools",
@@ -43,6 +43,8 @@ dependencies = [
     "imageio>=2.37.0",
     "nanomesh>=0.9.1",
     "pywavelets>=1.8.0",
+    "matplotlib-inline",
+    "tomli>=2.2.1",
 ]
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -244,3 +246,36 @@ docstring-code-format = true
 # This only has an effect when the `docstring-code-format` setting is
 # enabled.
 docstring-code-line-length = "dynamic"
+
+[tool.bumpversion]
+current_version = "3.0.0-dev41"
+parse = """(?x)
+    (?P<major>0|[1-9]\\d*)\\.
+    (?P<minor>0|[1-9]\\d*)\\.
+    (?P<patch>0|[1-9]\\d*)
+    (?:
+        -                             # dash separator for pre-release section
+        (?P<pre_l>[a-zA-Z-]+)         # pre-release label
+        (?P<pre_n>0|[1-9]\\d*)        # pre-release version number
+    )?                                # pre-release section is optional
+"""
+serialize = [
+    "{major}.{minor}.{patch}-{pre_l}{pre_n}",
+    "{major}.{minor}.{patch}",
+]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = false
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
+
+[tool.bumpversion.parts.pre_l]
+values = ["dev", "rc", "final"]
+optional_value = "dev"

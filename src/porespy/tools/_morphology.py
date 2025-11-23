@@ -18,7 +18,6 @@ __all__ = [
 edt = get_edt()
 
 
-
 def ball(r):
     se = np.ones([r*2+1]*3, dtype=bool)
     se[r, r, r] = False
