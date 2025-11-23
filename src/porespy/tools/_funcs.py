@@ -59,7 +59,7 @@ tqdm = get_tqdm()
 settings = Settings()
 
 
-def parse_steps(steps, vals, mask=None, descending=True):
+def parse_steps(steps, vals, mask=None, descending=True, log=False):
     r"""
     Converts given steps into a list of sizes
 
@@ -79,6 +79,9 @@ def parse_steps(steps, vals, mask=None, descending=True):
         is converted as `vals = vals[mask]` beforehand.
     descending : bool, optional
         If `True` (default), then the returned list of sizes is in descending order
+    log : bool, default is `False`
+        If `True` then the range of values generated is logarithmically spaced when
+        `steps` is an `int`.
 
     Returns
     -------
@@ -92,7 +95,10 @@ def parse_steps(steps, vals, mask=None, descending=True):
     elif isinstance(steps, tuple):
         bins = np.arange(*steps)
     elif type(steps) is int:
-        bins = np.linspace(1, vals.max(), steps)
+        if log:
+            bins = np.logspace(0, np.log10(vals.max()), steps)
+        else:
+            bins = np.linspace(1, vals.max(), steps)
     else:
         bins = np.unique(steps)
         bins = bins[bins > 0]

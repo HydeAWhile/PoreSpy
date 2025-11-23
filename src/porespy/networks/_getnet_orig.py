@@ -253,7 +253,7 @@ def regions_to_network(
     PT1 = PT1-p_dia_local[P12[:, 0]]/2*voxel_size
     PT2 = PT2-p_dia_local[P12[:, 1]]/2*voxel_size
     dist = (p_coords[P12[:, 0]] - p_coords[P12[:, 1]])*voxel_size
-    net['throat.direct_length'] = np.sqrt(np.sum(dist**2, axis=1, dtype=np.int64))
+    net['throat.direct_length'] = np.sqrt(np.sum(dist**2, axis=1, dtype=np.float64))
     net['throat.perimeter'] = np.array(t_perimeter)*voxel_size
     if (accuracy == 'high') and (im.ndim == 2):
         msg = "accuracy='high' only available in 3D, reverting to 'standard'"

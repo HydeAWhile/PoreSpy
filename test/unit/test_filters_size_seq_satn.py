@@ -277,6 +277,17 @@ class SeqTest():
         assert seq[0, -1] == 19
         assert seq[0, -5] == -1
 
+    def test_pc_to_seq_equal_actual_seq(self):
+        im = ps.generators.blobs([300, 300], porosity=0.65, seed=0)
+        im = ps.filters.fill_invalid_pores(im)
+        inlets = ps.generators.faces(im.shape, inlet=0)
+        pc = ps.filters.capillary_transform(im, voxel_size=1e-5)
+        drn = ps.simulations.drainage(im=im, pc=pc, steps=25, inlets=inlets)
+        seq = ps.filters.pc_to_seq(im=im, pc=drn.im_pc, mode='drainage')
+        seq2 = np.digitize(x=drn.im_pc.flatten(), bins=np.unique(drn.im_pc[im]))
+        seq2 = np.reshape(seq2, im.shape)*im
+        assert np.all(seq == seq2)
+
     def test_size_to_seq(self):
         im = self.im2D
         sz = ps.filters.porosimetry(im)

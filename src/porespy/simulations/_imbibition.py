@@ -1,16 +1,15 @@
 import inspect
 
 import numpy as np
-from edt import edt
 from numba import njit, prange
 
 from porespy.filters import (
     erode,
     fftmorphology,
-    find_small_clusters,
     find_trapped_clusters,
     seq_to_satn,
     trim_disconnected_voxels,
+    find_disconnected_voxels,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
@@ -19,6 +18,7 @@ from porespy.tools import (
     _insert_disk_at_points_parallel,
     _insert_disks_at_points_parallel,
     get_tqdm,
+    get_edt,
     make_contiguous,
     parse_steps,
     ps_round,
@@ -26,6 +26,7 @@ from porespy.tools import (
 )
 
 tqdm = get_tqdm()
+edt = get_edt()
 
 
 __all__ = [
@@ -33,11 +34,11 @@ __all__ = [
     'imbibition_dt',
     'imbibition_dt_fft',
     'imbibition_fft',
-    'imbibition_dsi',
+    'imbibition_bf',
 ]
 
 
-def imbibition_dsi(
+def imbibition_bf(
     im,
     inlets=None,
     outlets=None,
@@ -46,8 +47,9 @@ def imbibition_dsi(
     smooth=True,
 ):
     r"""
-    Performs a distance transform based imbibition simulation using direct sphere
-    insertion to accomplish dilation and distance transform thresholding for erosion
+    Performs a distance transform based imbibition simulation using distance
+    transform thresholding for the erosion step and brute-force sphere insertion
+    for the dilation step.
 
     Parameters
     ----------
@@ -81,14 +83,20 @@ def imbibition_dsi(
     results : Dataclass-like object
         An object with the following attributes:
 
-        =========== ===========================================================
+        =========== ================================================================
         Attribute   Description
-        =========== ===========================================================
-        `im_seq`    The sequence map indicating the sequence or step number at
-                    which each voxels was first invaded.
-        `im_size`   The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
-        =========== ===========================================================
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
 
     Notes
     -----
@@ -102,19 +110,21 @@ def imbibition_dsi(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
-    dt_int = dt.astype(int)
+    dt = dt.astype(int)
+
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
+
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     nwp = np.zeros_like(im, dtype=bool)
+    seeds_prev = np.zeros_like(im)
+
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
-        if smooth:
-            seeds = dt >= r
-            edges = dt_int == r
-        else:
-            seeds = dt > r
-            edges = (dt > r)*(dt_int <= (r + 1))
+        # Perform erosion using dt
+        seeds = (dt <= r)*im
+        # Perform dilation using bf
+        edges = seeds * ~seeds_prev * im
         coords = np.vstack(np.where(edges))
         nwp.fill(False)
         if coords.size > 0:
@@ -125,13 +135,16 @@ def imbibition_dsi(
                 v=True,
                 smooth=smooth,
             )
-        nwp[seeds] = True
+        nwp[(~seeds)*im] = True
         wp = (~nwp)*im
+        # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
+        seeds_prev = seeds
+
     if outlets is not None:
         trapped = find_trapped_clusters(
             im=im,
@@ -143,6 +156,7 @@ def imbibition_dsi(
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
         im_size[trapped] = -1
+
     results = Results()
     results.im_seq = im_seq*im
     results.im_size = im_size*im
@@ -195,14 +209,20 @@ def imbibition_dt_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        =========== ===========================================================
+        =========== ================================================================
         Attribute   Description
-        =========== ===========================================================
-        ``im_seq``  The sequence map indicating the sequence or step number at
-                    which each voxel was first invaded.
-        ``im_size`` The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
-        =========== ===========================================================
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
 
     Notes
     -----
@@ -212,31 +232,24 @@ def imbibition_dt_fft(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         # Perform dilation using convolution
         se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
-        # Trimming disconnected wetting phase
+        # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
-        # TODO: Not sure this residual code works
-        # if residual is not None:
-        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = np.inf
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -249,6 +262,7 @@ def imbibition_dt_fft(
         im_seq[trapped] = -1
         im_seq = make_contiguous(im_seq, mode='symmetric')
         im_size[trapped] = -1
+
     results = Results()
     results.im_seq = im_seq*im
     results.im_size = im_size*im
@@ -301,15 +315,20 @@ def imbibition_dt(
     results : Results object
         A dataclass-like object with the following attributes:
 
-        ========== ============================================================
-        Attribute  Description
-        ========== ============================================================
-        im_seq     A numpy array with each voxel value indicating the sequence
-                   at which it was invaded.  Values of -1 indicate that it was
-                   not invaded.
-        im_size    A numpy array with each voxel value indicating the radius of
-                   spheres being inserted when it was invaded.
-        ========== ============================================================
+        =========== ================================================================
+        Attribute   Description
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
 
     Notes
     -----
@@ -319,32 +338,25 @@ def imbibition_dt(
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
-        seeds = dt >= r if smooth else dt > r
+        seeds = dt >= r
         # Perform dilation using dt
-        tmp = edt(~seeds, parallel=settings.ncores)
+        tmp = edt(~seeds)
         wp = ~(tmp < r) if smooth else ~(tmp <= r)
         wp[~im] = 0
-        # Trimming disconnected wetting phase
+        # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
-        # TODO: Not sure this residual code works
-        # if residual is not None:
-        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = np.inf
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -408,44 +420,43 @@ def imbibition_fft(
     results : Dataclass-like object
         An object with the following attributes:
 
-        =========== ===========================================================
+        =========== ================================================================
         Attribute   Description
-        =========== ===========================================================
-        ``im_seq``  The sequence map indicating the sequence or step number at
-                    which each voxels was first invaded.
-        ``im_size`` The size map indicating the size of the sphere being drawn
-                    when each voxel was first invaded.
-        =========== ===========================================================
+        =========== ================================================================
+        `im_seq`    An ndarray with each voxel indicating the step number at which
+                    it was first invaded. -1 indicates uninavded, either due to
+                    the applied `steps` not spanning the full range of sizes in the
+                    image, or due to trapping, while 0 indicates residual invading
+                    phase.
+        `im_size`   A numpy array with each voxel containing the radius of the
+                    sphere, in voxels, that first overlapped it. `inf` indicates
+                    uninavded, either due to the applied `steps` not spanning the
+                    full range of sizes in the image, or due to trapping, while 0
+                    indicates residual invading phase.
+        =========== ================================================================
     """
     im = np.array(im, dtype=bool)
     if dt is None:
         dt = edt(im)
+    dt = dt.astype(int)
     bins = parse_steps(steps=steps, vals=dt[im], descending=False)
     im_seq = -np.ones_like(im, dtype=int)
     im_size = np.zeros_like(im, dtype=float)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=smooth)
+        se = ps_round(r, ndim=im.ndim, smooth=True)
         seeds = ~fftmorphology(~im, se, mode='dilation')
         # Perform dilation using convolution
+        se = ps_round(r, ndim=im.ndim, smooth=smooth)
         wp = im*~fftmorphology(seeds, se, mode='dilation')
-        # Trimming disconnected wetting phase
+        # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
-        # TODO: Not sure this residual code works
-        # if residual is not None:
-        #     blobs = trim_disconnected_voxels(residual, inlets=wp)
-        #     seeds2 = trim_disconnected_voxels(seeds, inlets=blobs + inlets)
-        #     wp = im*~fftmorphology(seeds2, se, mode='dilation')
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = np.inf
-    # Apply trapping as a post-processing step if outlets given
+
     if outlets is not None:
         trapped = find_trapped_clusters(
             im=im,
@@ -492,6 +503,10 @@ def imbibition(
         An image the same shape as ``im`` with ``True`` values indicating the
         wetting fluid inlet(s).  If ``None`` then the wetting film is able to
         appear anywhere within the domain.
+    outlets : ndarray, optional
+        A boolean image with ``True`` values indicating the outlet locations.
+        If this is provided then trapped voxels of non-wetting phase are found and
+        all the output images are adjusted accordingly.
     residual : ndarray, optional
         A boolean mask the same shape as ``im`` with ``True`` values
         indicating to locations of residual wetting phase.
@@ -553,20 +568,23 @@ def imbibition(
     """
     im = np.array(im, dtype=bool)
 
+    if outlets is not None:
+        outlets = outlets * im
+        if np.sum(inlets * outlets):
+            raise Exception("Specified inlets and outlets overlap")
+
     if dt is None:
         dt = edt(im)
 
     if pc is None:
         pc = 2/dt
-
-    pc = np.copy(pc)
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
     if isinstance(steps, int):
         mask = np.isfinite(pc)*im
         Ps = np.logspace(
             np.log10(pc[mask].max()),
-            np.log10(pc[mask].min()*0.99),
+            np.log10(pc[mask].min()*0.95),
             steps,
         )
     elif steps is None:
@@ -577,16 +595,29 @@ def imbibition(
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
+    trapped = np.zeros_like(im)
+    if residual is not None:
+        im_seq[residual] = 1
+    if (outlets is not None) and (residual is not None):
+        trapped = find_disconnected_voxels(
+            im=im * ~residual,
+            inlets=outlets,
+            conn=conn,
+        )
+    im_seq[trapped] = -1
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
-        # This can be made faster if I find a way to get only seeds on edge, so
-        # less spheres need to be drawn
-        invadable = (pc <= P)*im
+        # step += 1
+        # P = Ps[step]
+        # TODO: This can be made faster if I find a way to get only seeds on edge,
+        # so less spheres need to be drawn
+        invadable = (pc <= P)*im  # This means 'invadable by non-wetting phase'
         # Using FFT-based erosion to find edges.  When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
         # that need to be inserted.
         edges = (~erode(invadable, r=1, smooth=False, method='conv'))*invadable
+        # edges = invadable
         nwp_mask = np.zeros_like(im, dtype=bool)
         if np.any(edges):
             coords = np.where(edges)
@@ -606,50 +637,73 @@ def imbibition(
                 inlets=inlets,
                 conn=conn,
             )*im
-        if residual is not None:
-            nwp_mask = nwp_mask * ~residual
+
+        # Deal with impact of residual, if present
+        if (residual is not None) and (outlets is not None):
+            # Remove any wp which is blocked by previously trapped nwp
+            nwp_mask = ~trim_disconnected_voxels(
+                im=(~nwp_mask)*(~trapped),
+                inlets=inlets,
+                conn=conn,
+            )
+            trapped += find_disconnected_voxels(
+                im=im*(nwp_mask)*(~residual),
+                inlets=outlets,
+                conn=conn,
+            )
+            trapped[residual] = False
+            nwp_mask[trapped] = True
+            im_seq[trapped] = -1
 
         mask = (nwp_mask == 0) * (im_seq == 0) * im
         if np.any(mask):
-            im_seq[mask] = step
+            im_seq[mask] = step + 1
             im_pc[mask] = P
-    im_seq = make_contiguous(im_seq)
 
-    trapped = None  # Initialize trapped to None in case outlets not given
-    if outlets is not None:
-        if inlets is not None:
-            outlets[inlets] = False  # Ensure outlets do not overlap inlets
-        trapped = find_trapped_clusters(
-            im=im,
-            seq=im_seq,
-            outlets=outlets,
-            method='labels' if len(Ps) < 100 else 'queue',
-            conn=conn,
-        )
-        if min_size > 0:
-            temp = find_small_clusters(
-                im=im,
-                trapped=trapped,
-                min_size=min_size,
-                conn=conn,
-            )
-            trapped = temp.im_trapped
-        im_pc[trapped] = -np.inf
-        im_seq[trapped] = -1
+    # Set uninvaded voxels to -inf and -1
+    mask = (im_seq == 0)*im
+    im_pc[mask] = -np.inf
+    im_seq[mask] = -1
 
+    # Add residual if given
     if residual is not None:
         im_pc[residual] = np.inf
         im_seq[residual] = 0
 
+    # Check for trapping as a post-processing step if no residual
+    if (outlets is not None) and (residual is None):
+        trapped = find_trapped_clusters(
+            im=im,
+            seq=im_seq,
+            outlets=outlets,
+            min_size=min_size,
+            method='labels' if len(Ps) < 100 else 'queue',
+            conn=conn,
+        )
+        im_pc[trapped] = -np.inf
+        im_seq[trapped] = -1
+
+    im_seq = make_contiguous(im_seq, mode='symmetric')
     satn = seq_to_satn(im=im, seq=im_seq, mode='imbibition')
-    # Collect data in a Results object
+
+    # Initialize Results object to collect data
     results = Results()
     results.im_snwp = satn
     results.im_seq = im_seq
     results.im_pc = im_pc
     results.im_trapped = trapped
 
-    pc_curve = pc_map_to_pc_curve(pc=im_pc, im=im, seq=im_seq, mode='imbibition')
+    if trapped is not None:
+        results.im_seq[trapped] = -1
+        results.im_snwp[trapped] = -1
+        results.im_pc[trapped] = -np.inf
+
+    pc_curve = pc_map_to_pc_curve(
+        pc=im_pc,
+        im=im,
+        seq=im_seq,
+        mode='imbibition',
+    )
     results.pc = pc_curve.pc
     results.snwp = pc_curve.snwp
     return results
@@ -707,28 +761,35 @@ if __name__ == '__main__':
     import porespy as ps
     ps.visualization.set_mpl_style()
 
-    cm = copy(plt.cm.turbo)
+    cm = copy(plt.cm.plasma)
     cm.set_under('k')
     cm.set_over('grey')
+    steps = 50
 
     i = np.random.randint(1, 100000)  # bad: 38364, good: 65270, 71698
-    i = 50591
     # i = 59477  # Bug in pc curve if lowest point is not 0.99 x min(pc)
     # i = 38364
-    print(i)
-    im = ps.generators.blobs([500, 500], porosity=0.65, blobiness=2, seed=i)
+    im = ps.generators.blobs(
+        shape=[1000, 1000],  # [1000, 1000]
+        porosity=0.75,  # 0.75
+        blobiness=2.5,  # 2.5
+        seed=4,  # 4
+        periodic=False,  # False
+    )
     im = ps.filters.fill_invalid_pores(im)
 
     inlets = ps.generators.faces(im.shape, inlet=0)
     outlets = ps.generators.faces(im.shape, outlet=0)
-    lt = ps.filters.local_thickness_dt(im)
-    residual = (lt < 8)*im
-    pc = ps.filters.capillary_transform(im=im, voxel_size=1e-4)
+    dt = edt(im)
+    pc = ps.filters.capillary_transform(im=im, dt=dt, voxel_size=1e-4)
 
-    imb1 = imbibition(im=im, pc=pc, inlets=inlets, min_size=1)
-    imb2 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, min_size=1)
-    imb3 = imbibition(im=im, pc=pc, inlets=inlets, residual=residual, min_size=1)
-    imb4 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, residual=residual, min_size=1)
+    drn = ps.simulations.drainage(im=im, pc=pc, inlets=inlets, outlets=outlets, steps=steps)
+    residual = drn.im_trapped
+
+    imb1 = imbibition(im=im, pc=pc, inlets=inlets, steps=steps, min_size=5)
+    imb2 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, steps=steps, min_size=5)
+    imb3 = imbibition(im=im, pc=pc, inlets=inlets, residual=residual, steps=steps, min_size=5)
+    imb4 = imbibition(im=im, pc=pc, inlets=inlets, outlets=outlets, residual=residual, steps=steps, min_size=5)
 
     # %%
 
@@ -740,28 +801,28 @@ if __name__ == '__main__':
     tmp = np.copy(imb1.im_seq).astype(float)
     vmax = tmp.max()
     tmp[tmp < 0] = vmax + 1
-    tmp[tmp == 0] = np.nan
+    # tmp[tmp == 0] = np.nan
     tmp[~im] = -1
     ax['(a)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
     tmp = np.copy(imb2.im_seq).astype(float)
     vmax = tmp.max()
     tmp[tmp < 0] = vmax + 1
-    tmp[tmp == 0] = np.nan
+    # tmp[tmp == 0] = np.nan
     tmp[~im] = -1
     ax['(b)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
     tmp = np.copy(imb3.im_seq).astype(float)
     vmax = tmp.max()
     tmp[tmp < 0] = vmax + 1
-    tmp[tmp == 0] = np.nan
+    # tmp[tmp == 0] = np.nan
     tmp[~im] = -1
     ax['(c)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
     tmp = np.copy(imb4.im_seq).astype(float)
     vmax = tmp.max()
     tmp[tmp < 0] = vmax + 1
-    tmp[tmp == 0] = np.nan
+    # tmp[tmp == 0] = np.nan
     tmp[~im] = -1
     ax['(d)'].imshow(tmp, origin='lower', cmap=cm, vmin=0, vmax=vmax)
 
