@@ -25,7 +25,6 @@ __all__ = [
     "blobs",
     "borders",
     "conical_capillary",
-    "bundle_of_tubes",
     "cylinders",
     "cylindrical_plug",
     "elevation",
