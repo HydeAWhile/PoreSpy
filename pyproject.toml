@@ -1,6 +1,6 @@
 [project]
 name = "porespy"
-version = "3.0.0-dev40"
+version = "3.0.0-dev41"
 description = "A set of tools for analyzing 3D images of porous materials"
 authors = [{ name = "PoreSpy Team", email = "jgostick@gmail.com" }]
 maintainers = [
@@ -248,7 +248,7 @@ docstring-code-format = true
 docstring-code-line-length = "dynamic"
 
 [tool.bumpversion]
-current_version = "3.0.0-dev40"
+current_version = "3.0.0-dev41"
 parse = """(?x)
     (?P<major>0|[1-9]\\d*)\\.
     (?P<minor>0|[1-9]\\d*)\\.
