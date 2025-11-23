@@ -26,15 +26,19 @@ try:
     import tomllib as _toml
 except ModuleNotFoundError:
     import tomli as _toml
-
+import importlib.metadata as _metadata
 import numpy as _np
 
 
 _np.seterr(divide="ignore", invalid="ignore")
 
-with open("./pyproject.toml", "rb") as f:
-    data = _toml.load(f)
-    __version__ = data["project"]["version"]
+
+try:
+    with open("./pyproject.toml", "rb") as f:
+        data = _toml.load(f)
+        __version__ = data["project"]["version"]
+except FileNotFoundError:
+    __version__ = _metadata.version(__package__ or __name__)
 
 
 def _setup_logger_rich():
