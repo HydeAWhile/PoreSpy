@@ -22,11 +22,15 @@ from . import visualization
 from . import io
 from .visualization import imshow
 
+import tomllib as _toml
 import numpy as _np
+
 
 _np.seterr(divide="ignore", invalid="ignore")
 
-__version__ = tools._get_version()
+with open("./pyproject.toml", "rb") as f:
+    data = _toml.load(f)
+    __version__ = data["project"]["version"]
 
 
 def _setup_logger_rich():
