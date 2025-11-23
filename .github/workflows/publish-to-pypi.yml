@@ -33,17 +33,17 @@ jobs:
       run: |
         uv sync --extra build
 
-    - name: Bump up version and create tag
-      run: |
-        uv run hatch version ${{ github.event.inputs.version }}
-        echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
+    # - name: Bump up version and create tag
+    #   run: |
+    #     uv run hatch version ${{ github.event.inputs.version }}
+    #     echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
-    - name: Commit version bump + push tag
-      uses: stefanzweifel/git-auto-commit-action@v6
-      with:
-        commit_message: Bump version to ${{ env.VERSION }}
-        commit_author: GitHub Actions <actions@github.com>
-        tagging_message: ${{ env.VERSION }}
+    # - name: Commit version bump + push tag
+    #   uses: stefanzweifel/git-auto-commit-action@v6
+    #   with:
+    #     commit_message: Bump version to ${{ env.VERSION }}
+    #     commit_author: GitHub Actions <actions@github.com>
+    #     tagging_message: ${{ env.VERSION }}
 
     - name: Build and publish to PyPI 📦
       run: |

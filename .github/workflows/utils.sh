@@ -48,17 +48,17 @@ get_nth_recent_tag() {
 # Bumps the version number based on release type ('patch', 'minor', 'major').
 # Usage: bump_version <bump_type> <version_file_path>
 # -------------------------------------------------------------------------- #
-bump_version() {
-    local bump_type="$1"
-    local version_loc="$2"
-    if [[ -z "$bump_type" || -z "$version_loc" ]]; then
-        echo "Usage: bump_version <patch|minor|major> <version_file_path>" >&2
-        return 1
-    fi
-    local version
-    version=$(get_version "$version_loc") || return 1
-    bump2version --current-version "$version" "$bump_type" "$version_loc" --verbose
-}
+# bump_version() {
+#     local bump_type="$1"
+#     local version_loc="$2"
+#     if [[ -z "$bump_type" || -z "$version_loc" ]]; then
+#         echo "Usage: bump_version <patch|minor|major> <version_file_path>" >&2
+#         return 1
+#     fi
+#     local version
+#     version=$(get_version "$version_loc") || return 1
+#     bump2version --current-version "$version" "$bump_type" "$version_loc" --verbose
+# }
 
 # -- Example usage for testing -- #
 # version_loc="openpnm/__version__.py"
