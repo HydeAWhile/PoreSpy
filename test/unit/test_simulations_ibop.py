@@ -28,14 +28,16 @@ class IBOPTest(GenericTest):
         assert np.all(r1.im_seq == r2.im_seq)
 
     def test_ibop_w_trapping(self):
-        inlets = ps.generators.faces(shape=self.im2D.shape, inlet=0)
-        r1 = ps.simulations.drainage(im=self.im2D, inlets=inlets, steps=None)
-        outlets = ps.generators.faces(shape=self.im2D.shape, outlet=0)
+        im = np.copy(self.im2D)
+        im = ps.filters.fill_invalid_pores(im)
+        inlets = ps.generators.faces(shape=im.shape, inlet=0)
+        r1 = ps.simulations.drainage(im=im, inlets=inlets, steps=None)
+        outlets = ps.generators.faces(shape=im.shape, outlet=0)
         r2 = ps.simulations.drainage(
-            im=self.im2D, inlets=inlets, outlets=outlets, steps=None, smooth=False,
+            im=im, inlets=inlets, outlets=outlets, steps=None
         )
         assert np.sum(r1.im_seq == -1) == 0
-        assert np.sum(r2.im_seq == -1) == 7073
+        assert np.sum(r2.im_seq == -1) == 4722
         temp = ps.filters.fill_invalid_pores(self.im2D)
         r3 = ps.simulations.drainage(im=temp, inlets=inlets, steps=None)
         assert np.sum(r3.im_seq == -1) == 0

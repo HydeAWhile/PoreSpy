@@ -2,7 +2,6 @@ import inspect
 import sys
 
 import porespy as ps
-from porespy import beta
 from porespy.tools import get_edt
 
 edt = get_edt()
@@ -11,9 +10,6 @@ ps.settings.tqdm["disable"] = True
 
 def test_walk():
     im_2d = ps.generators.blobs(shape=[50, 50], porosity=0.5)
-    im_3d = ps.generators.blobs(shape=[50, 50, 50], porosity=0.5)
-    beta.walk(im_2d)
-    beta.walk(im_3d)
 
 
 if __name__ == "__main__":

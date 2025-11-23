@@ -1,10 +1,9 @@
 name: Release Notes
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - release
 
 jobs:
   build:
@@ -13,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
             fetch-depth: 0  # Retrieve entire history of refs/tags
 

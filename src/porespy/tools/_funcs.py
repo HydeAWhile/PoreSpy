@@ -59,7 +59,7 @@ tqdm = get_tqdm()
 settings = Settings()
 
 
-def parse_steps(steps, vals=None, mask=None, descending=True, log=False, pad=(0, 0)):
+def parse_steps(steps, vals, mask=None, descending=True, log=False):
     r"""
     Generates an array of step sizes to iterate through for the displacement
     simulations
@@ -79,16 +79,10 @@ def parse_steps(steps, vals=None, mask=None, descending=True, log=False, pad=(0,
         not provided then all values `vals` are used, but if provided, then `vals`
         is converted as `vals = vals[mask]` beforehand.
     descending : bool, optional
-        If `True` (default), then the returned list of steps is in descending order
-    log : bool, optional
-        If `True` then the steps are logarithmically spaced. This argument is only
-        considered if `steps` is an `int`. The default is `False`.
-    pad : tuple of ints
-        This will extend the range of steps by the given number in each direction
-        using the spacing of the adjacent points. For example, `pad=(1, 1)` will
-        extend the range of the bins by 1 both up and down, so `[1, 2, 3]` will
-        become `[0, 1, 2, 3, 4]`. This is applied *after* putting the values into
-        ascending or descending order.
+        If `True` (default), then the returned list of sizes is in descending order
+    log : bool, default is `False`
+        If `True` then the range of values generated is logarithmically spaced when
+        `steps` is an `int`.
 
     Returns
     -------
@@ -102,20 +96,12 @@ def parse_steps(steps, vals=None, mask=None, descending=True, log=False, pad=(0,
         bins = np.unique(vals)
     elif isinstance(steps, tuple):  # If steps is a tuple, assume (start, stop, step)
         bins = np.arange(*steps)
-    elif type(steps) is int:  # If an int then compute range
+    elif type(steps) is int:
         if log:
-            bins = np.logspace(
-                np.log10(vals.min()),
-                np.log10(vals.max()),
-                steps,
-            )
+            bins = np.logspace(0, np.log10(vals.max()), steps)
         else:
-            bins = np.linspace(
-                vals.min(),
-                vals.max(),
-                steps,
-            )
-    else:  # If steps are given directly then just sort them
+            bins = np.linspace(1, vals.max(), steps)
+    else:
         bins = np.unique(steps)
         pad = (0, 0)  # Remove padding if given
 

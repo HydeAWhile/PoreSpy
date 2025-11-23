@@ -4,9 +4,8 @@ from copy import copy
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
-from tqdm import tqdm
 
-from porespy.tools import settings
+from porespy.tools import settings, get_tqdm
 
 __all__ = [
     'set_mpl_style',
@@ -14,6 +13,9 @@ __all__ = [
     'satn_to_panels',
     'prep_for_imshow',
 ]
+
+
+tqdm = get_tqdm()
 
 
 def set_mpl_style():  # pragma: no cover
@@ -59,8 +61,10 @@ def set_mpl_style():  # pragma: no cover
     plt.rc('figure', **figure_props)
     plt.rc('image', **image_props)
 
-    import matplotlib_inline
-    matplotlib_inline.backend_inline.set_matplotlib_formats('retina')
+    # if ps.settings.notebook:
+    #     import IPython
+    #     IPython.display.set_matplotlib_formats('retina')
+    # matplotlib_inline.backend_inline.set_matplotlib_formats('retina')
 
 
 def satn_to_movie(

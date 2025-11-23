@@ -12,6 +12,7 @@ from scipy import fft as sp_ft
 from skimage.measure import regionprops
 from skimage.morphology import ball, cube, disk, skeletonize, square
 
+from porespy.generators import faces
 from porespy.filters import (
     local_thickness,
     pc_to_seq,
@@ -167,7 +168,7 @@ def is_percolating(im, axis=None, inlets=None, outlets=None, conn='min'):
     return np.any(hits)
 
 
-def find_porosity_threshold(im, axis=0, conn="min"):
+def find_porosity_threshold(im, axis=0, dt=None, conn="min"):
     r"""
     Finds the porosity of the image at the percolation threshold
 
@@ -180,6 +181,9 @@ def find_porosity_threshold(im, axis=0, conn="min"):
         Image of the void space with `True` indicating void space
     axis : int
         The axis along which percolation is checked
+    dt : ndarray
+        The distance transform of the void space. If not provide it will be computed
+        so providing one can save time if it is available.
     conn : str
         Can be either `'min'` or `'max'` and controls the shape of the structuring
         element used to determine voxel connectivity.  The default if `'min'` which
@@ -198,10 +202,17 @@ def find_porosity_threshold(im, axis=0, conn="min"):
                          and surface pores
         eps_orig_perc    The percolating porosity of the original image (i.e. with
                          closed and surface pores filled)
-        eps_thresh       The total porosity of the image after eroding the void
-                         space results in no percolating paths
-        eps_thresh_perc  The percolating porosity of the eroded image (with closed
-                         and surface pores filled)
+        eps_thresh       The total porosity of the image just before the percolation
+                         threshold was reached (i.e at the point where one
+                         additional dilation would result in no connected void
+                         space.)
+        eps_thresh_perc  The percolating porosity (with closed and surface pores
+                         filled) just before the percolation threshold was reached
+                         (i.e at the point where one additional dilation would
+                         result in no connected void space.)
+        eps_thresh_post  The total porosity after the percolation threshold was
+                         reached (i.e. one step *after* the dilation which
+                         resulted in no connected pore space)
         R                The threshold to apply to the distance transform to
                          obtain the percolating image (i.e. im = dt >= R)
         ================ ===========================================================
@@ -225,23 +236,23 @@ def find_porosity_threshold(im, axis=0, conn="min"):
             R += step
         return R
 
-    dt = edt(im)
+    if dt is None:
+        dt = edt(im)
 
+    # Take large steps first, then medium and small steps to find final value faster
     R = _check_percolation(dt, R=1, step=10, axis=axis, conn=conn)
     R = _check_percolation(dt, R=max(1, R - 10), step=4, axis=axis, conn=conn)
     R = _check_percolation(dt, R=max(1, R - 4), step=1, axis=axis, conn=conn)
 
     im2 = dt >= (R - 1)
-    eps_thresh_total = porosity(im2)
-    eps_thresh_perc = percolating_porosity(im2, axis=axis)
-
-    from porespy.tools import Results
+    im3 = dt >= R
 
     r = Results()
     r.eps_orig = porosity(im)
-    r.eps_orig_perc = percolating_porosity(im, axis=axis)
-    r.eps_thresh = eps_thresh_total
-    r.eps_thresh_perc = eps_thresh_perc
+    r.eps_orig_perc = percolating_porosity(im, axis=axis, conn=conn)
+    r.eps_thresh = porosity(im2)
+    r.eps_thresh_perc = percolating_porosity(im2, axis=axis, conn=conn)
+    r.eps_thresh_post = porosity(im3)
     r.R = R - 1
     return r
 
@@ -262,7 +273,7 @@ def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn="min"):
         element used to determine voxel connectivity.  The default if `'min'` which
         imposes the strictest criteria, so that voxels must share a face to be
         considered connected.
-    inlets, outlets : ndarray
+    inlets, outlets : ndarrays, optional
         Boolean arrays indicating the locations of the inlets and outlets. These
         are useful if the domain is not cubic or if special inlet and outlet
         locations are desired.
@@ -275,19 +286,16 @@ def percolating_porosity(im, axis=0, inlets=None, outlets=None, conn="min"):
     """
     se = strel[im.ndim][conn]
     if (inlets is None) and (outlets is None):
-        im2 = np.swapaxes(im, 0, axis)
-        inlets = np.zeros_like(im2, dtype=bool)
-        inlets[0, ...] = True
-        outlets = np.zeros_like(im2, dtype=bool)
-        outlets[-1, ...] = True
-    labels, N = spim.label(im2, structure=se)
-    a = np.unique(labels * inlets)
+        inlets = faces(im.shape, inlet=axis)
+        outlets = faces(im.shape, outlet=axis)
+    labels, N = spim.label(im, structure=se)
+    a = np.unique(labels[inlets])
     a = a[a > 0]
-    b = np.unique(labels * outlets)
+    b = np.unique(labels[outlets])
     b = b[b > 0]
     hits = np.intersect1d(a, b)
     im3 = np.isin(labels, hits)
-    eps = porosity(im3)
+    eps = im3.sum()/im3.size
     return eps
 
 
@@ -350,12 +358,12 @@ def boxcount(im, bins=10):
         for i in range(0, im.shape[0], d):
             for j in range(0, im.shape[1], d):
                 if len(im.shape) == 2:
-                    temp = im[i : i + d, j : j + d]
+                    temp = im[i:i + d, j:j + d]
                     result += np.any(temp)
                     result -= np.all(temp)
                 else:
                     for k in range(0, im.shape[2], d):
-                        temp = im[i : i + d, j : j + d, k : k + d]
+                        temp = im[i:i + d, j:j + d, k:k + d]
                         result += np.any(temp)
                         result -= np.all(temp)
         N.append(result)
@@ -1273,12 +1281,14 @@ def pc_map_to_pc_curve(
         Indicates whether the invasion was a drainage or an imbibition process.
         Options are 'drainage' and 'imbibition'.
     fix_ends : bool (default is `True`)
-        A flag to control whether to adjust the endpoints of the curve or not.
-        The default is `True`, which will put add a point at the beginning and end
-        of the curves corresponding to residual and trapped invading phase
-        saturations. This makes the curves look better when plotted. Disabling this
-        correction ensures that the (Pc, Snwp) data match the values in the
-        displacement maps, which is useful for making animations for instance.
+        If `True` (default) this puts values at + and - infinity corresponding to
+        maximum and minimum non-wetting phase saturations. This helps when plotting
+        as it adds plateaus.
+    pc_min, pc_max : float
+        Minimum and maximum values to clip the capillary pressures. This is useful
+        if the minimum or maximum capillary pressure values are -/+ infinity, which
+        means they do not show up when plotting.  Using `pc_min=1` and `pc_max=1e6`
+        for instance, will make plateaus render when plotting.
 
     Returns
     -------
@@ -1318,39 +1328,56 @@ def pc_map_to_pc_curve(
 
     if mode.startswith("dr"):
         seq = seq.astype(float)
-        seq[seq == -1] = np.inf
+        seq[pc == np.inf] = np.inf
+        seq[pc == -np.inf] = -np.inf
+        # This could be done with pc instead of seq, but using seq makes it work
+        # for injection as well as drainage
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        snwp = np.cumsum(counts) / im.sum()
-        # If pc does not have residual phase (-inf), then add new point at snwp=0
+        # If trapping present, don't include last counts in cumsum
+        mask = pcs < np.inf
+        snwp = np.cumsum(counts[mask]) / im.sum()
+        snwp = np.hstack((snwp, [snwp[-1]]*sum(~mask)))
+
         if fix_ends:
-            if pcs[0] != -np.inf:
+            if pcs[0] > -np.inf:  # Fix lower left side
                 pcs = np.hstack((pcs[0], pcs))
-                snwp = np.hstack(([0], snwp))
-            else:
-                pcs = np.hstack((pcs[0], pcs[1], pcs[1:]))
-                snwp = np.hstack((snwp[0], snwp[0], snwp[1:]))
-            if pcs[-1] == np.inf:  # If trapping occurred, as point at +inf
-                snwp[-1] = snwp[-2]
+                snwp = np.hstack((0.0, snwp))
+            if (pcs[-1] < np.inf) and (snwp[-1] < 1):
+                pcs = np.hstack((pcs, np.inf))
+                snwp = np.hstack((snwp, snwp[-1]))
 
     elif mode.startswith("imb"):
-        # seq[seq == -1] = -np.inf
-        swp_r = (seq[im] == 0).sum(dtype=np.int64) / im.sum(dtype=np.int64)
+        seq = seq.astype(float)
+        seq[pc == np.inf] = np.inf  # Set residual pixels in seq to inf
+        seq[pc == -np.inf] = -np.inf  # Set trapped pixels in seql to -inf
         vals, index, counts = np.unique(seq[im], return_index=True, return_counts=True)
         pcs = pc[im][index]
-        idx = np.argsort(pcs)[-1::-1]  # Because -inf, if present, is on wrong end
+        # Move +/-inf to opposite ends of pcs, and upate counts accordingly
+        idx = np.argsort(pcs)[-1::-1]
         pcs = pcs[idx]
         counts = counts[idx]
-        snwp = 1 - np.cumsum(counts) / im.sum()
+
+        mask = pcs > -np.inf
+        snwp = 1 - np.cumsum(counts[mask]) / im.sum()
+        snwp = np.hstack((snwp, [snwp[-1]]*sum(~mask)))
         if fix_ends:
-            snwp = np.hstack(([1.0 - swp_r], snwp))
-            pcs = np.hstack((pcs[0], pcs))
-            if pcs[-1] == -np.inf:
-                snwp[-1] = snwp[-2]
+            if pcs[0] < np.inf:
+                pcs = np.hstack((pcs[0], pcs))
+                snwp = np.hstack((1.0, snwp))
+            if (pcs[-1] > -np.inf) and (snwp[-1] > 0):
+                pcs = np.hstack((pcs, -np.inf))
+                snwp = np.hstack((snwp, snwp[-1]))
 
     # Apply clipping to Pc values
     if pc_min or pc_max:
         pcs = np.clip(pcs, a_min=pc_min, a_max=pc_max)
+        if pc_min and pcs.min() > pc_min:
+            pcs = np.hstack((pc_min, pcs))
+            snwp = np.hstack((snwp[0], snwp))
+        if pc_max and pcs.min() < pc_max:
+            pcs = np.hstack((pcs, pc_max))
+            snwp = np.hstack((snwp, snwp[-1]))
 
     results = Results()
     results.pc = pcs

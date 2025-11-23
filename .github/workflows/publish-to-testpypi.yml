@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: dev
           fetch-depth: 0
@@ -48,9 +48,9 @@ jobs:
           cache-dependency-glob: "**/pyproject.toml"
           cache-suffix: "uv-${{ matrix.os }}-${{ matrix.archs }}"
 
-      - name: Install Ninja on Windows
-        if: runner.os == 'Windows'
-        run: choco install ninja -y
+      # - name: Install Ninja on Windows
+      #   if: runner.os == 'Windows'
+      #   run: choco install ninja -y
 
       - name: Install PoreSpy and build C shared libraries
         run: |
@@ -63,7 +63,7 @@ jobs:
           echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.0.1
+        uses: pypa/cibuildwheel@v3.1.4
         env:
           CIBW_PLATFORM: ${{ matrix.platform }}
           CIBW_ARCHS: ${{ matrix.archs }}
@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: dev
           fetch-depth: 0
@@ -105,17 +105,17 @@ jobs:
         run: |
           uv sync --extra build
 
-      - name: Bump up version
-        run: |
-          uv run hatch version ${{ github.event.inputs.version }}
-          echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
+      # - name: Bump up version
+      #   run: |
+      #     uv run hatch version ${{ github.event.inputs.version }}
+      #     echo "VERSION=v$(uv run hatch version)" >> $GITHUB_ENV
 
-      - name: Commit version bump, create and push tag
-        uses: stefanzweifel/git-auto-commit-action@v6
-        with:
-          commit_message: Bump version to ${{ env.VERSION }}
-          commit_author: GitHub Actions <actions@github.com>
-          tagging_message: ${{ env.VERSION }}
+      # - name: Commit version bump, create and push tag
+      #   uses: stefanzweifel/git-auto-commit-action@v6
+      #   with:
+      #     commit_message: Bump version to ${{ env.VERSION }}
+      #     commit_author: GitHub Actions <actions@github.com>
+      #     tagging_message: ${{ env.VERSION }}
 
   publish:
     name: Publish to TestPyPI
@@ -126,7 +126,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           # unpacks all CIBW artifacts into dist/
           pattern: cibw-*
