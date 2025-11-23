@@ -22,7 +22,11 @@ from . import visualization
 from . import io
 from .visualization import imshow
 
-import tomllib as _toml
+try:
+    import tomllib as _toml
+except ModuleNotFoundError:
+    import tomli as _toml
+
 import numpy as _np
 
 
