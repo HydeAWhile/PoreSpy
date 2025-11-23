@@ -90,8 +90,8 @@ def porosimetry(
         from porespy.simulations import drainage_dt
         drn = drainage_dt(im=im, inlets=inlets, steps=sizes, smooth=smooth)
     elif method in ['dsi', 'bf']:
-        from porespy.simulations import drainage_dsi
-        drn = drainage_dsi(im=im, inlets=inlets, steps=sizes, smooth=smooth)
+        from porespy.simulations import drainage_bf
+        drn = drainage_bf(im=im, inlets=inlets, steps=sizes, smooth=smooth)
     if method in ['fft', 'conv']:
         from porespy.simulations import drainage_fft
         drn = drainage_fft(im=im, inlets=inlets, steps=sizes, smooth=smooth)
