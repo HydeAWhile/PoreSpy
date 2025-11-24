@@ -151,6 +151,12 @@ def find_small_clusters(
                       trapped voxels removed (i.e. set to `False`).
         ============= ==============================================================
 
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/find_small_clusters.html>`_
+    to view online example.
+
     """
     cluster_size = region_size(trapped, conn=conn)
     mask = (cluster_size <= min_size) * (cluster_size > 0)

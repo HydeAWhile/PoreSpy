@@ -80,6 +80,12 @@ def conical_capillary(shape, r, axis=0):
         c = np.vstack((c1, c2))
         plt.imshow(ps.visualization.xray(c, axis=2))
 
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/generators/reference/conical_capillary.html>`__
+    to view online example.
+
     """
     if isinstance(r, int):
         r = [r, r]
@@ -497,7 +503,7 @@ def random_spheres(
         acceptable to create overlaps, so long as ``abs(clearance) < r``.
     protrusion : int (optional, default = 0)
         The amount by which inserted spheres are allowed to protrude outside of
-        the given forground.  If set to 0 (the default) then all spheres will
+        the given foreground.  If set to 0 (the default) then all spheres will
         be fully inside the region marked ``False`` in the input image.
     maxiter : int (default is 100,000)
         The maximum number of spheres to add.  Using a low value may halt

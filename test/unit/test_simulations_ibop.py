@@ -142,8 +142,7 @@ class IBOPTest(GenericTest):
         dt = edt(im)
         pc = 2/dt
         pc[~im] = 0
-        steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int), pad=(1, 0))
-        steps[-1] = 0.5
+        steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int))
         smooth = True
 
         faces = ps.generators.borders(im.shape, mode='faces')
@@ -173,8 +172,7 @@ class IBOPTest(GenericTest):
         dt = edt(im)
         pc = 2/dt
         pc[~im] = 0
-        steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int), pad=(1, 0))
-        steps[-1] = 1.0
+        steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int))
         smooth = False
 
         faces = ps.generators.borders(im.shape, mode='faces')
@@ -193,15 +191,6 @@ class IBOPTest(GenericTest):
         seq2 = ps.simulations.drainage(
             im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps), smooth=smooth).im_seq
         # assert np.sum(seq1 != seq2) == 0
-
-        # fig, ax = plt.subplots(1, 3)
-        # ax[0].imshow(sizes1/im)
-        # ax[1].imshow(sizes2/im)
-        # ax[2].imshow((sizes1 != sizes2)/im)
-
-        # fig, ax = plt.subplots(1, 2)
-        # ax[0].imshow(seq1)
-        # ax[1].imshow(seq2)
 
     def test_imbibition_implementations_no_inlets(self):
         edt = ps.tools.get_edt()
@@ -308,8 +297,7 @@ class IBOPTest(GenericTest):
         dt = edt(im)
         pc = 2/dt
         pc[~im] = 0
-        steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int), pad=(1, 0))
-        steps[-1] = 0.5
+        steps = ps.tools.parse_steps(steps=13, vals=dt.astype(int))
 
         faces = ps.generators.borders(im.shape, mode='faces')
 

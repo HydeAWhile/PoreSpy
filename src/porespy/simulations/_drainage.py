@@ -649,15 +649,6 @@ def drainage(
                 inlets=inlets,
                 conn=conn,
             )
-            # Find trapped clusters in the normal way
-            # trapped += find_trapped_clusters(
-            #     im=im,
-            #     seq=((~nwp_mask)*im*2.0 - residual*1.0).astype(int),
-            #     outlets=outlets,
-            #     min_size=min_size,
-            #     method="labels",
-            #     conn=conn,
-            # )
             trapped += find_disconnected_voxels(
                 im=im * ~nwp_mask * ~residual,
                 inlets=outlets,
@@ -712,6 +703,7 @@ def drainage(
         results.im_seq[trapped] = -1
         results.im_snwp[trapped] = -1
         results.im_pc[trapped] = np.inf
+
     im_size[im_pc == np.inf] = np.inf
     im_size[im_pc == -np.inf] = -np.inf
     results.im_size = im_size

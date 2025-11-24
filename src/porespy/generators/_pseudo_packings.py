@@ -272,7 +272,7 @@ def pseudo_electrostatic_packing(
     value: int = 1,
 ):
     r"""
-    Iterativley inserts spheres as close to the given sites as possible.
+    Iteratively inserts spheres as close to the given sites as possible.
 
     Parameters
     ----------
@@ -327,7 +327,7 @@ def pseudo_electrostatic_packing(
         is ``None``, which means each call will produce a new realization.
     compactness : float
         Controls how tightly the spheres are grouped together. A value of 1.0
-        (default) results in the tighest possible grouping while values < 1.0
+        (default) results in the tightest possible grouping while values < 1.0
         give more loosely or imperfectly packed spheres.
     value : int, default = 1
         The value of insert for the spheres. The default is 1, which puts holes

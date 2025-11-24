@@ -70,7 +70,7 @@ def fractal_noise(
     uniform : boolean, optional
         If ``True`` (default) the random values are converted to a
         uniform distribution between 0 and 1, otherwise the resulting image
-        contains the unprocesssed values, which have a 'normal-esque'
+        contains the unprocessed values, which have a 'normal-esque'
         distribution centered on 0.
 
     Notes

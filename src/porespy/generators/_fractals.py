@@ -49,7 +49,7 @@ def random_cantor_dust(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/randon_cantor_dust.html>`__
+    <https://porespy.org/examples/generators/reference/random_cantor_dust.html>`__
     to view online example.
 
     """

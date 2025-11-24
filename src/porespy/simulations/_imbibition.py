@@ -589,6 +589,7 @@ def imbibition(
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
+    im_size = np.zeros_like(im, dtype=float)
     trapped = np.zeros_like(im)
     if residual is not None:
         im_seq[residual] = 1
@@ -658,6 +659,8 @@ def imbibition(
         if np.any(mask):
             im_seq[mask] = step + 1
             im_pc[mask] = P
+            if np.size(radii) > 0:
+                im_size[mask] = np.amin(radii)
 
     # Set uninvaded voxels to -inf and -1
     mask = (im_seq == 0)*im
@@ -668,6 +671,7 @@ def imbibition(
     if residual is not None:
         im_pc[residual] = np.inf
         im_seq[residual] = 0
+        im_size[residual] = 0
 
     # Check for trapping as a post-processing step if no residual
     if (outlets is not None) and (residual is None):
@@ -691,6 +695,7 @@ def imbibition(
     results.im_seq = im_seq
     results.im_pc = im_pc
     results.im_trapped = trapped
+    results.im_size = im_size
 
     if trapped is not None:
         results.im_seq[trapped] = -1
