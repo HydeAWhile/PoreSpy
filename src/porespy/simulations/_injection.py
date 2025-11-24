@@ -37,7 +37,7 @@ def qbip(
     outlets: npt.NDArray = None,
     maxiter: int = None,
     return_sizes: bool = False,
-    return_pressures: bool = False,
+    return_pressures: bool = True,
     conn: Literal['min', 'max'] = 'min',
     min_size: int = 0,
 ):
