@@ -1,44 +1,32 @@
 name: Bump Version (dev)
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - dev
 
 jobs:
-  bump-version:
-    if: github.event.pull_request.merged == true
+  build:
 
     name: Bump version
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+    - uses: actions/checkout@v3
 
-      - name: Set up uv
-        id: setup-uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-          python-version: "3.10"
-          cache-dependency-glob: "**/pyproject.toml"
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
 
-      - name: Install build dependencies
-        run: |
-          uv sync --extra build
+    - name: Install dependencies
+      run: |
+        pip install bump-my-version==1.2.4
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
 
-      - name: Bump version (dev)
-        run: |
-          uv run hatch version dev
-
-      - name: Commit files
-        uses: stefanzweifel/git-auto-commit-action@v6
-        with:
-          commit_message: Bump version number (dev segment)
-          commit_author: GitHub Actions <actions@github.com>
+    - name: Bump version (build)
+      shell: bash
+      run: |
+        bump-my-version bump pre_n --commit --message "Bump version number on dev"
+        git push origin HEAD:dev        

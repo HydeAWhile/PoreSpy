@@ -1,10 +1,9 @@
 name: Release Notes
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - release
 
 jobs:
   build:

@@ -1,6 +1,6 @@
 [project]
 name = "porespy"
-dynamic = ["version"]
+version = "3.0.0-dev43"
 description = "A set of tools for analyzing 3D images of porous materials"
 authors = [{ name = "PoreSpy Team", email = "jgostick@gmail.com" }]
 maintainers = [
@@ -44,6 +44,7 @@ dependencies = [
     "nanomesh>=0.9.1",
     "pywavelets>=1.8.0",
     "matplotlib-inline",
+    "tomli>=2.2.1",
 ]
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -96,32 +97,6 @@ Homepage = "https://porespy.org"
 Repository = "https://github.com/PMEAL/porespy"
 "Bug Tracker" = "https://github.com/PMEAL/porespy/issues"
 Documentation = "https://porespy.org"
-
-[build-system]
-requires = ["hatchling", "meson", "ninja"]
-build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
-include = [
-    "src/porespy/beta/libwalker.so",
-    "src/porespy/beta/libwalker.dll",
-    "src/porespy/beta/libwalker.dylib",
-]
-
-[tool.hatch.version]
-path = "src/porespy/__version__.py"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/porespy"]
-artifacts = [
-    "src/porespy/beta/*.so",
-    "src/porespy/beta/*.dll",
-    "src/porespy/beta/*.dylib",
-]
-
-[tool.hatch.build.targets.wheel.hooks.custom]
-path = "hatch_build.py"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -245,3 +220,49 @@ docstring-code-format = true
 # This only has an effect when the `docstring-code-format` setting is
 # enabled.
 docstring-code-line-length = "dynamic"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+path = "src/porespy/__version__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/porespy"]
+
+[tool.bumpversion]
+current_version = "3.0.0-dev43"
+parse = """(?x)
+    (?P<major>0|[1-9]\\d*)\\.
+    (?P<minor>0|[1-9]\\d*)\\.
+    (?P<patch>0|[1-9]\\d*)
+    (?:
+        -                             # dash separator for pre-release section
+        (?P<pre_l>[a-zA-Z-]+)         # pre-release label
+        (?P<pre_n>0|[1-9]\\d*)        # pre-release version number
+    )?                                # pre-release section is optional
+"""
+serialize = [
+    "{major}.{minor}.{patch}-{pre_l}{pre_n}",
+    "{major}.{minor}.{patch}",
+]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = false
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
+
+[tool.bumpversion.parts.pre_l]
+values = ["dev", "rc", "final"]
+optional_value = "dev"
