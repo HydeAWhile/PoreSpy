@@ -150,7 +150,7 @@ class IBOPTest(GenericTest):
             im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth)
         drn_pc = ps.simulations.drainage(
             im=im, dt=dt, pc=pc, inlets=faces, steps=(2/steps), smooth=smooth)
-        assert np.sum(drn_dt.im_size != drn_pc.im_size) == 0
+        assert np.sum(drn_dt.im_size[im] != 2/drn_pc.im_pc[im]) == 0
         assert np.sum(drn_dt.im_seq != drn_pc.im_seq) == 0
 
     def test_drainage_equals_drainage_dt_not_smooth(self):
@@ -179,7 +179,7 @@ class IBOPTest(GenericTest):
         # figure out why there is 3 stray pixels which don't agree.  I think 3
         # out of 10,000 is pretty good so I'm going to chalk it up to numerical
         # precision and move on
-        assert np.sum(drn_dt.im_size != drn_pc.im_size) < 5
+        assert np.sum(drn_dt.im_size[im] != 2/drn_pc.im_pc[im]) < 5
         assert np.sum(drn_dt.im_seq != drn_pc.im_seq) < 5
 
     def test_imbibition_implementations_no_inlets(self):
@@ -295,7 +295,7 @@ class IBOPTest(GenericTest):
             im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth)
         imb_pc = ps.simulations.imbibition(
             im=im, dt=dt, inlets=faces, steps=(2/steps), smooth=smooth)
-        assert np.sum(imb_dt.im_size != imb_pc.im_size) == 0
+        assert np.sum(imb_dt.im_size[im] != 2/imb_pc.im_pc[im]) == 0
         assert np.sum(imb_dt.im_seq != imb_pc.im_seq) == 0
 
     def test_imbibition_equals_imbibition_dt_not_smooth(self):
@@ -313,16 +313,15 @@ class IBOPTest(GenericTest):
         dt = edt(im)
         pc = 2/dt
         pc[~im] = 0
-        steps = np.arange(12, 1, -1)
+        steps = np.arange(13, 1, -1)
 
         faces = ps.generators.borders(im.shape, mode='faces')
-        faces = ps.generators.faces(im.shape, inlet=0)
 
         imb_dt = ps.simulations.imbibition_dt(
             im=im, dt=dt, inlets=faces, steps=steps, smooth=smooth)
         imb_pc = ps.simulations.imbibition(
             im=im, dt=dt, inlets=faces, steps=(2/steps), smooth=smooth)
-        assert np.sum(imb_dt.im_size != imb_pc.im_size) == 0
+        assert np.sum(imb_dt.im_size[im] != 2/imb_pc.im_pc[im]) == 0
         assert np.sum(imb_dt.im_seq != imb_pc.im_seq) == 0
 
 

@@ -826,12 +826,6 @@ class TestDisplacementRefs():
         tmp = imb[a].im_size == imb[b].im_size
         assert np.all(tmp)
 
-    def test_drainage_ref_vs_full(self):
-        pass
-
-    def test_imbibition_ref_vs_full(self):
-        pass
-
 
 if __name__ == '__main__':
     t = TestDisplacementRefs()

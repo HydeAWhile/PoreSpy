@@ -120,23 +120,26 @@ def imbibition_bf(
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
         seeds = (dt <= r)*im
-        # Perform dilation using bf
-        edges = seeds * ~seeds_prev * im
-        coords = np.vstack(np.where(edges))
-        nwp.fill(False)
-        if coords.size > 0:
-            nwp = func(
-                im=nwp,
-                coords=coords,
-                r=int(r),
-                v=True,
-                smooth=smooth,
-            )
-        nwp[(~seeds)*im] = True
-        wp = (~nwp)*im
-        # Trim disconnected wetting phase
-        if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
+        if np.any(seeds):
+            # Perform dilation using bf
+            edges = seeds * ~seeds_prev * im
+            coords = np.vstack(np.where(edges))
+            nwp.fill(False)
+            if coords.size > 0:
+                nwp = func(
+                    im=nwp,
+                    coords=coords,
+                    r=int(r),
+                    v=True,
+                    smooth=smooth,
+                )
+            nwp[(~seeds)*im] = True
+            wp = (~nwp)*im
+            # Trim disconnected wetting phase
+            if inlets is not None:
+                wp = trim_disconnected_voxels(wp, inlets=inlets, conn='min')
+        else:
+            wp = np.copy(im)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i + 1
@@ -233,12 +236,15 @@ def imbibition_dt_conv(
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
         seeds = dt >= r
-        # Perform dilation using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=smooth)
-        wp = im*~fftmorphology(seeds, se, mode='dilation')
-        # Trim disconnected wetting phase
-        if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets)
+        if np.any(seeds):
+            # Perform dilation using convolution
+            se = ps_round(r, ndim=im.ndim, smooth=smooth)
+            wp = im*~fftmorphology(seeds, se, mode='dilation')
+            # Trim disconnected wetting phase
+            if inlets is not None:
+                wp = trim_disconnected_voxels(wp, inlets=inlets)
+        else:
+            wp = np.copy(im)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
@@ -335,13 +341,16 @@ def imbibition_dt(
     for i, r in enumerate(tqdm(bins, desc=desc, **settings.tqdm)):
         # Perform erosion using dt
         seeds = dt >= r
-        # Perform dilation using dt
-        tmp = edt(~seeds)
-        wp = ~(tmp < r) if smooth else ~(tmp <= r)
-        wp[~im] = False
-        # Trim disconnected wetting phase
-        if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets)
+        if np.any(seeds):
+            # Perform dilation using dt
+            tmp = edt(~seeds)
+            wp = ~(tmp < r) if smooth else ~(tmp <= r)
+            wp[~im] = False
+            # Trim disconnected wetting phase
+            if inlets is not None:
+                wp = trim_disconnected_voxels(wp, inlets=inlets)
+        else:
+            wp = np.copy(im)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
@@ -436,12 +445,15 @@ def imbibition_conv(
         # Perform erosion using convolution
         se = ps_round(r, ndim=im.ndim, smooth=True)
         seeds = ~fftmorphology(~im, se, mode='dilation')
-        # Perform dilation using convolution
-        se = ps_round(r, ndim=im.ndim, smooth=smooth)
-        wp = im*~fftmorphology(seeds, se, mode='dilation')
-        # Trim disconnected wetting phase
-        if inlets is not None:
-            wp = trim_disconnected_voxels(wp, inlets=inlets)
+        if np.any(seeds):
+            # Perform dilation using convolution
+            se = ps_round(r, ndim=im.ndim, smooth=smooth)
+            wp = im*~fftmorphology(seeds, se, mode='dilation')
+            # Trim disconnected wetting phase
+            if inlets is not None:
+                wp = trim_disconnected_voxels(wp, inlets=inlets)
+        else:
+            wp = np.copy(im)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
@@ -585,7 +597,6 @@ def imbibition(
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
-    im_size = np.zeros_like(im, dtype=float)
     trapped = np.zeros_like(im)
     if residual is not None:
         im_seq[residual] = 1
@@ -605,8 +616,6 @@ def imbibition(
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
         invadable = (pc <= P)*im  # This means 'invadable by non-wetting phase'
-        if not np.any(invadable):
-            continue
         # Using FFT-based erosion to find edges.  When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
         # that need to be inserted.
@@ -654,8 +663,6 @@ def imbibition(
         if np.any(mask):
             im_seq[mask] = step + 1
             im_pc[mask] = P
-            if np.size(radii) > 0:
-                im_size[mask] = np.amin(radii)
 
     # Set uninvaded voxels to -inf and -1
     mask = (im_seq == 0)*im
@@ -666,7 +673,6 @@ def imbibition(
     if residual is not None:
         im_pc[residual] = np.inf
         im_seq[residual] = 0
-        im_size[residual] = 0
 
     # Check for trapping as a post-processing step if no residual
     if (outlets is not None) and (residual is None):
@@ -690,7 +696,6 @@ def imbibition(
     results.im_seq = im_seq
     results.im_pc = im_pc
     results.im_trapped = trapped
-    results.im_size = im_size
 
     if trapped is not None:
         results.im_seq[trapped] = -1

@@ -198,13 +198,13 @@ def drainage_dt_conv(
         Attribute   Description
         =========== ================================================================
         `im_seq`    An ndarray with each voxel indicating the step number at which
-                    it was first invaded. -1 indicates uninavded, either due to
+                    it was first invaded. -1 indicates uninvaded, either due to
                     the applied `steps` not spanning the full range of sizes in the
                     image, or due to trapping, while 0 indicates residual invading
                     phase.
         `im_size`   A numpy array with each voxel containing the radius of the
                     sphere, in voxels, that first overlapped it. `inf` indicates
-                    uninavded, either due to the applied `steps` not spanning the
+                    uninvaded, either due to the applied `steps` not spanning the
                     full range of sizes in the image, or due to trapping, while 0
                     indicates residual invading phase.
         =========== ================================================================
@@ -294,13 +294,13 @@ def drainage_conv(
         Attribute   Description
         =========== ================================================================
         `im_seq`    An ndarray with each voxel indicating the step number at which
-                    it was first invaded. -1 indicates uninavded, either due to
+                    it was first invaded. -1 indicates uninvaded, either due to
                     the applied `steps` not spanning the full range of sizes in the
                     image, or due to trapping, while 0 indicates residual invading
                     phase.
         `im_size`   A numpy array with each voxel containing the radius of the
                     sphere, in voxels, that first overlapped it. `inf` indicates
-                    uninavded, either due to the applied `steps` not spanning the
+                    uninvaded, either due to the applied `steps` not spanning the
                     full range of sizes in the image, or due to trapping, while 0
                     indicates residual invading phase.
         =========== ================================================================
@@ -387,13 +387,13 @@ def drainage_dt(
         Attribute   Description
         =========== ================================================================
         `im_seq`    An ndarray with each voxel indicating the step number at which
-                    it was first invaded. -1 indicates uninavded, either due to
+                    it was first invaded. -1 indicates uninvaded, either due to
                     the applied `steps` not spanning the full range of sizes in the
                     image, or due to trapping, while 0 indicates residual invading
                     phase.
         `im_size`   A numpy array with each voxel containing the radius of the
                     sphere, in voxels, that first overlapped it. `inf` indicates
-                    uninavded, either due to the applied `steps` not spanning the
+                    uninvaded, either due to the applied `steps` not spanning the
                     full range of sizes in the image, or due to trapping, while 0
                     indicates residual invading phase.
         =========== ================================================================
@@ -521,7 +521,7 @@ def drainage(
         ============ ===============================================================
         `im_seq`     An ndarray with each voxel indicating the step number at
                      which it was first invaded by non-wetting phase. -1 indicates
-                     uninavded, either due to the maximum pressure being too low,
+                     uninvaded, either due to the maximum pressure being too low,
                      or trapping, while 0 indicates residual.
         `im_pc`      A numpy array with each voxel value indicating the capillary
                      pressure at which it was invaded. `inf` indicates uninvaded,
@@ -529,12 +529,12 @@ def drainage(
                      trapping.
         `im_snwp`    A numpy array with each voxel value indicating the global
                      value of the non-wetting phase saturation at the point it
-                     was invaded. -1 indicates uninavded, either due to the maximum
+                     was invaded. -1 indicates uninvaded, either due to the maximum
                      pressure being too low, or trapping, while 0 indicates
                      residual.
         `im_size`    A numpy array with each voxel containing the radius of the
                      sphere, in voxels, that first overlapped it. `inf` indicates
-                     uninavded, either due to the maximum pressure being too low,
+                     uninvaded, either due to the maximum pressure being too low,
                      or trapping, while 0 indicates residual.
         `im_trapped` A numpy array with ``True`` values indicating trapped voxels.
                      If `outlets` was not provided it will be all `False`.
@@ -586,7 +586,6 @@ def drainage(
 
     # Initialize empty arrays to accumulate results of each loop
     im_pc = np.zeros_like(im, dtype=float)
-    im_size = np.zeros_like(im, dtype=float)
     im_seq = np.zeros_like(im, dtype=int)
     trapped = np.zeros_like(im, dtype=bool)
     if residual is not None:
@@ -663,8 +662,6 @@ def drainage(
         if np.any(mask):
             im_seq[mask] = step + 1
             im_pc[mask] = P
-            if np.size(radii) > 0:
-                im_size[mask] = np.amin(radii)
         # Add new locations to list of invaded locations
         seeds_prev = np.copy(seeds)
 
@@ -677,7 +674,6 @@ def drainage(
     if residual is not None:
         im_pc[residual] = -np.inf
         im_seq[residual] = 0
-        im_size[residual] = 0
 
     # Analyze trapping as a post-processing step if no residual
     if (outlets is not None) and (residual is None):
@@ -704,10 +700,6 @@ def drainage(
         results.im_seq[trapped] = -1
         results.im_snwp[trapped] = -1
         results.im_pc[trapped] = np.inf
-
-    im_size[im_pc == np.inf] = np.inf
-    im_size[im_pc == -np.inf] = -np.inf
-    results.im_size = im_size
 
     pc_curve = pc_map_to_pc_curve(
         im=im,
