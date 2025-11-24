@@ -1,6 +1,5 @@
 import numpy as np
 from GenericTest import GenericTest
-import matplotlib.pyplot as plt
 
 import porespy as ps
 
