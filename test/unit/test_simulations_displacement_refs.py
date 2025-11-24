@@ -437,6 +437,7 @@ class TestDisplacementRefs():
     def test_imbibition_2D_no_trapping_smooth(self):
         imb = {}
         smooth = True
+        steps = np.arange(39, 0, -1)
         imb['bf'] = ps.simulations.imbibition_bf(
             im=self.im,
             inlets=self.inlets,
@@ -483,6 +484,7 @@ class TestDisplacementRefs():
     def test_imbibition_2D_no_trapping_not_smooth(self):
         imb = {}
         smooth = False
+        steps = np.arange(39, 0, -1)
         imb['bf'] = ps.simulations.imbibition_bf(
             im=self.im,
             inlets=self.inlets,
@@ -529,6 +531,7 @@ class TestDisplacementRefs():
     def test_imbibition_3D_no_trapping_smooth(self):
         imb = {}
         smooth = True
+        steps = np.arange(39, 0, -1)
         imb['bf'] = ps.simulations.imbibition_bf(
             im=self.im3D,
             inlets=self.inlets3D,
@@ -575,6 +578,7 @@ class TestDisplacementRefs():
     def test_imbibition_3D_no_trapping_not_smooth(self):
         imb = {}
         smooth = False
+        steps = np.arange(39, 0, -1)
         imb['bf'] = ps.simulations.imbibition_bf(
             im=self.im3D,
             inlets=self.inlets3D,
@@ -621,6 +625,7 @@ class TestDisplacementRefs():
     def test_imbibition_2D_w_trapping_smooth(self):
         imb = {}
         smooth = True
+        steps = np.arange(39, 0, -1)
         imb['bf'] = ps.simulations.imbibition_bf(
             im=self.im,
             inlets=self.inlets,
@@ -671,6 +676,7 @@ class TestDisplacementRefs():
     def test_imbibition_2D_w_trapping_not_smooth(self):
         imb = {}
         smooth = False
+        steps = np.arange(39, 0, -1)
         imb['bf'] = ps.simulations.imbibition_bf(
             im=self.im,
             inlets=self.inlets,
@@ -721,6 +727,7 @@ class TestDisplacementRefs():
     def test_imbibition_3D_w_trapping_smooth(self):
         imb = {}
         smooth = True
+        steps = np.arange(39, 0, -1)
         imb['bf'] = ps.simulations.imbibition_bf(
             im=self.im3D,
             inlets=self.inlets3D,
@@ -771,6 +778,7 @@ class TestDisplacementRefs():
     def test_imbibition_3D_w_trapping_not_smooth(self):
         imb = {}
         smooth = False
+        steps = np.arange(39, 0, -1)
         imb['bf'] = ps.simulations.imbibition_bf(
             im=self.im3D,
             inlets=self.inlets3D,

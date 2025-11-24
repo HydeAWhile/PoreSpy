@@ -10,14 +10,12 @@ from porespy.filters import (
     seq_to_satn,
     trim_disconnected_voxels,
     find_disconnected_voxels,
-    erode,
     dilate,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
     Results,
     _insert_disk_at_points,
-    _insert_disks_at_points,
     _insert_disk_at_points_parallel,
     _insert_disks_at_points_parallel,
     get_edt,
