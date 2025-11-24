@@ -32,8 +32,8 @@ edt = get_edt()
 __all__ = [
     'imbibition',
     'imbibition_dt',
-    'imbibition_dt_fft',
-    'imbibition_fft',
+    'imbibition_dt_conv',
+    'imbibition_conv',
     'imbibition_bf',
 ]
 
@@ -368,7 +368,7 @@ def imbibition_dt(
     return results
 
 
-def imbibition_fft(
+def imbibition_conv(
     im,
     inlets=None,
     outlets=None,
@@ -595,6 +595,11 @@ def imbibition(
     if (outlets is not None) and (residual is not None):
         trapped = find_disconnected_voxels(
             im=im * ~residual,
+            inlets=inlets,
+            conn=conn,
+        )
+        trapped += find_disconnected_voxels(
+            im=im * ~residual,
             inlets=outlets,
             conn=conn,
         )
@@ -684,7 +689,6 @@ def imbibition(
     results = Results()
     results.im_snwp = satn
     results.im_seq = im_seq
-    results.im_size = im_size
     results.im_pc = im_pc
     results.im_trapped = trapped
 

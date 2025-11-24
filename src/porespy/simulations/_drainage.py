@@ -10,6 +10,8 @@ from porespy.filters import (
     seq_to_satn,
     trim_disconnected_voxels,
     find_disconnected_voxels,
+    erode,
+    dilate,
 )
 from porespy.metrics import pc_map_to_pc_curve
 from porespy.tools import (
@@ -24,14 +26,15 @@ from porespy.tools import (
     make_contiguous,
     parse_steps,
     settings,
+    ps_round,
 )
 
 __all__ = [
     "drainage",
     # The following are reference implementations using different techniques
     "drainage_dt",
-    "drainage_fft",
-    "drainage_dt_fft",
+    "drainage_conv",
+    "drainage_dt_conv",
     "drainage_bf",
 ]
 
