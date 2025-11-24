@@ -422,6 +422,7 @@ def drainage_dt(
         mask = nwp * (im_seq == -1)
         im_size[mask] = max(r, 1)
         im_seq[mask] = i + 1
+
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
         trapped = find_trapped_clusters(
@@ -568,7 +569,7 @@ def drainage(
         dt = edt(im)
 
     if pc is None:
-        pc = 2.0 / dt
+        pc = 2.0/dt
     pc[~im] = 0  # Remove any infs or nans from pc computation
 
     if isinstance(steps, int):  # Use values in pc for invasion steps
@@ -612,6 +613,8 @@ def drainage(
         # Trim locations not connected to the inlets
         if inlets is not None:
             seeds = trim_disconnected_voxels(im=seeds, inlets=inlets, conn=conn)
+        if not np.any(seeds):
+            continue
         # Dilate the erosion to find locations of non-wetting phase
         edges = seeds * (~seeds_prev)  # Isolate edges to speed up inserting
         coords = np.where(edges)  # Find (i, j, k) coordinates of edges
@@ -621,7 +624,7 @@ def drainage(
             coords=np.vstack(coords),
             radii=radii.astype(int),
             v=True,
-            smooth=True,
+            smooth=smooth,
             overwrite=False,
         )
         nwp_mask[seeds] = True  # Fill in center in case spheres did not reach

@@ -338,17 +338,13 @@ def imbibition_dt(
         # Perform dilation using dt
         tmp = edt(~seeds)
         wp = ~(tmp < r) if smooth else ~(tmp <= r)
-        wp[~im] = 0
+        wp[~im] = False
         # Trim disconnected wetting phase
         if inlets is not None:
             wp = trim_disconnected_voxels(wp, inlets=inlets)
         mask = wp*(im_seq == -1)
         im_size[mask] = r
         im_seq[mask] = i+1
-    # if residual is not None:
-    #     im_seq[im_seq > 0] += 1
-    #     im_seq[residual] = 1
-    #     im_size[residual] = np.inf
 
     # Apply trapping as a post-processing step if outlets given
     if outlets is not None:
@@ -608,16 +604,15 @@ def imbibition(
 
     desc = inspect.currentframe().f_code.co_name  # Get current func name
     for step, P in enumerate(tqdm(Ps, desc=desc, **settings.tqdm)):
-        # step += 1
-        # P = Ps[step]
-        # TODO: This can be made faster if I find a way to get only seeds on edge,
-        # so less spheres need to be drawn
         invadable = (pc <= P)*im  # This means 'invadable by non-wetting phase'
+        if not np.any(invadable):
+            continue
         # Using FFT-based erosion to find edges.  When struct is small, this is
         # quite fast so it saves time overall by reducing the number of spheres
         # that need to be inserted.
+        # TODO: This can be made faster if I find a way to get only seeds on edge,
+        # so less spheres need to be drawn
         edges = (~erode(invadable, r=1, smooth=False, method='conv'))*invadable
-        # edges = invadable
         nwp_mask = np.zeros_like(im, dtype=bool)
         if np.any(edges):
             coords = np.where(edges)
@@ -627,7 +622,7 @@ def imbibition(
                 coords=np.vstack(coords),
                 radii=radii,
                 v=True,
-                smooth=False,
+                smooth=smooth,
                 overwrite=True,
             )
             nwp_mask += invadable

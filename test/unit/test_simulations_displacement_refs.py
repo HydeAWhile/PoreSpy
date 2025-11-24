@@ -126,9 +126,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'fft'
         tmp = drn[a].im_seq == drn[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = drn[a].im_size == drn[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
     def test_drainage_3D_no_trapping_not_smooth(self):
         drn = {}
@@ -174,9 +174,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'fft'
         tmp = drn[a].im_seq == drn[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = drn[a].im_size == drn[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
     def test_drainage_3D_no_trapping_smooth(self):
         drn = {}
@@ -326,9 +326,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'fft'
         tmp = drn[a].im_seq == drn[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = drn[a].im_size == drn[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
     def test_drainage_3D_w_trapping_not_smooth(self):
         drn = {}
@@ -378,9 +378,9 @@ class TestDisplacementRefs():
 
         a, b = 'dt', 'fft'
         tmp = drn[a].im_seq == drn[b].im_seq
-        # assert np.all(tmp)
+        assert np.all(tmp)
         tmp = drn[a].im_size == drn[b].im_size
-        # assert np.all(tmp)
+        assert np.all(tmp)
 
     def test_drainage_3D_w_trapping_smooth(self):
         drn = {}
