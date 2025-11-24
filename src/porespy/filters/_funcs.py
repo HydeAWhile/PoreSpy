@@ -584,18 +584,18 @@ def apply_chords_3D(
     r"""
     Adds chords to the void space in all three principle directions.
 
-    Chords in the X, Y and Z directions are labelled 1, 2 and 3 resepctively.
+    Chords in the X, Y and Z directions are labelled 1, 2 and 3 respectively.
 
     Parameters
     ----------
     im : ndarray
         A 3D image of the porous material with void space marked as `True`.
     spacing : int (default = 0)
-        Chords are automatically separed by 1 voxel on all sides, and this
+        Chords are automatically separated by 1 voxel on all sides, and this
         argument increases the separation.
     trim_edges : bool (default is `True`)
         Whether or not to remove chords that touch the edges of the image.
-        These chords are artifically shortened, so skew the chord length
+        These chords are artificially shortened, so skew the chord length
         distribution
 
     Returns
@@ -833,7 +833,7 @@ def chunked_func(
     **kwargs,
 ):
     r"""
-    Performs the specfied operation "chunk-wise" in parallel using `dask`.
+    Performs the specified operation "chunk-wise" in parallel using `dask`.
 
     This can be used to save memory by doing one chunk at a time
     (`cores=1`) or to increase computation speed by spreading the work
@@ -860,7 +860,7 @@ def chunked_func(
         equivalent to `[2, 2, 2]` for a 3D image.
 
         Overlap is the amount of overlap to include when dividing up the image.
-        This value will almost always be the size (i.e. raduis) of the
+        This value will almost always be the size (i.e. radius) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
         case the `strel_arg` must be specified.

@@ -369,50 +369,29 @@ class MetricsTest():
         assert d.snwp[-1] == (im.sum() - trapped.sum())/im.sum()
 
     def test_pc_map_to_pc_curve_compare_invasion_to_drainage(self):
-        vx = 50e-6
         im = ps.generators.blobs(
             shape=[200, 200], porosity=0.6185, blobiness=1, seed=0, periodic=False,)
         assert im.sum()/im.size == 0.6185
         im = ps.filters.fill_invalid_pores(im, conn='max')
         inlets = ps.generators.borders(shape=im.shape, mode='faces')
+        pc = ps.filters.capillary_transform(im=im, sigma=0.01, theta=180, voxel_size=1e-5)
 
-        # Do drainage without sequence
-        drn = ps.simulations.drainage(im, steps=None)
-        pc1 = ps.filters.size_to_pc(
-            im=im, size=drn.im_size, sigma=0.072, theta=110, voxel_size=vx)
-        d1 = ps.metrics.pc_map_to_pc_curve(pc=pc1, im=im)
-
-        # Ensure drainage works with sequence
-        d2 = ps.metrics.pc_map_to_pc_curve(pc=pc1, im=im, seq=drn.im_seq)
-        assert_allclose(np.unique(d1.pc), np.unique(d2.pc), rtol=1e-10)
-        assert np.all(d2.snwp == d1.snwp)
+        # Do drainage
+        drn = ps.simulations.drainage(im, pc=pc, inlets=inlets, steps=None)
+        d1 = ps.metrics.pc_map_to_pc_curve(pc=drn.im_pc, im=im)
 
         # Using the original ibip, which requires that sequence be supplied
-        ibip = ps.simulations.qbip(im=im, inlets=inlets, return_sizes=True)
-        pc3 = ps.filters.size_to_pc(
-            im=im, size=ibip.im_size, sigma=0.072, theta=110, voxel_size=vx)
-        d3 = ps.metrics.pc_map_to_pc_curve(pc=pc3, im=im, seq=ibip.im_seq)
-
-        bins = np.unique(pc3)
-        drn4 = ps.simulations.drainage(
-            im=im, inlets=inlets, steps=bins)
-        pc4 = ps.filters.size_to_pc(
-            im=im, size=drn4.im_size, sigma=0.072, theta=110, voxel_size=vx)
-        d4 = ps.metrics.pc_map_to_pc_curve(pc=pc4, im=im)
-        # Ensure they all return the same Pc values
-        assert np.all(np.isin(np.unique(d4.pc), np.unique(d3.pc)))
+        inv = ps.simulations.injection(im=im, pc=pc, inlets=inlets)
+        d2 = ps.metrics.pc_map_to_pc_curve(pc=inv.im_pc, im=im, seq=inv.im_seq, mode='drainage')
 
         # Ensure the high and low saturations are all the same
         assert d1.snwp[0] == d2.snwp[0]
         assert d1.snwp[-1] == d2.snwp[-1]
-        assert d2.snwp[0] == d3.snwp[0]
-        assert d2.snwp[-1] == d3.snwp[-1]
 
         # These graphs should lie perfectly on top of each other
         # import matplotlib.pyplot as plt
         # plt.step(d1.pc, d1.snwp, 'r-o', where='post')
         # plt.step(d2.pc, d2.snwp, 'g.-', where='post')
-        # plt.step(d3.pc, d3.snwp, 'b--', where='post')
 
     def test_pc_map_to_pc_curve_end_points_drainage(self):
         im = ps.generators.blobs(

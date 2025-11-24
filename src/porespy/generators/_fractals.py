@@ -49,7 +49,7 @@ def random_cantor_dust(
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/generators/reference/randon_cantor_dust.html>`__
+    <https://porespy.org/examples/generators/reference/random_cantor_dust.html>`__
     to view online example.
 
     """
@@ -96,10 +96,16 @@ def sierpinski_foam(
         The number of times to iteratively divide the image. This functions starts
         by inserting single voxels, then inserts increasingly large squares/cubes.
     mode : str
-        Controls the portion of the image that is returned, options are `'upper'`
-        which returns the upper corner, `'centered'`, which returns the center
-        portion of the image, and `None` provide the full image, in which case
-        the returned image will be larger than `shape`.
+        Controls the portion of the image that is returned, options are:
+
+        ============= ==============================================================
+        Mode          Description
+        ============= ==============================================================
+        `'upper'`     Returns the upper corner
+        `'centered'`  Returns the center portion
+        `None`        Provide the full image, in which case the returned image will
+                      be larger than `shape`.
+        ============= ==============================================================
 
     Returns
     -------
@@ -121,7 +127,8 @@ def sierpinski_foam(
             m += 1
     im = np.zeros([3**(m+1)//3 for _ in range(len(shape))], dtype=bool)
     i = 0
-    pbar = tqdm()
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    pbar = tqdm(desc=desc, **settings.tqdm)
     while i < n:
         if im.ndim == 2:
             mask = np.zeros([3**(i+1), 3**(i+1)], dtype=bool)

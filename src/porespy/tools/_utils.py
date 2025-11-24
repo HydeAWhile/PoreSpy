@@ -304,7 +304,7 @@ def get_tqdm():  # pragma: no cover
     return tqdm.tqdm
 
 
-def show_docstring(func):  # pragma: no cover
+def show_docstring(func, fold=True, method='pandoc'):  # pragma: no cover
     r"""
     Fetches the docstring for a function and returns it in markdown format.
 
@@ -327,13 +327,18 @@ def show_docstring(func):  # pragma: no cover
     # import pandoc
     # Markdown(pandoc.write(pandoc.read(func, format='rst'), format='markdown'))
     # Although the markdown conversion is not numpydoc specific so is less pretty
-    try:
+    if method == 'npdoc_to_md':
         from npdoc_to_md import render_obj_docstring
-
         name = func.__module__.rsplit(".", 1)[0] + "." + func.__name__
         txt = render_obj_docstring(name)
-    except ModuleNotFoundError:
+    elif method == 'pandoc':
+        import pandoc
+        txt = pandoc.write(pandoc.read(func.__doc__, format='rst'), format='html')
+    elif method in ['none', None]:
         txt = func.__doc__
+    # The following creates an accordian around text
+    if fold:
+        txt = fr"<details><summary><b>Click to see docs</b></summary>{txt}</details>"
     return txt
 
 

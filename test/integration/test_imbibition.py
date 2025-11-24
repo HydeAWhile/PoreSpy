@@ -97,9 +97,9 @@ def test_imbibition(plot=False):
 
     # Ensure final saturations correspond to trapping
     assert pc_imb[1].snwp[-1] == 0  # No trapping, should reach 1.0
-    assert pc_imb[2].snwp[-1] == 0.3813888430856357
+    assert pc_imb[2].snwp[-1] == 0.380899853871828
     assert pc_imb[3].snwp[-1] == 0  # No trapping, should reach 1.0
-    assert pc_imb[4].snwp[-1] == 0.5103000460559608
+    assert pc_imb[4].snwp[-1] == 0.5201310036219318
 
     # Ensure initial capillary pressures are correct
     assert np.isfinite(pc_imb[1].pc[0])
@@ -204,9 +204,9 @@ def test_imbibition(plot=False):
 
     # Ensure final saturations correspond to trapping
     assert pc_imb[1].snwp[-1] == 0
-    assert pc_imb[2].snwp[-1] == 0.07163123390173587
+    assert pc_imb[2].snwp[-1] == 0.07100578258174928
     assert pc_imb[3].snwp[-1] == 0
-    assert pc_imb[4].snwp[-1] == 0.2155987559204653
+    assert pc_imb[4].snwp[-1] == 0.22210344964832573
 
     if plot:
         fig, ax = plt.subplots(2, 2, facecolor=bg)
@@ -236,4 +236,4 @@ def test_imbibition(plot=False):
 
 # %%
 if __name__ == "__main__":
-    test_imbibition(plot=True)
+    test_imbibition(plot=False)

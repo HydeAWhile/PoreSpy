@@ -247,10 +247,11 @@ def rev_tortuosity(im, n=100, axis=None, slices=None, dask_on=False):
         slice      The coordinates for the subdomain tested in the original image
         ========== ==================================================================
 
-    Notes
-    -----
-    If both `block_sizes` and `slices` are left empty, the default mode of block
-    generation is gridding the image.
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/rev_tortuosity.html>`_
+    to view online example.
 
     """
     if slices is None:

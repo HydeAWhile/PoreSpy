@@ -150,7 +150,7 @@ def satn_to_movie(
 def satn_to_panels(
     satn,
     im,
-    bins=None,
+    bins=16,
     axis=0,
     slice=None,
     **kwargs,

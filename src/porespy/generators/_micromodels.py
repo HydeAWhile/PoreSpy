@@ -67,13 +67,13 @@ def rectangular_pillars_array(
     shape : array_like
         The X, Y size of the desired image in pixels
     spacing : int
-        The spacing in pixels betwen pore centers (junctions between pillars).
+        The spacing in pixels between pore centers (junctions between pillars).
         If `lattice='tri'` this refers to the diagonal distance between pores.
     dist : str or scipy.stats object
         The statistical distribution to use for throat radii. If a `scipy.stats`
         object is given the `rvs` method is used directly. If a `str` is given
         then the corresponding `scipy.stats` object is creating using the arguments
-        given by `dist_kwargds`.
+        given by `dist_kwargs`.
     dist_kwargs : dict
         A dictionary of keyword arguments to use when instantiating the `scipy.stats`
         object specified by `dist` (if `str`) was given.
@@ -87,7 +87,7 @@ def rectangular_pillars_array(
                  horizontally with the standard grid. In this case the meaning of
                  ``spacing``, ``Rmin`` and ``Rmax`` directly refers to the number of
                  pixels.
-        'tri'    A triangular matrix, which is esentially a cubic matrix rotated 45
+        'tri'    A triangular matrix, which is essentially a cubic matrix rotated 45
                  degrees. In this case the mean of ``spacing``, ``Rmin`` and ``Rmax``
                  refer to the length of a pixel.
         ======== ===================================================================
@@ -107,9 +107,9 @@ def rectangular_pillars_array(
 
     Examples
     --------
-        `Click here
-        <https://porespy.org/examples/generators/reference/rectangular_pillars_array.html>`__
-        to view online example.
+    `Click here
+        <https://porespy.org/examples/generators/reference/rectangular_pillars_array.html>`_
+    to view online example.
     """
     shape = parse_shape(shape)
     if len(shape) != 2:

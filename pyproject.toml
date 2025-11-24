@@ -53,6 +53,7 @@ requires-python = ">=3.10,<3.13"
 extras = [
     "scikit-learn",
     "openpnm",
+    "pandoc>=2.4",
 ]
 build = [
     "hatch",

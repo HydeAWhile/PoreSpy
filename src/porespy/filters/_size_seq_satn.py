@@ -467,7 +467,7 @@ if __name__ == "__main__":
     im[0, :] = False
     pc = ps.filters.capillary_transform(im)
     inlets = ps.generators.faces(im.shape, inlet=1)
-    inv = ps.simulations.invasion(im, pc, inlets=inlets)
+    inv = ps.simulations.injection(im, pc, inlets=inlets)
 
     # Check drainage with trapping
     tmp = np.copy(inv.im_seq)

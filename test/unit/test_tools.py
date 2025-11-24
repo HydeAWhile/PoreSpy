@@ -621,6 +621,64 @@ class ToolsTest():
         s1 = ps.tools.get_slices_multigrid(im, block_size_range=[10, 50], overlap=5)
         assert len(s1) == 384
 
+    def test_parse_steps(self):
+        im = self.blobs.copy()
+        edt = ps.tools.get_edt()
+        dt = edt(im)
+
+        steps = ps.tools.parse_steps(steps=None, vals=dt)
+        assert np.all(steps == np.unique(dt)[-1::-1])
+
+        steps = ps.tools.parse_steps(steps=None, vals=dt, mask=im)
+        assert np.all(steps == np.unique(dt[im])[-1::-1])
+        assert steps.min() > 0
+
+        steps = ps.tools.parse_steps(steps=None, vals=dt, descending=False)
+        assert np.all(steps == np.unique(dt))
+
+        steps = ps.tools.parse_steps(steps=None, vals=dt, pad=(0, 1))
+        assert len(steps) == (len(np.unique(dt)) + 1)
+        assert steps.min() < 0
+        assert steps.max() == dt.max()
+
+        steps = ps.tools.parse_steps(steps=None, vals=dt, pad=(1, 0))
+        assert len(steps) == (len(np.unique(dt)) + 1)
+        assert steps.min() == 0
+        assert steps.max() > dt.max()
+
+    def test_parse_steps_tuple(self):
+        im = self.blobs.copy()
+        edt = ps.tools.get_edt()
+        dt = edt(im)
+        steps = ps.tools.parse_steps(steps=(1, 5), vals=dt)
+        assert np.all(steps == [4, 3, 2, 1])
+        steps = ps.tools.parse_steps(steps=(1, 5), vals=dt, descending=False)
+        assert np.all(steps == [1, 2, 3, 4])
+
+    def test_parse_steps_int(self):
+        im = self.blobs.copy()
+        edt = ps.tools.get_edt()
+        dt = edt(im)
+
+        steps = ps.tools.parse_steps(steps=11, vals=dt.astype(int), mask=im)
+        assert steps.max() == 11 and steps.min() == 1 and steps.size == 11
+        steps = ps.tools.parse_steps(
+            steps=11, vals=dt.astype(int), mask=im, pad=(1, 1))
+        assert steps.max() == 12 and steps.min() == 0 and steps.size == 13
+
+    def test_parse_steps_log(self):
+        im = self.blobs.copy()
+        edt = ps.tools.get_edt()
+        dt = edt(im)
+
+        steps = ps.tools.parse_steps(
+            steps=11, vals=dt.astype(int), mask=im, log=True)
+        steps = np.around(steps, decimals=5)
+        assert steps.max() == 11 and steps.min() == 1 and steps.size == 11
+        steps = ps.tools.parse_steps(
+            steps=11, vals=dt.astype(int), mask=im, pad=(1, 1), log=True)
+        assert steps.max() > 12 and steps.min() > 0 and steps.size == 13
+
 
 if __name__ == '__main__':
     t = ToolsTest()

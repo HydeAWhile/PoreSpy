@@ -78,6 +78,23 @@ def porosimetry(
         Indicates if protrusions should be removed from the faces of the spheres
         or not. Default is `True`.
 
+    Returns
+    -------
+    sizes : ndarray
+        In image with each voxel value indicating the largest overlapping sphere
+        which can reach it from the given inlets.
+
+    See Also
+    --------
+    local_thickness
+    drainage
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/porosimetry.html>`_
+    to view online example.
+
     """
     if inlets is None:
         from porespy.generators import borders
@@ -93,8 +110,8 @@ def porosimetry(
         from porespy.simulations import drainage_bf
         drn = drainage_bf(im=im, inlets=inlets, steps=sizes, smooth=smooth)
     if method in ['fft', 'conv']:
-        from porespy.simulations import drainage_fft
-        drn = drainage_fft(im=im, inlets=inlets, steps=sizes, smooth=smooth)
+        from porespy.simulations import drainage_conv
+        drn = drainage_conv(im=im, inlets=inlets, steps=sizes, smooth=smooth)
     return drn.im_size
 
 
@@ -150,7 +167,7 @@ def local_thickness(
         `im` are used.
     approx : bool, optional
         This is only used if the method is `imj`. If `True` the algorithm is more
-        agressive at skipping voxels to process, which speeds things up, but this
+        aggressive at skipping voxels to process, which speeds things up, but this
         sacrifices accuracy in terms of a voxel-by-voxel match with the reference
         implementation. The default is `False`, meaning full accuracy is the default.
 
@@ -158,7 +175,13 @@ def local_thickness(
     -------
     lt : ndarray
         The local thickness of the image with each voxel labelled according to the
-        radius of the largest sphere which overlaps it
+        radius of the largest sphere which overlaps it.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/local_thickness.html>`_
+    to view online example.
     """
 
     if method == 'dt':
@@ -203,6 +226,7 @@ def local_thickness_bf(im, dt=None, mask=None, smooth=True):
     pixel or voxel in the void phase without making any attempt to reduce the number
     of insertion sites. This provides a reference implementation for comparing
     accuracy of other methods.
+
     """
     if dt is None:
         dt = edt(im)
@@ -261,7 +285,7 @@ def local_thickness_imj(im, dt=None, smooth=False, approx=False):
         Indicates if protrusions should be removed from the faces of the spheres
         or not. Default is `True`.
     approx : bool, optional
-        If `True` the algorithm is more agressive at skipping voxels to process,
+        If `True` the algorithm is more aggressive at skipping voxels to process,
         which speeds things up, but this sacrifices accuracy in terms of a
         voxel-by-voxel match with the reference implementation. The default is
         `False`, meaning full accuracy is the default.
@@ -452,12 +476,6 @@ def local_thickness_conv(
     traditional method (i.e. used in ImageJ
     `<https://imagej.net/Local_Thickness>`_).
 
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/local_thickness_conv.html>`_
-    to view online example.
-
     """
     from porespy.filters import fftmorphology
 
@@ -518,12 +536,6 @@ def local_thickness_dt(
     -------
     image : ndarray
         A copy of `im` with the pore size values in each voxel
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/local_thickness_dt.html>`_
-    to view online example.
 
     """
     im = np.squeeze(im)

@@ -59,17 +59,18 @@ tqdm = get_tqdm()
 settings = Settings()
 
 
-def parse_steps(steps, vals, mask=None, descending=True, log=False):
+def parse_steps(steps, vals, mask=None, descending=True, log=False, pad=(0, 0)):
     r"""
-    Converts given steps into a list of sizes
+    Generates an array of step sizes to iterate through for the displacement
+    simulations
 
     Parameters
     ----------
     steps : int, tuple, list or ndarray, or None
-        If an `int` then `steps` is treated as the number of steps between 1 and the
-        maximum in `vals`. If a `tuple` is received then this is used as the first
-        and last values of an integer range. If a `list` or `ndarray` is received
-        they are used directly. If `None` then all unique values in `vals` are used.
+        If an `int` then `steps` is treated as the number of steps between minimum
+        and maximum in `vals`. If a `tuple` is received then this is passed to
+        `np.arange`. If `None` then all unique values in `vals` are used. If a
+        `list` or `ndarray` is received they are used directly.
     vals : ndarray
         An array containing the values to be scanned, such as a distance or
         capillary transform.
@@ -82,28 +83,53 @@ def parse_steps(steps, vals, mask=None, descending=True, log=False):
     log : bool, default is `False`
         If `True` then the range of values generated is logarithmically spaced when
         `steps` is an `int`.
+    pad : tuple of ints
+        This will extend the range of steps by the given number in each direction
+        using the spacing of the adjacent points. For example, `pad=(1, 1)` will
+        extend the range of the bins by 1 both up and down, so `[1, 2, 3]` will
+        become `[0, 1, 2, 3, 4]`. This is applied *after* putting the values into
+        ascending or descending order.
 
     Returns
     -------
-    bins : ndarray
+    steps : ndarray
         Array of values spanning the desired start and stop limits
     """
-    if mask is not None:
+    if (mask is not None) and (vals is not None):  # Apply mask to vals if given
         vals = vals[mask]
-    if steps is None:
+
+    if steps is None:  # If steps is None, use ALL vals
         bins = np.unique(vals)
-    elif isinstance(steps, tuple):
+    elif isinstance(steps, tuple):  # If steps is a tuple, assume (start, stop, step)
         bins = np.arange(*steps)
     elif type(steps) is int:
         if log:
-            bins = np.logspace(0, np.log10(vals.max()), steps)
+            bins = np.logspace(
+                np.log10(vals.min()),
+                np.log10(vals.max()),
+                steps,
+            )
         else:
-            bins = np.linspace(1, vals.max(), steps)
+            bins = np.linspace(
+                vals.min(),
+                vals.max(),
+                steps,
+            )
     else:
         bins = np.unique(steps)
-        bins = bins[bins > 0]
+        pad = (0, 0)  # Remove padding if given
+
     if descending:
         bins = bins[-1::-1]
+
+    # Now pad the bins if requested
+    if pad[0] > 0:
+        delta = bins[1] - bins[0]
+        bins = np.hstack((bins[0] - delta, bins))
+    if pad[1] > 0:
+        delta = bins[-1] - bins[-2]
+        bins = np.hstack((bins, bins[-1] + delta))
+
     return bins
 
 
@@ -192,7 +218,7 @@ def get_slices_random(im, n=1000, lims=[10, 100], aspect=None):
 
 def get_slices_slabs(im, axis=0, span=50, step=None, mode='tile'):
     r"""
-    Generates a list of slice objects which can be used to obtain slabs of an image
+    Generates a list of `slice` objects which can be used to obtain slabs of an image
 
     Parameters
     ----------

@@ -311,7 +311,8 @@ def _find_trapped_clusters_labels(
     from porespy.filters import find_invalid_pores
 
     seq = np.copy(seq)
-    non_perc = find_invalid_pores(im) > 0
+    # Add outlets to im when searching for non_percolating clusters
+    non_perc = im*(find_invalid_pores(im + outlets) > 0)
     se = strel[im.ndim][conn].copy()
     mask = seq < 0  # This is used again at the end of the function to fix seq
     # All uninvaded regions should be given sequence number of lowest nearby fluid

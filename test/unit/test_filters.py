@@ -349,6 +349,74 @@ class FilterTest():
         test = ps.filters.fftmorphology(im, strel=ball(3), mode='closing')
         assert np.all(truth == test)
 
+    def test_erode_2D_smooth(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = True
+        se = ps.tools.ps_round(r=r, ndim=im.ndim, smooth=smooth)
+        truth = spim.binary_erosion(im, structure=se, border_value=1)
+        test = ps.filters.erode(im=im, r=r, method='conv', smooth=smooth)
+        assert np.all(truth == test)
+
+    def test_erode_2D_not_smooth(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = False
+        se = ps.tools.ps_round(r=r, ndim=im.ndim, smooth=smooth)
+        truth = spim.binary_erosion(im, structure=se, border_value=1)
+        test = ps.filters.erode(im=im, r=r, method='conv', smooth=smooth)
+        assert np.all(truth == test)
+
+    def test_erode_2D_smooth_dt_vs_conv(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = True
+        test1 = ps.filters.erode(im=im, r=r, method='conv', smooth=smooth)
+        test2 = ps.filters.erode(im=im, r=r, method='dt', smooth=smooth)
+        assert np.all(test1 == test2)
+
+    def test_erode_2D_not_smooth_dt_vs_conv(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = False
+        test1 = ps.filters.erode(im=im, r=r, method='conv', smooth=smooth)
+        test2 = ps.filters.erode(im=im, r=r, method='dt', smooth=smooth)
+        assert np.all(test1 == test2)
+
+    def test_dilate_2D_smooth(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = True
+        se = ps.tools.ps_round(r=r, ndim=im.ndim, smooth=smooth)
+        truth = spim.binary_dilation(im, structure=se)
+        test = ps.filters.dilate(im=im, r=r, method='conv', smooth=smooth)
+        assert np.all(truth == test)
+
+    def test_dilate_2D_not_smooth(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = False
+        se = ps.tools.ps_round(r=r, ndim=im.ndim, smooth=smooth)
+        truth = spim.binary_dilation(im, structure=se)
+        test = ps.filters.dilate(im=im, r=r, method='conv', smooth=smooth)
+        assert np.all(truth == test)
+
+    def test_dilate_2D_smooth_dt_vs_conv(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = True
+        test1 = ps.filters.dilate(im=im, r=r, method='conv', smooth=smooth)
+        test2 = ps.filters.dilate(im=im, r=r, method='dt', smooth=smooth)
+        assert np.all(test1 == test2)
+
+    def test_dilate_2D_not_smooth_dt_vs_conv(self):
+        im = ps.generators.blobs([100, 100], porosity=0.5, seed=0)
+        r = 5
+        smooth = False
+        test1 = ps.filters.dilate(im=im, r=r, method='conv', smooth=smooth)
+        test2 = ps.filters.dilate(im=im, r=r, method='dt', smooth=smooth)
+        assert np.all(test1 == test2)
+
     def test_reduce_peaks(self):
         im = ~ps.generators.lattice_spheres(shape=[50, 50], r=5, offset=3)
         peaks = ps.filters.reduce_peaks(im)
@@ -409,7 +477,7 @@ class FilterTest():
 
     def test_snow_partitioning_n_2D(self):
         im = ps.generators.blobs(
-            shape=[500, 500], porosity=0.494604, blobiness=1, seed=0, periodic=False,)
+            shape=[500, 500], porosity=0.494604, blobiness=1, seed=0, periodic=False)
         assert im.sum()/im.size == 0.494604
         snow = ps.filters.snow_partitioning_n(im + 1, r_max=4, sigma=0.4)
         assert np.amax(snow.regions) == 136
@@ -683,6 +751,25 @@ class FilterTest():
         )
 
         assert np.all(trp1 == trp2)
+
+    def test_find_trapped_clusters_with_imbibition(self):
+        # This image has some surface pores which should not become trapped
+        # because outlets are all surfaces
+        im = ps.generators.blobs([100, 100], porosity=0.6, seed=1)
+        faces = ps.generators.borders(im.shape, mode='faces')
+        pc = ps.filters.capillary_transform(
+            im=im,
+            sigma=0.465,
+            theta=140,
+            voxel_size=1e-5,
+        )
+        imb = ps.simulations.imbibition(im=im, pc=pc, steps=50)
+        mask = ps.filters.find_trapped_clusters(
+            im=im, seq=imb.im_seq, outlets=faces, method='labels')
+        assert np.sum(mask[faces]) == 0
+        mask = ps.filters.find_trapped_clusters(
+            im=im, seq=imb.im_seq, outlets=faces, method='queue')
+        assert np.sum(mask[faces]) == 0
 
 
 if __name__ == '__main__':

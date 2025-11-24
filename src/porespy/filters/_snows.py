@@ -275,19 +275,19 @@ def find_peaks(dt, r_max=4, strel=None, sigma=None, parallel_kw={"divs": 1}):
         optional settings include `divs` (scalar or list of scalars,
         default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
         and `cores` (scalar, default is all available cores).
-        
+
         `divs` is the number of times to divide the image for parallel
         processing. If `1` then parallel processing does not occur. `2` is
         equivalent to `[2, 2, 2]` for a 3D image. If a list is provided, each
         respective axis will be divided by its corresponding number in the
         list. For example, [2, 3, 4] will divide z, y, and x axis to 2, 3,
         and 4 respectively.
-        
+
         `overlap` is the amount of overlap to include when dividing up the
         image. This value is controlled by the size (i.e. radius) of the
         structuring element and cannot be controlled in this function using
         parallel_kw!
-        
+
         `cores` is the number of cores that will be used to parallel process all
         domains. If ``None`` then all cores will be used but user can specify
         any integer values to control the memory usage. Setting value to 1 will
@@ -576,7 +576,7 @@ def trim_nearby_peaks(peaks, dt, f=1):
     References
     ----------
     [1] Gostick, J. "A versatile and efficient network extraction
-    algorithm using marker-based watershed segmenation". Physical Review
+    algorithm using marker-based watershed segmentation". Physical Review
     E. (2017)
 
     Examples
@@ -646,7 +646,7 @@ def snow_partitioning_parallel(im,
                                ):
     r"""
     Performs SNOW algorithm in parallel (or serial) to reduce time
-    (or memory usage) by geomertirc domain decomposition of large images.
+    (or memory usage) by geometric domain decomposition of large images.
 
     Parameters
     ----------
@@ -667,7 +667,7 @@ def snow_partitioning_parallel(im,
         and 4 respectively.
 
         `overlap` is the amount of overlap to include when dividing up the image.
-        This value will almost always be the size (i.e. raduis) of the
+        This value will almost always be the size (i.e. radius) of the
         structuring element. If not specified then the amount of overlap
         is inferred from the size of the structuring element, in which
         case the `strel_arg` must be specified.
@@ -680,7 +680,7 @@ def snow_partitioning_parallel(im,
     Returns
     -------
     regions : ndarray
-        Partitioned image of segmentated regions with unique labels. Each
+        Partitioned image of segmented regions with unique labels. Each
         region correspond to pore body while intersection with other
         region correspond throat area.
 
@@ -763,13 +763,13 @@ def _pad(im, pad_width=1, constant_value=0):
     pad_width : int
         The number of values that will be padded from the edges. Default
         values is 1.
-    contant_value : int
+    constant_value : int
         Pads with the specified constant value
 
     Returns
     -------
     output: ndarray
-        Padded image with same dimnesions as provided image
+        Padded image with same dimensions as provided image
 
     """
     shape = np.array(im.shape)
@@ -859,7 +859,7 @@ def _trim_internal_slice(im, chunk_shape):
     -------
     output : ndarray
         Image without extra internal slices. The shape of the image will
-        be same as input image provided for waterhsed segmentation.
+        be same as input image provided for watershed segmentation.
 
     """
     im_shape = np.array(im.shape, dtype=np.uint32)
