@@ -167,7 +167,7 @@ def local_thickness(
         `im` are used.
     approx : bool, optional
         This is only used if the method is `imj`. If `True` the algorithm is more
-        agressive at skipping voxels to process, which speeds things up, but this
+        aggressive at skipping voxels to process, which speeds things up, but this
         sacrifices accuracy in terms of a voxel-by-voxel match with the reference
         implementation. The default is `False`, meaning full accuracy is the default.
 
@@ -226,6 +226,7 @@ def local_thickness_bf(im, dt=None, mask=None, smooth=True):
     pixel or voxel in the void phase without making any attempt to reduce the number
     of insertion sites. This provides a reference implementation for comparing
     accuracy of other methods.
+
     """
     if dt is None:
         dt = edt(im)
@@ -284,7 +285,7 @@ def local_thickness_imj(im, dt=None, smooth=False, approx=False):
         Indicates if protrusions should be removed from the faces of the spheres
         or not. Default is `True`.
     approx : bool, optional
-        If `True` the algorithm is more agressive at skipping voxels to process,
+        If `True` the algorithm is more aggressive at skipping voxels to process,
         which speeds things up, but this sacrifices accuracy in terms of a
         voxel-by-voxel match with the reference implementation. The default is
         `False`, meaning full accuracy is the default.
@@ -475,12 +476,6 @@ def local_thickness_conv(
     traditional method (i.e. used in ImageJ
     `<https://imagej.net/Local_Thickness>`_).
 
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/local_thickness_conv.html>`_
-    to view online example.
-
     """
     from porespy.filters import fftmorphology
 
@@ -541,12 +536,6 @@ def local_thickness_dt(
     -------
     image : ndarray
         A copy of `im` with the pore size values in each voxel
-
-    Examples
-    --------
-    `Click here
-    <https://porespy.org/examples/filters/reference/local_thickness_dt.html>`_
-    to view online example.
 
     """
     im = np.squeeze(im)

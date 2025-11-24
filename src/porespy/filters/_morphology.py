@@ -53,6 +53,12 @@ def erode(
     erosion : ndarray
         An image the same size as `im` with the foreground eroded by the specified
         amount.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/erode.html>`_
+    to view online example.
     """
     if method == 'dt':
         if dt is None:
@@ -108,6 +114,12 @@ def dilate(
     dilation : ndarray
         An image the same size as `im` with the foreground eroded by the specified
         amount.
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/filters/reference/dilate.html>`_
+    to view online example.
     """
     im = im == 1
     if method == 'dt':
