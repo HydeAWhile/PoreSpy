@@ -10,6 +10,41 @@ __all__ = [
 
 
 def hg_porosimetry(im, steps=25, voxel_size=1.0):
+    r"""
+    Simulates mercury intrusion and extrusion experiment
+
+    Parameters
+    ----------
+    im : ndarray
+        The boolean image of the void space
+    steps : int
+        The number of pressure steps to apply
+    voxel_size : float
+        The voxel size of the image in units of `m/vx side`. This is
+        use to compute the capillary transform, with all other inputs
+        being those for mercury.
+
+    Returns
+    -------
+    results : dataclass
+        An object with the following attributes:
+
+        ---------------- ----------------------------------------------------
+        Attribute        Description
+        ---------------- ----------------------------------------------------
+        pc_intrusion     Capillary pressure during the intrusion simulation
+        snwp_intrusion   Non-wetting phase saturations during the intrusion
+        pc_extrusion     Capillary pressure during the extrusion simulation
+        snwp_extrusion   Non-wetting phase saturations during the extrusion
+        ---------------- ----------------------------------------------------
+
+    Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/simulations/reference/hg_porosimetry.html>`_
+    to view online example.
+
+    """
     faces = borders(im.shape, mode='faces')
     pc = capillary_transform(
         im=im,

@@ -91,9 +91,14 @@ def porosity_by_type(im, conn='min'):
         ==========  ================================================================
         `total`     The total fraction of the image which is void phase
         `closed`    The fraction of the image which consists isolated voids
-        `surface`   The fracton of the image which are pores only the surfaces
+        `surface`   The fraction of the image which are pores only the surfaces
         ==========  ================================================================
 
+            Examples
+    --------
+    `Click here
+    <https://porespy.org/examples/metrics/reference/porosity_by_type.html>`_
+    to view online example.
     """
     Vb = np.sum((im == 1) + (im == 0), dtype=np.float64)
     temp = im == 1
@@ -467,7 +472,7 @@ def porosity_profile(im, axis=0, span=1, mode="tile"):
     Returns
     -------
     results : dataclass
-        Results is a custom porespy class with the following attributes:
+        Results is a custom class with the following attributes:
 
         ============= =========================================================
         Attribute     Description
@@ -546,7 +551,7 @@ def radial_density_distribution(dt, bins=10, log=False, voxel_size=1):
         If ``True`` the size data is converted to log (base-10)
         values before processing.  This can help to plot wide size
         distributions or to better visualize the radii in the small size region.
-        Note that you should not anti-log the radii values in the retunred
+        Note that you should not anti-log the radii values in the returned
         ``tuple``, since the binning is performed on the logged radii values.
     voxel_size : scalar
         The size of a voxel side in preferred units.  The default is 1, so the
@@ -613,7 +618,7 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
 
     This relates directly the radial density function defined by Torquato [1c]_,
     but instead of reporting the probability of lying within a stated distance
-    to the nearest solid in any direciton, it considers only linear distances
+    to the nearest solid in any direction, it considers only linear distances
     along orthogonal directions.The benefit of this is that anisotropy can be
     detected in materials by performing the analysis in multiple orthogonal
     directions.
@@ -633,7 +638,7 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
         If ``True`` (default) the size data is converted to log (base-10)
         values before processing.  This can help to plot wide size
         distributions or to better visualize data in the small size region.
-        Note that you should not anti-log the radii values in the retunred
+        Note that you should not anti-log the radii values in the returned
         ``results``, since the binning is performed on the logged radii values.
 
     Returns
@@ -648,7 +653,7 @@ def lineal_path_distribution(im, bins=10, voxel_size=1, log=False):
         *pdf*           Probability density function
         *cdf*           Cumulative density function
         *relfreq*       Relative frequency chords in each bin.  The sum of all bin
-                        heights is 1.0.  For the cumulative relativce, use *cdf*
+                        heights is 1.0.  For the cumulative relative, use *cdf*
                         which is already normalized to 1.
         *bin_centers*   The center point of each bin
         *bin_edges*     Locations of bin divisions, including 1 more value than
@@ -702,7 +707,7 @@ def chord_length_distribution(
         ``apply_chords`` or ``apply_chords_3d``.  ``im`` can be either boolean,
         in which case each chord will be identified using ``scipy.ndimage.label``,
         or numerical values in case it is assumed that chords have already been
-        identifed and labeled. In both cases, the size of each chord will be
+        identified and labeled. In both cases, the size of each chord will be
         computed as the number of voxels belonging to each labelled region.
     bins : scalar or array_like
         If a scalar is given it is interpreted as the number of bins to use,
@@ -711,7 +716,7 @@ def chord_length_distribution(
         If ``True`` (default) the size data is converted to log (base-10)
         values before processing.  This can help to plot wide size
         distributions or to better visualize the in the small size region.
-        Note that you should not anti-log the radii values in the retunred
+        Note that you should not anti-log the radii values in the returned
         ``tuple``, since the binning is performed on the logged radii values.
     normalization : string
         Indicates how to normalize the bin heights.  Options are:
@@ -743,7 +748,7 @@ def chord_length_distribution(
         *pdf*           Probability density function
         *cdf*           Cumulative density function
         *relfreq*       Relative frequency chords in each bin.  The sum of all bin
-                        heights is 1.0.  For the cumulative relativce, use *cdf*
+                        heights is 1.0.  For the cumulative relative, use *cdf*
                         which is already normalized to 1.
         *bin_centers*   The center point of each bin
         *bin_edges*     Locations of bin divisions, including 1 more value than
@@ -810,7 +815,7 @@ def pore_size_distribution(im, bins=10, log=True, voxel_size=1):
         If ``True`` (default) the size data is converted to log (base-10)
         values before processing.  This can help to plot wide size
         distributions or to better visualize the in the small size region.
-        Note that you should not anti-log the radii values in the retunred
+        Note that you should not anti-log the radii values in the returned
         ``tuple``, since the binning is performed on the logged radii values.
     voxel_size : scalar
         The size of a voxel side in preferred units.  The default is 1, so the

@@ -562,7 +562,7 @@ def imbibition(
     """
     im = np.array(im, dtype=bool)
 
-    if outlets is not None:
+    if (outlets is not None) and (inlets is not None):
         outlets = outlets * im
         if np.sum(inlets * outlets):
             raise Exception("Specified inlets and outlets overlap")

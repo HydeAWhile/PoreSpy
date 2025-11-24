@@ -37,11 +37,11 @@ def capillary_transform(
         The surface tension of the fluid-fluid interface.
     theta : scalar (default = 180)
         The contact angle of the fluid-fluid-solid system, in degrees, measured through
-        the non-wetting phase.  It must be >90.  
+        the non-wetting phase.  It must be >90.
     g : scalar (default = 0)
         The gravitational constant acting on the fluids. Gravity is assumed to act
-        toward the x=0 axis. To have gravity act in different directions use 
-        `np.swapaxes(im, 0, ax)` where `ax` is the desired direction. 
+        toward the x=0 axis. To have gravity act in different directions use
+        `np.swapaxes(im, 0, ax)` where `ax` is the desired direction.
     rho_nwp : scalar
         The density of the non-wetting fluid
     rho_wp : scalar
@@ -53,7 +53,7 @@ def capillary_transform(
         radii of curvature.  Setting it to `np.inf` will make the calculation truly
         2D since only one radii of curvature is considered. Setting it to `None`
         will force the calculation to be 3D.  If `im` is 3D this argument is
-        ignored.  This should be in units of physical length, not voxels. 
+        ignored.  This should be in units of physical length, not voxels.
 
     Notes
     -----

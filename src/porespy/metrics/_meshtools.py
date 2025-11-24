@@ -90,7 +90,7 @@ def mesh_volume(region, voxel_size=(1., 1., 1.)):
     Returns
     -------
     volume : float
-        The volume of the region computed by applyuing the marching cubes
+        The volume of the region computed by applying the marching cubes
         algorithm to the region, then finding the mesh volume using the
         ``trimesh`` package.
 
@@ -222,7 +222,7 @@ def mesh_surface_area(mesh=None, verts=None, faces=None):
 
 def region_interface_areas(regions, areas, voxel_size=1, strel=None):
     r"""
-    Calculate the interfacial area between all pairs of adjecent regions
+    Calculate the interfacial area between all pairs of adjacent regions
 
     Parameters
     ----------
