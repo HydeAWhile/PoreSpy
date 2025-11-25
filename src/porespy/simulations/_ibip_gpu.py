@@ -4,6 +4,7 @@ import logging
 import numpy as np
 
 from porespy.tools import Results, get_edt, get_tqdm, settings
+from porespy.generators import borders
 
 __all__ = ["ibip_gpu"]
 
@@ -56,7 +57,7 @@ def ibip_gpu(im, dt=None, inlets=None, maxiter=10000):  # pragma: no cover
     im_gpu = cp.array(im)
     dt = edt(cp.asnumpy(im)) if dt is None else dt
     dt_gpu = cp.array(dt)
-    inlets = get_border(shape=im.shape) if inlets is None else inlets
+    inlets = borders(shape=im.shape) if inlets is None else inlets
     inlets_gpu = cp.array(inlets)
     bd_gpu = cp.copy(inlets_gpu > 0)
     dt_gpu = dt_gpu.astype(int)
