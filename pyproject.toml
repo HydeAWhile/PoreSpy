@@ -1,6 +1,6 @@
 [project]
 name = "porespy"
-dynamic = ["version"]
+version = "3.0.0-dev47"
 description = "A set of tools for analyzing 3D images of porous materials"
 authors = [{ name = "PoreSpy Team", email = "jgostick@gmail.com" }]
 maintainers = [
@@ -16,7 +16,6 @@ keywords = [
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -30,22 +29,40 @@ dependencies = [
     "matplotlib",
     "numba",
     "numpy",
-    "openpnm",
     "pandas",
     "psutil",
     "rich",
-    "scikit-image<0.25.0",
+    "scikit-image",
     "scipy",
     "tqdm",
-    "pywavelets",
     "setuptools",
+    "trimesh>=4.5.3",
+    "pyevtk>=1.6.0",
+    "matplotlib-inline>=0.1.7",
+    "numpy-stl>=3.2.0",
+    "imageio>=2.37.0",
+    "nanomesh>=0.9.1",
+    "pywavelets>=1.8.0",
     "matplotlib-inline",
+    "tomli>=2.2.1",
 ]
 readme = "README.md"
-requires-python = ">= 3.10"
+requires-python = ">=3.10,<3.13"
 
 [project.optional-dependencies]
-build = ["hatch"]
+extras = [
+    "scikit-learn",
+    "openpnm",
+    "pandoc>=2.4",
+]
+build = [
+    "hatch",
+    "meson",
+    "cibuildwheel",
+    "build",
+    "ninja",
+    "pip",
+]
 test = [
     "codecov",
     "coverage",
@@ -56,24 +73,17 @@ test = [
     "pytest-custom-exit-code",
     "pytest-split",
 ]
-extras = [
-    "imageio",
-    "nanomesh",
-    "numpy-stl",
-    "pyevtk",
-    "scikit-fmm",
-    "scikit-learn",
-    "tensorflow",
-    "trimesh",
-]
 docs = [
     "mock",
     "myst-nb",
+    "nbstripout>=0.8.1",
     "pandoc",
-    "pydata-sphinx-theme==0.9",
+    "pydata-sphinx-theme",
     "sphinx",
+    "sphinx-autoapi",
     "sphinx-copybutton",
     "sphinx-design",
+    "tensorflow",
 ]
 interactive = [
     "ipython",
@@ -88,40 +98,6 @@ Homepage = "https://porespy.org"
 Repository = "https://github.com/PMEAL/porespy"
 "Bug Tracker" = "https://github.com/PMEAL/porespy/issues"
 Documentation = "https://porespy.org"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.rye]
-managed = true
-dev-dependencies = [
-    "pytest",
-    "hatch",
-    "numpy-stl",
-    "pyevtk",
-    "trimesh",
-    "ipykernel",
-    "pypardiso",
-    "nbval",
-    "ruff",
-    "mock",
-    "myst-nb",
-    "pandoc",
-    "pydata-sphinx-theme==0.9",
-    "sphinx",
-    "sphinx-copybutton",
-    "sphinx-design",
-]
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.version]
-path = "src/porespy/__version__.py"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/porespy"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -139,7 +115,6 @@ python_classes = "*Test"
 python_functions = "test_*"
 testpaths = ["test", "examples"]
 norecursedirs = [".git", ".github", ".ipynb_checkpoints", "build", "dist"]
-
 
 [tool.coverage.run]
 source = ["src/porespy"]
@@ -161,7 +136,134 @@ exclude_lines = [
 ]
 
 [tool.ruff]
-exclude = [".git", ".github", ".venv", "build", "docs", "examples", "test"]
-line-length = 92
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+# Same as Black.
+line-length = 96
+indent-width = 4
+
+# Assume Python 3.10
+target-version = "py310"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+select = ["E4", "E7", "E9", "F", "W", "E2"]
+extend-select = ["I"]
+ignore = ["E731", "F841", "E226", "I001"]
+preview = true
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["E402", "F401", "F403"]
+"__init__.py" = ["E402", "F401", "F403", "I001"]
+"_gdd.py" = ["ALL"]
+"test/**" = ["F841"]
+"test_snow2.py" = ["E241"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+# Enable auto-formatting of code examples in docstrings. Markdown,
+# reStructuredText code/literal blocks and doctests are all supported.
+#
+# This is currently disabled by default, but it is planned for this
+# to be opt-out in the future.
+docstring-code-format = true
+
+# Set the line length limit used when formatting code snippets in
+# docstrings.
+#
+# This only has an effect when the `docstring-code-format` setting is
+# enabled.
+docstring-code-line-length = "dynamic"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+path = "src/porespy/__version__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/porespy"]
+
+[tool.bumpversion]
+current_version = "3.0.0-dev47"
+parse = """(?x)
+    (?P<major>0|[1-9]\\d*)\\.
+    (?P<minor>0|[1-9]\\d*)\\.
+    (?P<patch>0|[1-9]\\d*)
+    (?:
+        -                             # dash separator for pre-release section
+        (?P<pre_l>[a-zA-Z-]+)         # pre-release label
+        (?P<pre_n>0|[1-9]\\d*)        # pre-release version number
+    )?                                # pre-release section is optional
+"""
+serialize = [
+    "{major}.{minor}.{patch}-{pre_l}{pre_n}",
+    "{major}.{minor}.{patch}",
+]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = false
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
+
+[tool.bumpversion.parts.pre_l]
+values = ["dev", "rc", "final"]
+optional_value = "dev"

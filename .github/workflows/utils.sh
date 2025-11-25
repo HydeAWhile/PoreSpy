@@ -1,101 +1,68 @@
+#!/usr/bin/env bash
+
 # -------------------------------------------------------------------------- #
-# Retrieves the most recent tag of the git project in the current working
-# directory.
-#
-# Notes
-# -----
-# This method is equivalent to calling `get_nth_recent_tag 1`
-#
-# Example
-# -------
-# For instance, suppose a project has the following tags: v1.2, v2.0, v3.5
-# - get_most_recent_tag
-# >>> v3.5
+# Retrieves the most recent tag of the git project in the current working directory.
+# Usage: get_most_recent_tag
 # -------------------------------------------------------------------------- #
-function get_most_recent_tag {
-    local temp=$(get_nth_recent_tag 1)
-    echo "$temp"
+get_most_recent_tag() {
+    get_nth_recent_tag 1
 }
 
-
 # -------------------------------------------------------------------------- #
-# Retrieves the version number given the location of the version file
-#
-# Parameters
-# ----------
-# version_loc: location of the file containing the version number
-#
-# Notes
-# -----
-# This method assumes the global variable 'version_loc' holds the relative path
-# to the version file.
-#
-# Example
-# -------
-# - bump_version minor
-# - bump_version patch
+# Retrieves the version number from the provided file location.
+# Usage: get_version <version_file_path>
 # -------------------------------------------------------------------------- #
-function get_version {
-    local version_loc=$1
-    local temp=$(grep -E -o "([0-9]{1,}\.)+[0-9]{1,}(.dev[0-9]{1,})?" $version_loc)
-    echo "$temp"
+get_version() {
+    local version_loc="$1"
+    if [[ -z "$version_loc" ]]; then
+        echo "Error: version file path not provided" >&2
+        return 1
+    fi
+    if [[ ! -f "$version_loc" ]]; then
+        echo "Error: version file not found at $version_loc" >&2
+        return 1
+    fi
+    grep -E -o "([0-9]{1,}\.)+[0-9]{1,}(.dev[0-9]{1,})?" "$version_loc" | head -n1
 }
 
-
 # -------------------------------------------------------------------------- #
-# Retrieves the nth most recent tag of the git project in the current working
-# directory.
-#
-# Parameters
-# ----------
-# n: nth recent tag
-#
-# Example
-# -------
-# For instance, suppose a project has the following tags: v1.2, v2.0, v3.5
-# - get_nth_recent_tag 1
-# >>> v3.5
-# - get_nth_recent_tag 3
-# >>> v1.2
+# Retrieves the nth most recent tag of the git project.
+# Usage: get_nth_recent_tag <n>
 # -------------------------------------------------------------------------- #
-function get_nth_recent_tag {
-    git fetch --all --tags --force >/dev/null
-    local tags=($(git for-each-ref --sort=-creatordate --format '%(refname:strip=2)' refs/tags --count=$1))
-    echo "${tags[$(($1-1))]}"
+get_nth_recent_tag() {
+    local n="$1"
+    if ! [[ "$n" =~ ^[0-9]+$ ]]; then
+        echo "Error: Argument must be a positive integer" >&2
+        return 1
+    fi
+    git fetch --tags --force --quiet
+    local tags=($(git for-each-ref --sort=-creatordate --format '%(refname:strip=2)' refs/tags --count="$n"))
+    if (( ${#tags[@]} < n )); then
+        echo "Error: Less than $n tags found" >&2
+        return 1
+    fi
+    echo "${tags[$((n-1))]}"
 }
 
-
 # -------------------------------------------------------------------------- #
-# Bumps version number based on the release type parameter that could be
-# 'patch', 'minor', or 'major'.
-#
-# Parameters
-# ----------
-# bump_type: release type, choose from ['patch', 'minor', 'major']
-# version_loc: location of the file containing the version number
-#
-# Notes
-# -----
-# This method assumes the global variable 'version_loc' holds the relative path
-# to the version file.
-#
-# Example
-# -------
-# - bump_version minor openpnm/__version__.py
-# - bump_version patch openpnm/__version__.py
+# Bumps the version number based on release type ('patch', 'minor', 'major').
+# Usage: bump_version <bump_type> <version_file_path>
 # -------------------------------------------------------------------------- #
-function bump_version {
-    local bump_type=$1
-    local version_loc=$2
-    local version=$(get_version $version_loc)
-    bump2version --current-version $version $bump_type $version_loc --verbose
-}
+# bump_version() {
+#     local bump_type="$1"
+#     local version_loc="$2"
+#     if [[ -z "$bump_type" || -z "$version_loc" ]]; then
+#         echo "Usage: bump_version <patch|minor|major> <version_file_path>" >&2
+#         return 1
+#     fi
+#     local version
+#     version=$(get_version "$version_loc") || return 1
+#     bump2version --current-version "$version" "$bump_type" "$version_loc" --verbose
+# }
 
-
-# -- Test cases -- #
-# git checkout .
+# -- Example usage for testing -- #
 # version_loc="openpnm/__version__.py"
 # get_most_recent_tag
 # get_nth_recent_tag 2
-# get_version $version_loc
-# bump_version patch $version_loc
+# get_version "$version_loc"
+# bump_version patch "$version_loc"

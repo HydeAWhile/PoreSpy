@@ -1,13 +1,19 @@
+import inspect
 import logging
+
 import numpy as np
 import scipy.ndimage as spim
-from porespy.tools import extend_slice, ps_round
-from porespy.tools import _check_for_singleton_axes, Results
-from porespy.tools import mesh_region
 from skimage import measure
-from porespy.tools import get_tqdm
-from porespy import settings
 
+from porespy.tools import (
+    Results,
+    _check_for_singleton_axes,
+    extend_slice,
+    get_tqdm,
+    mesh_region,
+    ps_round,
+    settings,
+)
 
 __all__ = [
     "mesh_surface_area",
@@ -22,7 +28,7 @@ tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
 
 
-def region_volumes(regions, mode='marching_cubes'):
+def region_volumes(regions, method='marching_cubes', voxel_size=(1, 1, 1)):
     r"""
     Compute volume of each labelled region in an image
 
@@ -30,17 +36,18 @@ def region_volumes(regions, mode='marching_cubes'):
     ----------
     regions : ndarray
         An image with labelled regions
-    mode : string
+    method : string
         Controls the method used. Options are:
 
-        'marching_cubes' (default)
-            Finds a mesh for each region using the marching cubes algorithm
-            from ``scikit-image``, then finds the volume of the mesh using the
-            ``trimesh`` package.
-
-        'voxel'
-            Calculates the region volume as the sum of voxels within each
-            region.
+        ================ ===========================================================
+        Option           Description
+        ================ ===========================================================
+        `marching_cubes` (default) Finds a mesh for each region using the marching
+                         cubes algorithm from ``scikit-image``, then finds the
+                         volume of the mesh using the ``trimesh`` package.
+        `voxel`          Calculates the region volume as the sum of voxels within
+                         each region.
+        ================ ===========================================================
 
     Returns
     -------
@@ -51,23 +58,23 @@ def region_volumes(regions, mode='marching_cubes'):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/mesh_volumes.html>`_
+    <https://porespy.org/examples/metrics/reference/mesh_volumes.html>`__
     to view online example.
 
     """
     slices = spim.find_objects(regions)
     vols = np.zeros([len(slices), ])
-    msg = "Computing region volumes".ljust(60)
-    for i, s in enumerate(tqdm(slices, desc=msg, **settings.tqdm)):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i, s in enumerate(tqdm(slices, desc=desc, **settings.tqdm)):
         region = regions[s] == (i + 1)
-        if mode == 'marching_cubes':
-            vols[i] = mesh_volume(region)
-        elif mode.startswith('voxel'):
+        if method == 'marching_cubes':
+            vols[i] = mesh_volume(region, voxel_size=voxel_size)
+        elif method.startswith('voxel'):
             vols[i] = region.sum(dtype=np.int64)
     return vols
 
 
-def mesh_volume(region):
+def mesh_volume(region, voxel_size=(1., 1., 1.)):
     r"""
     Compute the volume of a single region by meshing it
 
@@ -75,18 +82,22 @@ def mesh_volume(region):
     ----------
     region : ndarray
         An image with a single region labelled as ``True`` (or > 0)
+    voxel_size : tuple
+        The resolution of the image, expressed as the length of one side of a
+        voxel, so the volume of a voxel would be **voxel_size**-cubed.  The
+        default is 1.
 
     Returns
     -------
     volume : float
-        The volume of the region computed by applyuing the marching cubes
+        The volume of the region computed by applying the marching cubes
         algorithm to the region, then finding the mesh volume using the
         ``trimesh`` package.
 
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/mesh_volume.html>`_
+    <https://porespy.org/examples/metrics/reference/mesh_volume.html>`__
     to view online example.
 
     """
@@ -95,7 +106,8 @@ def mesh_volume(region):
     except ModuleNotFoundError:
         msg = 'The trimesh package can be installed with pip install trimesh'
         raise ModuleNotFoundError(msg)
-    mc = mesh_region(region > 0)
+
+    mc = mesh_region(region > 0, voxel_size=voxel_size)
     m = Trimesh(vertices=mc.verts, faces=mc.faces, vertex_normals=mc.norm)
     if m.is_watertight:
         vol = np.abs(m.volume)
@@ -104,7 +116,7 @@ def mesh_volume(region):
     return vol
 
 
-def region_surface_areas(regions, voxel_size=1, strel=None):
+def region_surface_areas(regions, voxel_size=(1, 1, 1), strel=None):
     r"""
     Extract the surface area of each region in a labeled image.
 
@@ -117,7 +129,7 @@ def region_surface_areas(regions, voxel_size=1, strel=None):
         An image of the pore space partitioned into individual pore regions.
         Note that zeros in the image will not be considered for area
         calculation.
-    voxel_size : scalar
+    voxel_size : tuple
         The resolution of the image, expressed as the length of one side of a
         voxel, so the volume of a voxel would be **voxel_size**-cubed.  The
         default is 1.
@@ -136,7 +148,7 @@ def region_surface_areas(regions, voxel_size=1, strel=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/region_surface_areas.html>`_
+    <https://porespy.org/examples/metrics/reference/region_surface_areas.html>`__
     to view online example.
 
     """
@@ -150,16 +162,18 @@ def region_surface_areas(regions, voxel_size=1, strel=None):
     Ps = np.arange(1, np.amax(im) + 1)
     sa = np.zeros_like(Ps, dtype=float)
     # Start extracting marching cube area from im
-    msg = "Computing region surface area".ljust(60)
-    for i in tqdm(Ps, desc=msg, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i in tqdm(Ps, desc=desc, **settings.tqdm):
         reg = i - 1
         if slices[reg] is not None:
             s = extend_slice(slices[reg], im.shape)
             sub_im = im[s]
             mask_im = sub_im == i
-            mesh = mesh_region(region=mask_im, strel=strel)
+            mesh = mesh_region(region=mask_im,
+                               strel=strel,
+                               voxel_size=voxel_size)
             sa[reg] = mesh_surface_area(mesh)
-    result = sa * voxel_size**2
+    result = sa
     return result
 
 
@@ -192,7 +206,7 @@ def mesh_surface_area(mesh=None, verts=None, faces=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/mesh_surface_area.html>`_
+    <https://porespy.org/examples/metrics/reference/mesh_surface_area.html>`__
     to view online example.
 
     """
@@ -208,7 +222,7 @@ def mesh_surface_area(mesh=None, verts=None, faces=None):
 
 def region_interface_areas(regions, areas, voxel_size=1, strel=None):
     r"""
-    Calculate the interfacial area between all pairs of adjecent regions
+    Calculate the interfacial area between all pairs of adjacent regions
 
     Parameters
     ----------
@@ -248,7 +262,7 @@ def region_interface_areas(regions, areas, voxel_size=1, strel=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/metrics/reference/region_interface_areas.html>`_
+    <https://porespy.org/examples/metrics/reference/region_interface_areas.html>`__
     to view online example.
 
     """
@@ -266,8 +280,8 @@ def region_interface_areas(regions, areas, voxel_size=1, strel=None):
     sa_combined = []  # Difficult to preallocate since number of conns unknown
     cn = []
     # Start extracting area from im
-    msg = "Computing interfacial area between regions".ljust(60)
-    for i in tqdm(Ps, desc=msg, **settings.tqdm):
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    for i in tqdm(Ps, desc=desc, **settings.tqdm):
         reg = i - 1
         if slices[reg] is not None:
             s = extend_slice(slices[reg], im.shape)
@@ -291,7 +305,9 @@ def region_interface_areas(regions, areas, voxel_size=1, strel=None):
                                            slices[j][1].stop)]
                     merged_region = ((merged_region == reg + 1)
                                      + (merged_region == j + 1))
-                    mesh = mesh_region(region=merged_region, strel=strel)
+                    mesh = mesh_region(region=merged_region,
+                                       strel=strel,
+                                       voxel_size=voxel_size)
                     sa_combined.append(mesh_surface_area(mesh))
     # Interfacial area calculation
     cn = np.array(cn)
@@ -299,5 +315,5 @@ def region_interface_areas(regions, areas, voxel_size=1, strel=None):
     ia[ia <= 0] = 1
     result = Results()
     result.conns = cn
-    result.area = ia * voxel_size**2
+    result.area = ia
     return result

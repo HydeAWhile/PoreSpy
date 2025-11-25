@@ -12,10 +12,6 @@ modules, occasionally with basic embedded examples on how to use them.
 
 """
 
-from .tools._utils import Settings as _Settings
-
-settings = _Settings()
-
 from . import tools
 from . import filters
 from . import metrics
@@ -24,17 +20,25 @@ from . import generators
 from . import simulations
 from . import visualization
 from . import io
-
-# TODO: Deprecate dns module once v3 is out
-from . import dns
-
 from .visualization import imshow
 
+try:
+    import tomllib as _toml
+except ModuleNotFoundError:
+    import tomli as _toml
+import importlib.metadata as _metadata
 import numpy as _np
+
 
 _np.seterr(divide="ignore", invalid="ignore")
 
-__version__ = tools._get_version()
+
+try:
+    with open("./pyproject.toml", "rb") as f:
+        data = _toml.load(f)
+        __version__ = data["project"]["version"]
+except FileNotFoundError:
+    __version__ = _metadata.version(__package__ or __name__)
 
 
 def _setup_logger_rich():
@@ -49,3 +53,5 @@ def _setup_logger_rich():
 
 
 _setup_logger_rich()
+
+settings = tools.Settings()

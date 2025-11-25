@@ -1,30 +1,52 @@
 import logging
+
 import numpy as np
-from porespy.networks import regions_to_network
-from porespy.networks import add_boundary_regions
-from porespy.networks import label_phases, label_boundaries
+
 from porespy.filters import snow_partitioning, snow_partitioning_parallel
-from porespy.tools import Results
+from porespy.tools import Results, get_edt
+
+from ._funcs import add_boundary_regions, label_boundaries, label_phases
+from ._getnet_orig import regions_to_network
+
+__all__ = ["snow2", "_parse_pad_width"]
 
 
-__all__ = [
-    "snow2",
-    "_parse_pad_width",
-]
-
-
+edt = get_edt()
 logger = logging.getLogger(__name__)
 
 
-def snow2(phases,
-          phase_alias=None,
-          boundary_width=3,
-          accuracy='standard',
-          voxel_size=1,
-          sigma=0.4,
-          r_max=4,
-          peaks=None,
-          parallelization={},):
+def estimate_overlap_and_chunk(im):
+    divs = [2 for i in range(im.ndim)]
+
+    shape = []
+    for i in range(im.ndim):
+        shape.append(divs[i] * (im.shape[i] // divs[i]))
+
+    if tuple(shape) != im.shape:
+        for i in range(im.ndim):
+            im = im.swapaxes(0, i)
+            im = im[: shape[i], ...]
+            im = im.swapaxes(i, 0)
+
+    chunk_shape = (np.array(shape) / np.array(divs)).astype(int)
+    dt = edt((im > 0))
+    overlap = dt.max()
+
+    return overlap, chunk_shape
+
+
+def snow2(
+    phases,
+    phase_alias=None,
+    boundary_width=3,
+    accuracy='standard',
+    voxel_size=1,
+    sigma=0.4,
+    r_max=4,
+    peaks=None,
+    porosity_map=None,
+    parallel_kw={},
+):
     r"""
     Applies the SNOW algorithm to each phase indicated in ``phases``.
 
@@ -69,21 +91,22 @@ def snow2(phases,
         the analysis of regions in the ``regions_to_network`` function.
         Options are:
 
-            - 'standard' (default)
-                Computes the surface areas and perimeters by simply
-                counting voxels. This is *much* faster but does not
-                properly account for the rough voxelated nature
-                of the surfaces.
+        ========== ============================================================
+        Value      Description
+        ========== ============================================================
+        'standard' Computes the surface areas and perimeters by simply counting
+                   voxels. This is *much* faster but does not properly account
+                   for the rough voxelated nature of the surfaces.
+        'high'     Computes surface areas using the marching cube method, and
+                   perimeters using the fast marching method. These are
+                   substantially slower but better account for the voxelated
+                   nature of the images.
+        ========== ============================================================
 
-            - 'high'
-                Computes surface areas using the marching cube
-                method, and perimeters using the fast marching method. These
-                are substantially slower but better account for the
-                voxelated nature of the images.
-
-    voxel_size : scalar (default = 1)
-        The resolution of the image, expressed as the length of one side
-        of a voxel, so the volume of a voxel would be **voxel_size**-cubed.
+    voxel_size : tuple (default = (1, 1, 1))
+        The resolution of the image, expressed as the length of the sides of a
+        voxel, so the volume of a voxel would be the product of **voxel_size**
+        coords.
     r_max : int
         The radius of the spherical structuring element to use in the
         Maximum filter stage that is used to find peaks. The default is 4.
@@ -102,15 +125,30 @@ def snow2(phases,
         array should contain peaks for all phases, and they are masked by
         the ``phases`` argument. If ``peaks`` are provided the parallelization
         is disabled.
-    parallelization : dict
-        The arguments for controlling the parallelization of the watershed
-        function are rolled into this dictionary, otherwise the function
-        signature would become too complex. Refer to the docstring of
-        ``snow_partitioning_parallel`` for complete details. If no values
-        are provided then the defaults for that function are used here.
-        To disable parallelization pass ``parallel=None``, which will
-        invoke the standard ``snow_partitioning`` or ``snow_partitioning_n``.
-        If ``peaks`` are provided the parallelization is disabled.
+    parallel_kw : dict
+        Dictionary containing the settings for parallelization by chunking. The
+        optional settings include `divs` (scalar or list of scalars,
+        default = [2, 2, 2]), `overlap` (scalar or list of scalars, optional),
+        and `cores` (scalar, default is all available cores).
+
+        ========== ============================================================
+        Key        Description
+        ========== ============================================================
+        'divs'     The number of divisions to make along each axis of the image.
+                   If a scalar is provided, it is applied to all axes.
+                   If a list is provided, each axis will be divided by its
+                   corresponding number in the list.
+        'overlap'  The amount of overlap to include when dividing up the image.
+                   This value will almost always be the size (i.e. radius) of
+                   the structuring element. If not specified then the amount
+                   of overlap is inferred from the size of the structuring
+                   element, in which case the `strel_arg` must be specified.
+        'cores'    The number of cores that will be used to parallel process all
+                   domains. If ``None`` then all cores will be used but user can
+                   specify any integer values to control the memory usage.
+                   Setting value to 1 will effectively process the chunks in
+                   serial to minimize memory usage.
+        ========== ============================================================
 
     Returns
     -------
@@ -150,7 +188,7 @@ def snow2(phases,
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/networks/reference/snow2.html>`_
+    <https://porespy.org/examples/networks/reference/snow2.html>`__
     to view online example.
 
     """
@@ -163,15 +201,24 @@ def snow2(phases,
         vals = np.unique(phases)
         vals = vals[vals > 0]
     if peaks is not None:
-        parallelization = None
+        parallel_kw = None
     regions = None
     for i in vals:
         logger.info(f"Processing phase {i}...")
         phase = phases == i
         pk = None if peaks is None else peaks*phase
-        if parallelization is not None:
+        overlap, chunk = estimate_overlap_and_chunk(phase)
+        # TODO: this may not be the overlap the user provides!
+        if (overlap > (chunk//2 - 1)).any():
+            parallel_kw = None
+            logger.warning("Disabling paralelization as overlap exceeds than chunk size.")
+        if parallel_kw is not None:
             snow = snow_partitioning_parallel(
-                im=phase, sigma=sigma, r_max=r_max, **parallelization)
+                im=phase,
+                sigma=sigma,
+                r_max=r_max,
+                parallel_kw=parallel_kw,
+            )
         else:
             snow = snow_partitioning(im=phase, sigma=sigma, r_max=r_max,
                                      peaks=pk)
@@ -192,9 +239,16 @@ def snow2(phases,
     if np.any(boundary_width):
         regions = add_boundary_regions(regions, pad_width=boundary_width)
         phases = np.pad(phases, pad_width=boundary_width, mode='edge')
+        if porosity_map is not None:
+            porosity_map = np.pad(porosity_map, pad_width=boundary_width, mode='edge')
     # Perform actual extractcion on all regions
     net = regions_to_network(
-        regions, phases=phases, accuracy=accuracy, voxel_size=voxel_size)
+        regions,
+        phases=phases,
+        accuracy=accuracy,
+        voxel_size=voxel_size,
+        porosity_map=porosity_map,
+    )
     # If image is multiphase, label pores/throats accordingly
     if phases.max() > 1:
         phase_alias = _parse_phase_alias(phase_alias, phases)

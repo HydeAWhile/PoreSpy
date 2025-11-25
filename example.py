@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+
 import porespy as ps
 
 ps.visualization.set_mpl_style()

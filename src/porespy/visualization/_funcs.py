@@ -1,12 +1,11 @@
-import porespy as ps
+import inspect
+from copy import copy
+
 import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm
 from matplotlib import animation
-from copy import copy
-from porespy import settings
-import matplotlib_inline
 
+from porespy.tools import settings, get_tqdm
 
 __all__ = [
     'set_mpl_style',
@@ -14,6 +13,9 @@ __all__ = [
     'satn_to_panels',
     'prep_for_imshow',
 ]
+
+
+tqdm = get_tqdm()
 
 
 def set_mpl_style():  # pragma: no cover
@@ -62,12 +64,20 @@ def set_mpl_style():  # pragma: no cover
     # if ps.settings.notebook:
     #     import IPython
     #     IPython.display.set_matplotlib_formats('retina')
-    matplotlib_inline.backend_inline.set_matplotlib_formats('retina')
+    # matplotlib_inline.backend_inline.set_matplotlib_formats('retina')
 
 
-def satn_to_movie(im, satn, cmap='viridis',
-                  c_under='grey', c_over='white',
-                  v_under=1e-3, v_over=1.0, fps=10, repeat=True):
+def satn_to_movie(
+    im,
+    satn,
+    cmap='viridis',
+    c_under='grey',
+    c_over='white',
+    v_under=1e-3,
+    v_over=1.0,
+    fps=10,
+    repeat=True,
+):
     r"""
     Converts a saturation map into an animation that can be saved
 
@@ -107,11 +117,11 @@ def satn_to_movie(im, satn, cmap='viridis',
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/satn_to_movie.html>`_
+    <https://porespy.org/examples/visualization/reference/satn_to_movie.html>`__
     to view online example.
     """
     # Define nice color map
-    cmap = copy(plt.cm.get_cmap(name=cmap))
+    cmap = copy(getattr(plt.cm, cmap))
     cmap.set_over(color=c_over)
     cmap.set_under(color=c_under)
 
@@ -121,7 +131,8 @@ def satn_to_movie(im, satn, cmap='viridis',
     movie = []  # List to append each frame
     fig, ax = plt.subplots(1, 1)
     steps = np.unique(target)[1:]
-    with tqdm(steps, **settings.tqdm) as pbar:
+    desc = inspect.currentframe().f_code.co_name  # Get current func name
+    with tqdm(steps, desc=desc, **settings.tqdm) as pbar:
         for v in steps:
             pbar.update()
             seq += v*(target == v)
@@ -136,7 +147,14 @@ def satn_to_movie(im, satn, cmap='viridis',
     return ani
 
 
-def satn_to_panels(satn, im, bins=None, axis=0, slice=None, **kwargs):
+def satn_to_panels(
+    satn,
+    im,
+    bins=16,
+    axis=0,
+    slice=None,
+    **kwargs,
+):
     r"""
     Produces a set of images with each panel containing one saturation
 
@@ -171,7 +189,7 @@ def satn_to_panels(satn, im, bins=None, axis=0, slice=None, **kwargs):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/satn_to_panels.html>`_
+    <https://porespy.org/examples/visualization/reference/satn_to_panels.html>`__
     to view online example.
     """
     def factors(n):
@@ -211,7 +229,12 @@ def satn_to_panels(satn, im, bins=None, axis=0, slice=None, **kwargs):
     return fig, ax
 
 
-def prep_for_imshow(im, mask=None, axis=0, slice=None):
+def prep_for_imshow(
+    im,
+    mask=None,
+    axis=0,
+    slice=None,
+):
     r"""
     Adjusts the range of greyscale values in an image to improve visualization
     by ``matplotlib.pyplot.imshow``
@@ -244,7 +267,7 @@ def prep_for_imshow(im, mask=None, axis=0, slice=None):
         ``plt.imshow(\*\*data)``).  It contains the following key-value pairs:
 
         =============== =======================================================
-        key               value
+        key             value
         =============== =======================================================
         'X'             The adjusted image with ``+inf`` replaced by
                         ``vmax + 1``, and all solid voxels replacd by
@@ -265,7 +288,7 @@ def prep_for_imshow(im, mask=None, axis=0, slice=None):
     Examples
     --------
     `Click here
-    <https://porespy.org/examples/visualization/reference/prep_for_imshow.html>`_
+    <https://porespy.org/examples/visualization/reference/prep_for_imshow.html>`__
     to view online example.
 
     """
@@ -285,6 +308,11 @@ def prep_for_imshow(im, mask=None, axis=0, slice=None):
     im[(im == np.inf)] = vmax + 1
     vmin = np.amin((im*(im > -np.inf))[mask])
     im[(im == -np.inf)] = vmin - 1
-
-    return {'X': im, 'vmin': vmin, 'vmax': vmax,
-            'interpolation': 'none', 'origin': 'lower'}
+    d = {
+        'X': im,
+        'vmin': vmin,
+        'vmax': vmax,
+        'interpolation': 'none',
+        'origin': 'lower',
+    }
+    return d
