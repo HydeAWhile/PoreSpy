@@ -1,6 +1,7 @@
 import numpy as np
 import openpnm as op
 from scipy import stats as spst
+import scipy.ndimage as spim
 
 import porespy as ps
 
@@ -84,8 +85,22 @@ class MagnetTest:
     def test_junctions(self):
         im = self.blobs3D
         mode = "maximum filter"
-        magnet = ps.networks.magnet(im, throat_junctions=mode)
-        assert np.sum(magnet.juncs) == 1583
+        l_max = 7
+        # get skeleton
+        sk, im = ps.networks.skeleton(im)  # take skeleton
+        # take distance transform
+        from edt import edt
+        dt = edt(im)
+        dt = spim.gaussian_filter(dt, sigma=0.4)  # IMPORTANT: pass avg dt
+        # find junctions
+        fj = ps.networks.find_junctions(sk)
+        juncs = fj.juncs + fj.endpts
+        juncs = ps.networks.merge_nearby_juncs(sk, juncs, dt)
+        throats = (~juncs) * sk
+        ftj = ps.networks.find_throat_junctions(im, sk, juncs, throats,
+                                                dt, l_max, mode)
+        juncs = ftj.new_juncs.astype('bool') + juncs
+        assert np.sum(juncs) == 1556
         try:
             mode = "fast marching"
             magnet = ps.networks.magnet(im, throat_junctions=mode)

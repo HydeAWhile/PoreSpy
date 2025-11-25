@@ -549,6 +549,7 @@ def juncs_to_pore_centers(juncs, dt):
     # initialize reduced juncs
     reduced_juncs = np.zeros_like(juncs, dtype=int)
     # find position of maximums by labelled cluster
+    # TODO: this line is not deterministic for different OS  
     max_coords = maximum_position(dt, juncs, range(1, np.max(juncs)+1))
     # Get row and column coordinates within each cluster
     x = [pos[0] for pos in max_coords]
