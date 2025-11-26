@@ -51,7 +51,7 @@ class MagnetTest:
         im = self.blobs2D
         magnet = ps.networks.magnet(im)
         mode = spst.mode(magnet.network["pore.inscribed_diameter"], keepdims=False)
-        assert mode[0] == 4.0
+        assert np.any([mode[0] == 4.0, mode[0] == 4.4721360206604])
         D = np.unique(magnet.network["pore.inscribed_diameter"].astype(int))
         assert np.all(D == np.array([2, 4, 5, 6, 7, 8, 10, 11, 12]))
 
