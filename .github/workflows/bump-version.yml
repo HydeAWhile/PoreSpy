@@ -23,6 +23,11 @@ jobs:
       - name: Install bump-my-version
         run: uv tool install bump-my-version
 
+      - name: Set Git config
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+
       - name: Bump version (dev)
         if: github.ref == 'refs/heads/dev'
         run: uvx bump-my-version bump pre_n --no-commit --no-tag
