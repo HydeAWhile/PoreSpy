@@ -2765,7 +2765,7 @@ wheels = [
 
 [[package]]
 name = "porespy"
-version = "3.0.0.dev40"
+version = "3.0.0.dev48"
 source = { editable = "." }
 dependencies = [
     { name = "dask" },
@@ -2817,6 +2817,7 @@ docs = [
 ]
 extras = [
     { name = "openpnm" },
+    { name = "pandoc" },
     { name = "scikit-learn" },
 ]
 interactive = [
@@ -2870,6 +2871,7 @@ requires-dist = [
     { name = "openpnm", marker = "extra == 'extras'" },
     { name = "pandas" },
     { name = "pandoc", marker = "extra == 'docs'" },
+    { name = "pandoc", marker = "extra == 'extras'", specifier = ">=2.4" },
     { name = "pip", marker = "extra == 'build'" },
     { name = "psutil" },
     { name = "pydata-sphinx-theme", marker = "extra == 'docs'" },
