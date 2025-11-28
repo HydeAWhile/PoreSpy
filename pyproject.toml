@@ -256,7 +256,7 @@ search = "{current_version}"
 replace = "{new_version}"
 regex = false
 ignore_missing_version = false
-tag = true
+tag = false
 sign_tags = false
 tag_name = "v{new_version}"
 tag_message = "Bump version: {current_version} → {new_version}"
@@ -267,4 +267,4 @@ commit_args = ""
 
 [tool.bumpversion.parts.pre_l]
 values = ["dev", "rc", "final"]
-optional_value = "dev"
+optional_value = "final"
