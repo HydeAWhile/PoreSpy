@@ -1,0 +1,71 @@
+name: Bump Version
+
+on:
+  push:
+    branches: [dev, release]
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install bump-my-version
+        run: pip install bump-my-version==1.2.4
+
+      - name: Bump version (dev)
+        if: github.ref == 'refs/heads/dev'
+        run: bump-my-version bump pre_n --no-commit --no-tag
+
+      - name: Bump version (patch)
+        if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#patch')
+        run: bump-my-version bump patch --no-commit --no-tag
+
+      - name: Bump version (minor)
+        if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#minor')
+        run: bump-my-version bump minor --no-commit --no-tag
+
+      - name: Bump version (major)
+        if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#major')
+        run: bump-my-version bump major --no-commit --no-tag
+
+      - name: Get new version
+        id: version
+        run: echo "value=$(bump-my-version show current_version)" >> $GITHUB_OUTPUT
+
+      - name: Commit and push (dev)
+        if: github.ref == 'refs/heads/dev'
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "Bump version number on dev"
+          commit_user_name: "GitHub Action"
+          commit_user_email: "action@github.com"
+
+      - name: Commit and push (release)
+        if: github.ref == 'refs/heads/release'
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "Bump version number on release"
+          commit_user_name: "GitHub Action"
+          commit_user_email: "action@github.com"
+          tag_name: "v${{ steps.version.outputs.value }}"
+          tagging_message: "Release v${{ steps.version.outputs.value }}"
+          push_options: "--follow-tags"
+
+      - name: Create PR to merge release into dev
+        if: github.ref == 'refs/heads/release'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          title: "Merge release branch back into dev"
+          body: "Changes made to the release branch (if any), plus the version bump."
+          assignees: "jgostick"
+          labels: "high priority"
