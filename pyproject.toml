@@ -1,6 +1,6 @@
 [project]
 name = "porespy"
-version = "3.0.0-dev47"
+version = "2.4.3-dev58"
 description = "A set of tools for analyzing 3D images of porous materials"
 authors = [{ name = "PoreSpy Team", email = "jgostick@gmail.com" }]
 maintainers = [
@@ -50,48 +50,7 @@ readme = "README.md"
 requires-python = ">=3.10,<3.13"
 
 [project.optional-dependencies]
-extras = [
-    "scikit-learn",
-    "openpnm",
-    "pandoc>=2.4",
-]
-build = [
-    "hatch",
-    "meson",
-    "cibuildwheel",
-    "build",
-    "ninja",
-    "pip",
-]
-test = [
-    "codecov",
-    "coverage",
-    "nbval",
-    "pytest",
-    "pytest-cache",
-    "pytest-cov",
-    "pytest-custom-exit-code",
-    "pytest-split",
-]
-docs = [
-    "mock",
-    "myst-nb",
-    "nbstripout>=0.8.1",
-    "pandoc",
-    "pydata-sphinx-theme",
-    "sphinx",
-    "sphinx-autoapi",
-    "sphinx-copybutton",
-    "sphinx-design",
-    "tensorflow",
-]
-interactive = [
-    "ipython",
-    "ipykernel",
-    "ipywidgets",
-    "jupyter",
-    "jupyterlab_widgets",
-]
+extras = ["scikit-learn", "openpnm", "pandoc>=2.4"]
 
 [project.urls]
 Homepage = "https://porespy.org"
@@ -226,6 +185,48 @@ docstring-code-line-length = "dynamic"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+build = [
+    "bump-my-version",
+    "hatch",
+    "meson",
+    "cibuildwheel",
+    "build",
+    "ninja",
+    "pip",
+]
+test = [
+    "codecov",
+    "coverage",
+    "nbval",
+    "pytest",
+    "pytest-cache",
+    "pytest-cov",
+    "pytest-custom-exit-code",
+    "pytest-split",
+]
+docs = [
+    "mock",
+    "myst-nb",
+    "nbstripout>=0.8.1",
+    "pandoc",
+    "pydata-sphinx-theme",
+    "sphinx",
+    "sphinx-autoapi",
+    "sphinx-copybutton",
+    "sphinx-design",
+    "scikit-learn",
+    "openpnm",
+    "tensorflow",
+]
+interactive = [
+    "ipython",
+    "ipykernel",
+    "ipywidgets",
+    "jupyter",
+    "jupyterlab_widgets",
+]
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
@@ -236,7 +237,7 @@ path = "src/porespy/__version__.py"
 packages = ["src/porespy"]
 
 [tool.bumpversion]
-current_version = "3.0.0-dev47"
+current_version = "2.4.3-dev58"
 parse = """(?x)
     (?P<major>0|[1-9]\\d*)\\.
     (?P<minor>0|[1-9]\\d*)\\.
@@ -257,7 +258,7 @@ regex = false
 ignore_missing_version = false
 tag = true
 sign_tags = false
-tag_name = "v{new_version}"
+tag_name = "v{new_major}.{new_minor}.{new_patch}"
 tag_message = "Bump version: {current_version} → {new_version}"
 allow_dirty = false
 commit = false
@@ -266,4 +267,4 @@ commit_args = ""
 
 [tool.bumpversion.parts.pre_l]
 values = ["dev", "rc", "final"]
-optional_value = "dev"
+optional_value = "final"
