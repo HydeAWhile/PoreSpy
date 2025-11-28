@@ -20,30 +20,27 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install bump-my-version and hatch
-        run: |
-          uv tool install bump-my-version
-          uv tool install hatch
+      - name: Install bump-my-version
+        run: uv tool install bump-my-version
 
       - name: Bump version (dev)
         if: github.ref == 'refs/heads/dev'
         run: uvx bump-my-version bump pre_n --no-commit --no-tag
 
       - name: Bump version (patch)
+        id: bump-patch
         if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#patch')
-        run: uvx bump-my-version bump patch --no-commit --no-tag
+        run: uvx bump-my-version bump patch --no-commit
 
       - name: Bump version (minor)
+        id: bump-minor
         if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#minor')
-        run: uvx bump-my-version bump minor --no-commit --no-tag
+        run: uvx bump-my-version bump minor --no-commit
 
       - name: Bump version (major)
+        id: bump-major
         if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#major')
-        run: uvx bump-my-version bump major --no-commit --no-tag
-
-      - name: Get new version
-        id: version
-        run: echo "value=$(uvx hatch version)" >> $GITHUB_OUTPUT
+        run: uvx bump-my-version bump major --no-commit
 
       - name: Commit and push (dev)
         if: github.ref == 'refs/heads/dev'
@@ -54,14 +51,12 @@ jobs:
           commit_user_email: "action@github.com"
 
       - name: Commit and push (release)
-        if: github.ref == 'refs/heads/release'
+        if: github.ref == 'refs/heads/release' && (steps.bump-patch.outcome == 'success' || steps.bump-minor.outcome == 'success' || steps.bump-major.outcome == 'success')
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "Bump version number on release"
           commit_user_name: "GitHub Action"
           commit_user_email: "action@github.com"
-          tag_name: "v${{ steps.version.outputs.value }}"
-          tagging_message: "Release v${{ steps.version.outputs.value }}"
           push_options: "--follow-tags"
 
       - name: Create PR to merge release into dev
