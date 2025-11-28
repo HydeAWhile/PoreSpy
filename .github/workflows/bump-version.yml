@@ -7,68 +7,35 @@ on:
 jobs:
   bump:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.PAT }}
 
-      - name: Set up uv
-        id: setup-uv
-        uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
 
-      - name: Install bump-my-version
-        run: uv tool install bump-my-version
-
-      - name: Set Git config
+      - name: Configure Git
         run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
 
       - name: Bump version (dev)
         if: github.ref == 'refs/heads/dev'
-        run: uvx bump-my-version bump pre_n --no-commit --no-tag
+        run: |
+          uvx bump-my-version bump pre_n --no-tag
+          git push
 
-      - name: Bump version (patch)
-        id: bump-patch
-        if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#patch')
-        run: uvx bump-my-version bump patch --no-commit
-
-      - name: Bump version (minor)
-        id: bump-minor
-        if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#minor')
-        run: uvx bump-my-version bump minor --no-commit
-
-      - name: Bump version (major)
-        id: bump-major
-        if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#major')
-        run: uvx bump-my-version bump major --no-commit
-
-      - name: Commit and push (dev)
-        if: github.ref == 'refs/heads/dev'
-        uses: stefanzweifel/git-auto-commit-action@v7
-        with:
-          commit_message: "Bump version number on dev"
-          commit_user_name: "GitHub Action"
-          commit_user_email: "action@github.com"
-
-      - name: Commit and push (release)
-        if: github.ref == 'refs/heads/release' && (steps.bump-patch.outcome == 'success' || steps.bump-minor.outcome == 'success' || steps.bump-major.outcome == 'success')
-        uses: stefanzweifel/git-auto-commit-action@v7
-        with:
-          commit_message: "Bump version number on release"
-          commit_user_name: "GitHub Action"
-          commit_user_email: "action@github.com"
-          push_options: "--follow-tags"
-
-      - name: Create PR to merge release into dev
+      - name: Bump version (release)
         if: github.ref == 'refs/heads/release'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          title: "Merge release branch back into dev"
-          body: "Changes made to the release branch (if any), plus the version bump."
-          assignees: "jgostick"
-          labels: "high priority"
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == *"#patch"* ]]; then
+            uvx bump-my-version bump patch
+          elif [[ "${{ github.event.head_commit.message }}" == *"#minor"* ]]; then
+            uvx bump-my-version bump minor
+          elif [[ "${{ github.event.head_commit.message }}" == *"#major"* ]]; then
+            uvx bump-my-version bump major
+          fi
+          git push --follow-tags
