@@ -1,12 +1,9 @@
 name: Deploy to PyPI
 
 on:
-  workflow_dispatch:
-    inputs:
-        version:
-            description: 'Version (major/minor/patch/alpha/beta/release)'
-            required: true
-            default: 'patch'
+  push:
+    tags:
+      - "v*"
 
 jobs:
   deploy:
@@ -14,25 +11,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-      with:
-        ref: release      
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v6
-      with:
-        enable-cache: true
-        cache-dependency-glob: "**/pyproject.toml"
-        python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+          python-version: "3.12"
 
-    - name: Install dependencies
-      run: |
-        uv sync --extra build
+      - name: Install dependencies
+        run: uv sync --group build
 
-    - name: Build and publish to PyPI 📦
-      run: |
-        export HATCH_INDEX_USER="__token__"
-        export HATCH_INDEX_AUTH="${{ secrets.HATCH_INDEX_AUTH }}"
-        uv run hatch build
-        uv run hatch publish
+      - name: Build and publish to PyPI 📦
+        run: |
+          export HATCH_INDEX_USER="__token__"
+          export HATCH_INDEX_AUTH="${{ secrets.HATCH_INDEX_AUTH }}"
+          uv run hatch build
+          uv run hatch publish
