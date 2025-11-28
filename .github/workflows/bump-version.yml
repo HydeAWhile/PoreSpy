@@ -14,33 +14,36 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Set up uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
 
-      - name: Install bump-my-version
-        run: pip install bump-my-version==1.2.4
+      - name: Install bump-my-version and hatch
+        run: |
+          uv tool install bump-my-version
+          uv tool install hatch
 
       - name: Bump version (dev)
         if: github.ref == 'refs/heads/dev'
-        run: bump-my-version bump pre_n --no-commit --no-tag
+        run: uvx bump-my-version bump pre_n --no-commit --no-tag
 
       - name: Bump version (patch)
         if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#patch')
-        run: bump-my-version bump patch --no-commit --no-tag
+        run: uvx bump-my-version bump patch --no-commit --no-tag
 
       - name: Bump version (minor)
         if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#minor')
-        run: bump-my-version bump minor --no-commit --no-tag
+        run: uvx bump-my-version bump minor --no-commit --no-tag
 
       - name: Bump version (major)
         if: github.ref == 'refs/heads/release' && contains(github.event.head_commit.message, '#major')
-        run: bump-my-version bump major --no-commit --no-tag
+        run: uvx bump-my-version bump major --no-commit --no-tag
 
       - name: Get new version
         id: version
-        run: echo "value=$(bump-my-version show current_version)" >> $GITHUB_OUTPUT
+        run: echo "value=$(uvx hatch version)" >> $GITHUB_OUTPUT
 
       - name: Commit and push (dev)
         if: github.ref == 'refs/heads/dev'
