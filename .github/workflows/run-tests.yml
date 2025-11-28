@@ -32,23 +32,11 @@ jobs:
           cache-dependency-glob: "**/pyproject.toml"
           cache-suffix: "uv-${{ matrix.python-version }}-${{ matrix.os }}"
 
-      - name: Install dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          uv sync --extra test --extra extras --extra build
-          uv build
+      - name: Install dependencies
+        run: uv sync --group test --group build --extra extras
 
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          uv sync --extra test --extra extras --extra build
-          uv build
-
-      - name: Install dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          uv sync --extra test --extra extras --extra build
-          uv build
+      - name: Build package
+        run: uv build
 
       - name: Set matplotlib backend
         run: echo "MPLBACKEND=Agg" >> $GITHUB_ENV
@@ -57,7 +45,7 @@ jobs:
         run: uv run pytest --cov=. --cov-report=xml
 
       - name: Upload coverage to Codecov
-        if: (matrix.python-version == 3.12) && (matrix.os == 'ubuntu-latest')
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
