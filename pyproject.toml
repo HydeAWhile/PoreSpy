@@ -1,6 +1,6 @@
 [project]
 name = "porespy"
-version = "3.0.0-dev52"
+version = "3.0.0-dev53"
 description = "A set of tools for analyzing 3D images of porous materials"
 authors = [{ name = "PoreSpy Team", email = "jgostick@gmail.com" }]
 maintainers = [
@@ -237,7 +237,7 @@ path = "src/porespy/__version__.py"
 packages = ["src/porespy"]
 
 [tool.bumpversion]
-current_version = "3.0.0-dev52"
+current_version = "3.0.0-dev53"
 parse = """(?x)
     (?P<major>0|[1-9]\\d*)\\.
     (?P<minor>0|[1-9]\\d*)\\.
