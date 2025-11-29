@@ -1,51 +1,42 @@
 name: Test Duration Logger
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1 * *" # First day of every month
 
 jobs:
-  build:
-
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -l {0}
-
-    strategy:
-      max-parallel: 1
-      matrix:
-        python-version: ['3.12']
-        os: [ubuntu-latest]
+  log-durations:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v6
+        with:
+          ref: dev
+          token: ${{ secrets.PAT }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-dependency-glob: "**/pyproject.toml"
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
 
       - name: Install dependencies
-        run: |
-            uv sync --extra test --extra extras            
+        run: uv sync --group test --extra extras
 
       - name: Run tests
         run: |
           rm test/fixtures/.test_durations*
-          uv run pytest \
-            --nbval-lax examples/ \
-            --store-durations \
-            --durations-path test/fixtures/.test_durations_examples
-          uv run pytest test/ \
-            --store-durations \
-            --durations-path test/fixtures/.test_durations_unit
+          uv run pytest --nbval-lax examples/ --store-durations --durations-path test/fixtures/.test_durations_examples
+          uv run pytest test/ --store-durations --durations-path test/fixtures/.test_durations_unit
 
-      - name: Commit and push test duration files
-        uses: EndBug/add-and-commit@v9
-        with:
-          add: 'test/fixtures'
-          author_name: github-actions
-          author_email: actions@github.com
-          message: 'test: Update test duration log.'
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+      - name: Commit and push
+        run: |
+          git add test/fixtures/.test_durations*
+          git commit -m "test: Update test duration log [no ci]"
+          git push
