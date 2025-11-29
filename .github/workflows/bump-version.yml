@@ -39,3 +39,11 @@ jobs:
             uvx bump-my-version bump major
           fi
           git push --follow-tags
+
+      - name: Merge release back into dev
+        if: github.ref == 'refs/heads/release'
+        run: |
+          git fetch origin dev
+          git checkout dev
+          git merge --no-ff origin/release -m "Merge release into dev"
+          git push origin dev
