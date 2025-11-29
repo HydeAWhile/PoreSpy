@@ -123,9 +123,9 @@ enhancements=$(filter_commits_by_label "$merge_commits" "#enh")
 maintenance=$(filter_commits_by_label "$merge_commits" "#maint")
 changes=$(filter_commits_by_label "$merge_commits" "#api")
 fixes=$(filter_commits_by_label "$merge_commits" "#bug")
-documentation=$(filter_commits_by_label "$merge_commits" "#doc")
+documentation=$(filter_commits_by_label "$merge_commits" "#docs?")
 
-all_keywords=$(join_by "|" "#new" "#enh" "#maint" "#api" "#bug" "#doc" "#patch" "#minor" "#major")
+all_keywords=$(join_by "|" "#new" "#enh" "#maint" "#api" "#bug" "#docs?" "#patch" "#minor" "#major")
 uncategorized=$(filter_commits_exclude_label "$merge_commits" "$all_keywords")
 
 log_section "Building changelog entry"
