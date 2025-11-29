@@ -17,6 +17,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          enable-cache: false
 
       - name: Configure Git
         run: |
@@ -46,5 +47,5 @@ jobs:
         run: |
           git fetch origin dev
           git checkout dev
-          git merge --no-ff origin/release -m "Merge release into dev"
+          git merge --no-ff origin/release -m "Merge release into dev [no ci]"
           git push origin dev
