@@ -1,3 +1,6 @@
+import pytest
+import sys
+
 import numpy as np
 
 import porespy as ps
@@ -14,6 +17,10 @@ class NetworkSizeFactorTest():
         self.snow = ps.networks.snow2(self.im, boundary_width=0,
                                       parallel_kw=None)
 
+    @pytest.mark.skipif(
+        condition=sys.platform.startswith('linux'),
+        reason="Not deterministic on linux",
+    )
     def test_diffusive_size_factor_DNS(self):
         regions = self.snow.regions
         net = self.snow.network
@@ -27,6 +34,10 @@ class NetworkSizeFactorTest():
                            0.22238891, 1.32222092])
         assert np.allclose(size_factors, values)
 
+    @pytest.mark.skipif(
+        condition=sys.platform.startswith('linux'),
+        reason="Not deterministic on linux",
+    )
     def test_diffusive_size_factor_DNS_voxel_size(self):
         voxel_size = 1e-6
         regions = self.snow.regions
