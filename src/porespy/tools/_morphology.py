@@ -1,4 +1,5 @@
 import numpy as np
+from skimage.morphology import footprint_rectangle
 
 from ._utils import get_edt
 
@@ -166,10 +167,4 @@ def ps_rect(w, ndim):
     to view online example.
 
     """
-    if ndim == 2:
-        from skimage.morphology import square
-        strel = square(w)
-    if ndim == 3:
-        from skimage.morphology import cube
-        strel = cube(w)
-    return strel
+    return footprint_rectangle((w,) * ndim)

@@ -6,7 +6,7 @@ import scipy.ndimage as spim
 import scipy.signal as spsg
 from numba import jit
 from scipy.ndimage import maximum_position
-from skimage.morphology import cube, square
+from skimage.morphology import footprint_rectangle
 
 from porespy.filters import (
     chunked_func,
@@ -336,10 +336,7 @@ def find_junctions(sk):
         An array of ones where all the endpoints were found
     """
     # kernel for convolution
-    if sk.ndim == 2:
-        a = square(3)
-    else:
-        a = cube(3)
+    a = footprint_rectangle((3,) * sk.ndim)
     # compute convolution directly or via fft, whichever is fastest
     conv = spsg.convolve(sk*1.0, a, mode='same', method='auto')
     conv = np.rint(conv).astype(int)  # in case of fft, accuracy is lost
@@ -429,7 +426,7 @@ def find_throat_junctions(im,
         mask = np.isnan(temp)
         temp[mask] = 0
         temp = temp + dt * sk
-        b = square(l_max) if ct.ndim == 2 else cube(l_max)
+        b = footprint_rectangle((l_max,) * ct.ndim)
         mx = (spim.maximum_filter(temp, footprint=b) == dt) * sk
         mx = juncs_to_pore_centers(mx, dt)
         # remove maximum points that lie on junction cluster!
