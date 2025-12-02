@@ -10,7 +10,7 @@ from deprecated import deprecated
 from numba import njit
 from scipy import fft as sp_ft
 from skimage.measure import regionprops
-from skimage.morphology import ball, cube, disk, skeletonize, square
+from skimage.morphology import ball, disk, skeletonize, footprint_rectangle
 
 from porespy.generators import faces
 from porespy.filters import (
@@ -27,6 +27,7 @@ from porespy.tools import (
     get_tqdm,
     settings,
 )
+
 
 __all__ = [
     "bond_number",
@@ -62,7 +63,10 @@ __all__ = [
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
-strel = {2: {"min": disk(1), "max": square(3)}, 3: {"min": ball(1), "max": cube(3)}}
+strel = {
+    2: {"min": disk(1), "max": footprint_rectangle((3, 3))},
+    3: {"min": ball(1), "max": footprint_rectangle((3, 3, 3))}
+}
 
 
 def porosity_by_type(im, conn='min'):
