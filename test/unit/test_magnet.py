@@ -1,5 +1,4 @@
 import pytest
-import sys
 
 import numpy as np
 import openpnm as op
