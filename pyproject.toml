@@ -32,7 +32,7 @@ dependencies = [
     "pandas",
     "psutil",
     "rich",
-    "scikit-image",
+    "scikit-image>=0.25.0",
     "scipy",
     "tqdm",
     "setuptools",
