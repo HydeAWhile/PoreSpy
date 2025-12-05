@@ -12,6 +12,19 @@ modules, occasionally with basic embedded examples on how to use them.
 
 """
 
+import logging
+from pathlib import Path
+
+from rich.logging import RichHandler
+
+FORMAT = "%(message)s"
+logging.basicConfig(
+    format=FORMAT, datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)]
+)
+
+logger = logging.getLogger("porespy")
+
+
 from . import tools
 from . import filters
 from . import metrics
@@ -29,29 +42,16 @@ except ModuleNotFoundError:
 import importlib.metadata as _metadata
 import numpy as _np
 
-
 _np.seterr(divide="ignore", invalid="ignore")
+settings = tools.Settings()
 
+_pyproject = Path(__file__).parents[2] / "pyproject.toml"
 
-try:
-    with open("./pyproject.toml", "rb") as f:
+if _pyproject.exists():
+    with open(_pyproject, "rb") as f:
         data = _toml.load(f)
         __version__ = data["project"]["version"]
-except FileNotFoundError:
+        logger.debug("Loaded version from pyproject.toml")
+else:
     __version__ = _metadata.version(__package__ or __name__)
-
-
-def _setup_logger_rich():
-    import logging
-
-    from rich.logging import RichHandler
-
-    FORMAT = "%(message)s"
-    logging.basicConfig(
-        format=FORMAT, datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)]
-    )
-
-
-_setup_logger_rich()
-
-settings = tools.Settings()
+    logger.debug("Loaded version from importlib.metadata")
