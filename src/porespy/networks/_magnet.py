@@ -6,7 +6,7 @@ import scipy.ndimage as spim
 import scipy.signal as spsg
 from numba import jit
 from scipy.ndimage import maximum_position
-from skimage.morphology import cube, square
+from skimage.morphology import footprint_rectangle
 
 from porespy.filters import (
     chunked_func,
@@ -39,29 +39,31 @@ logger = logging.getLogger(__name__)
 
 
 __all__ = [
-    'magnet',
-    'skeleton',
-    'skeleton_parallel',
-    'find_junctions',
-    'find_throat_junctions',
-    'merge_nearby_juncs',
-    'juncs_to_pore_centers',
-    'junctions_to_network',
-    'partition_skeleton',
-    'get_throat_area',
+    "magnet",
+    "skeleton",
+    "skeleton_parallel",
+    "find_junctions",
+    "find_throat_junctions",
+    "merge_nearby_juncs",
+    "juncs_to_pore_centers",
+    "junctions_to_network",
+    "partition_skeleton",
+    "get_throat_area",
 ]
 
 
-def magnet(im,
-           sk=None,
-           parallel_kw=None,
-           surface=False,
-           voxel_size=1,
-           s=None,
-           l_max=7,
-           throat_junctions=None,
-           throat_area=False,
-           **kwargs):
+def magnet(
+    im,
+    sk=None,
+    parallel_kw=None,
+    surface=False,
+    voxel_size=1,
+    s=None,
+    l_max=7,
+    throat_junctions=None,
+    throat_area=False,
+    **kwargs,
+):
     r"""
     Perform a Medial Axis Guided Network ExtracTion (MAGNET) on an image of
     porous media.
@@ -145,7 +147,7 @@ def magnet(im,
         sk, im = skeleton(im, surface, parallel_kw)  # take skeleton
     else:
         if im.ndim == 3:
-            _check_skeleton_health(sk.astype('bool'))
+            _check_skeleton_health(sk.astype("bool"))
     # take distance transform
     dt = edt(im)
     # find junctions
@@ -162,12 +164,12 @@ def magnet(im,
         mode = throat_junctions
         ftj = find_throat_junctions(im, sk, juncs, throats, dt, l_max, mode)
         # add throat juncs to juncs
-        juncs = ftj.new_juncs.astype('bool') + juncs
+        juncs = ftj.new_juncs.astype("bool") + juncs
         # get new throats
         throats = ftj.new_throats
     # use walk to get throat area
     if throat_area is True:
-        dt_inv = 1/spim.gaussian_filter(dt, sigma=0.4)  # FIXME: this is slow
+        dt_inv = 1 / spim.gaussian_filter(dt, sigma=0.4)  # FIXME: this is slow
         nodes = juncs_to_pore_centers(throats, dt_inv)  # find area at min
         if "step_size" not in kwargs:
             kwargs["step_size"] = dt
@@ -241,14 +243,14 @@ def skeleton(im, surface=False, parallel_kw=None):
     """
     # trim floating solid from 3D images
     if im.ndim == 3:
-        im = trim_floating_solid(im, conn='min', incl_surface=surface)
+        im = trim_floating_solid(im, conn="min", incl_surface=surface)
     # perform skeleton
     if parallel_kw is None:  # serial
-        sk = skeletonize(im).astype('bool')
+        sk = skeletonize(im).astype("bool")
     if parallel_kw is not None:  # parallel
         sk = skeleton_parallel(im, parallel_kw)
     if im.ndim == 3:
-        _check_skeleton_health(sk.astype('bool'))
+        _check_skeleton_health(sk.astype("bool"))
     return sk, im
 
 
@@ -302,7 +304,7 @@ def skeleton_parallel(im, parallel_kw={}):
     cores = parallel_kw.get("cores", settings.ncores)
     overlap = parallel_kw.get("overlap", settings.overlap)
     if overlap is None:
-        overlap = _estimate_overlap(im, mode='dt') * 2
+        overlap = _estimate_overlap(im, mode="dt") * 2
     if cores is None:
         cores = settings.ncores
     depth = {}
@@ -310,9 +312,9 @@ def skeleton_parallel(im, parallel_kw={}):
         depth[i] = np.round(overlap).astype(int)
     chunk_shape = (np.array(im.shape) / np.array(divs)).astype(int)
     skel = da.from_array(im, chunks=chunk_shape)
-    skel = da.overlap.overlap(skel, depth=depth, boundary='none')
+    skel = da.overlap.overlap(skel, depth=depth, boundary="none")
     skel = skel.map_blocks(skeletonize)
-    skel = da.overlap.trim_internal(skel, depth, boundary='none')
+    skel = da.overlap.trim_internal(skel, depth, boundary="none")
     skel = skel.compute(num_workers=cores).astype(bool)
     return skel
 
@@ -336,12 +338,9 @@ def find_junctions(sk):
         An array of ones where all the endpoints were found
     """
     # kernel for convolution
-    if sk.ndim == 2:
-        a = square(3)
-    else:
-        a = cube(3)
+    a = footprint_rectangle((3,) * sk.ndim)
     # compute convolution directly or via fft, whichever is fastest
-    conv = spsg.convolve(sk*1.0, a, mode='same', method='auto')
+    conv = spsg.convolve(sk * 1.0, a, mode="same", method="auto")
     conv = np.rint(conv).astype(int)  # in case of fft, accuracy is lost
     # find junction points of skeleton
     juncs = (conv >= 4) * sk
@@ -354,13 +353,7 @@ def find_junctions(sk):
     return pt
 
 
-def find_throat_junctions(im,
-                          sk,
-                          juncs,
-                          throats,
-                          dt=None,
-                          l_max=7,
-                          mode="fast marching"):
+def find_throat_junctions(im, sk, juncs, throats, dt=None, l_max=7, mode="fast marching"):
     r"""
     Finds local peaks on the throat segments of a skeleton large enough to be
     considered junctions.
@@ -429,7 +422,7 @@ def find_throat_junctions(im,
         mask = np.isnan(temp)
         temp[mask] = 0
         temp = temp + dt * sk
-        b = square(l_max) if ct.ndim == 2 else cube(l_max)
+        b = footprint_rectangle((l_max,) * ct.ndim)
         mx = (spim.maximum_filter(temp, footprint=b) == dt) * sk
         mx = juncs_to_pore_centers(mx, dt)
         # remove maximum points that lie on junction cluster!
@@ -450,12 +443,12 @@ def find_throat_junctions(im,
             # Get starting point for fmm as pore with highest index number
             # fmm requires full connectivity so must dilate im_sub
             phi = spim.binary_dilation(im_sub, structure=strel)
-            tmp = juncs[sx]*phi
+            tmp = juncs[sx] * phi
             start = np.where(tmp == tmp.max())
             # Convert to masked array to confine fmm to throat segment
             phi = np.ma.array(phi, mask=phi == 0)
             phi[start] = 0
-            dist = np.array(distance(phi))*im_sub  # Convert from masked to ndarray
+            dist = np.array(distance(phi)) * im_sub  # Convert from masked to ndarray
             # Obtain indices into segment
             ind = np.argsort(dist[im_sub])
             # Analyze dt profile to find significant peaks
@@ -468,11 +461,11 @@ def find_throat_junctions(im,
             # Add peak(s) to new_juncs image
             hits = dist[im_sub][ind][pk[0]]
             for d in hits:
-                new_juncs[sx] += (dist == d)
+                new_juncs[sx] += dist == d
         # label new_juncs
         new_juncs = spim.label(new_juncs, structure=strel)[0]
     # Remove peaks from original throat image and re-label
-    new_throats = spim.label(throats*(new_juncs == 0), structure=strel)[0]
+    new_throats = spim.label(throats * (new_juncs == 0), structure=strel)[0]
     # increment new_juncs by labels in original pores
     new_juncs[new_juncs > 0] += juncs.max()
     results = Results()
@@ -504,17 +497,17 @@ def merge_nearby_juncs(sk, juncs, dt=3):
         the labelled clusters of connected voxels.
     """
     strel = ps_rect(3, sk.ndim)
-    labels = spim.label(sk*~juncs, structure=strel)[0]
+    labels = spim.label(sk * ~juncs, structure=strel)[0]
     sizes = region_size(labels)
     # Add voxels from skeleton to junctions if they are too close to each other
     if isinstance(dt, (int, float)):  # If dt is a scalar, use hard threshold
-        juncs += (sizes <= dt)*(labels > 0)
+        juncs += (sizes <= dt) * (labels > 0)
     else:  # If dt is proper dt, threshold each voxel specifically
         # Division by root(ndim) limits range since size of cluster is not quite
         # equal to distance between end points since size does not account for
         # diagonally oriented or windy segements.
-        dists = flood_func(dt, np.amin, labels=labels) / (sk.ndim)**0.5
-        juncs += (sizes <= dists)*(labels > 0)
+        dists = flood_func(dt, np.amin, labels=labels) / (sk.ndim) ** 0.5
+        juncs += (sizes <= dists) * (labels > 0)
 
     return juncs
 
@@ -549,8 +542,8 @@ def juncs_to_pore_centers(juncs, dt):
     # initialize reduced juncs
     reduced_juncs = np.zeros_like(juncs, dtype=int)
     # find position of maximums by labelled cluster
-    # TODO: this line is not deterministic for different OS  
-    max_coords = maximum_position(dt, juncs, range(1, np.max(juncs)+1))
+    # TODO: this line is not deterministic for different OS
+    max_coords = maximum_position(dt, juncs, range(1, np.max(juncs) + 1))
     # Get row and column coordinates within each cluster
     x = [pos[0] for pos in max_coords]
     y = [pos[1] for pos in max_coords]
@@ -636,7 +629,7 @@ def junctions_to_network(sk, juncs, throats, dt, throat_area, voxel_size=1):
         sub_sk = sk[ss]
         sub_dt = dt[ss]
         sub_dt_max = dt_max[ss]
-        throat_im = sub_throats == throat+1
+        throat_im = sub_throats == throat + 1
         # dilate throat_im to capture connecting pore indices
         throat_im_dilated = spim.binary_dilation(throat_im, strel)
         throat_im_dilated = throat_im_dilated * sub_sk
@@ -646,22 +639,22 @@ def junctions_to_network(sk, juncs, throats, dt, throat_area, voxel_size=1):
         t_conns[throat, :] = Pn_l
         # throat diameter
         throat_dt = throat_im * sub_dt
-        t_min_diameter[throat] = np.min(throat_dt[throat_dt != 0])*2
-        t_max_diameter[throat] = np.max(throat_dt[throat_dt != 0])*2
-        t_avg_diameter[throat] = np.average(throat_dt[throat_dt != 0])*2
+        t_min_diameter[throat] = np.min(throat_dt[throat_dt != 0]) * 2
+        t_max_diameter[throat] = np.max(throat_dt[throat_dt != 0]) * 2
+        t_avg_diameter[throat] = np.average(throat_dt[throat_dt != 0]) * 2
         # inscribed diameter
         throat_dt_max = throat_im * sub_dt_max
-        t_ins_diameter[throat] = np.min(throat_dt_max[throat_dt_max != 0])*2
+        t_ins_diameter[throat] = np.min(throat_dt_max[throat_dt_max != 0]) * 2
         # integrated diameter
         radii = throat_dt[throat_dt != 0]
-        F_approx = sum(1/(2*radii)**4)
-        t_int_diameter[throat] = (len(radii)/F_approx)**(1/4)
+        F_approx = sum(1 / (2 * radii) ** 4)
+        t_int_diameter[throat] = (len(radii) / F_approx) ** (1 / 4)
         # equivalent diameter
         if throat_area is not None:
             sub_area = throat_area[ss]
             A = np.min(sub_area[sub_area != 0])  # use min throat area
             t_area[throat] = A  # assume circle
-            t_equ_diameter[throat] = 2*np.sqrt(A/np.pi)  # assume circle
+            t_equ_diameter[throat] = 2 * np.sqrt(A / np.pi)  # assume circle
         # throat length
         t_length[throat] = len(throat_dt[throat_dt != 0])
     # find pore coords
@@ -670,7 +663,7 @@ def junctions_to_network(sk, juncs, throats, dt, throat_area, voxel_size=1):
     p_coords = np.vstack(np.where(ct)).astype(float).T
     p_coords = np.insert(p_coords, juncs.ndim, ct[np.where(ct)], axis=1)
     p_coords = p_coords[ct[np.where(ct)].T.argsort()]
-    p_coords = p_coords[:, 0:juncs.ndim]
+    p_coords = p_coords[:, 0 : juncs.ndim]
     if p_coords.shape[1] == 2:  # If 2D, add zeros in 3rd column
         p_coords = np.hstack((p_coords, np.zeros((Np, 1))))
     # find pore radius
@@ -681,23 +674,23 @@ def junctions_to_network(sk, juncs, throats, dt, throat_area, voxel_size=1):
     p_diameter = p_radius * 2
     # clipped diameters
     V_p = p_diameter**3  # volume of a cube!
-    p_diameter_equivalent = (6*V_p/np.pi)**(1/3)
+    p_diameter_equivalent = (6 * V_p / np.pi) ** (1 / 3)
     # create network dictionary
     net = {}
-    net['throat.conns'] = t_conns
-    net['pore.coords'] = p_coords * voxel_size
-    net['throat.actual_length'] = t_length * voxel_size
-    net['throat.area'] = t_area * voxel_size ** 2
-    net['throat.max_diameter'] = t_max_diameter * voxel_size
-    net['throat.min_diameter'] = t_min_diameter * voxel_size
-    net['throat.avg_diameter'] = t_avg_diameter * voxel_size
-    net['throat.inscribed_diameter'] = t_ins_diameter * voxel_size
-    net['throat.integrated_diameter'] = t_int_diameter * voxel_size
+    net["throat.conns"] = t_conns
+    net["pore.coords"] = p_coords * voxel_size
+    net["throat.actual_length"] = t_length * voxel_size
+    net["throat.area"] = t_area * voxel_size**2
+    net["throat.max_diameter"] = t_max_diameter * voxel_size
+    net["throat.min_diameter"] = t_min_diameter * voxel_size
+    net["throat.avg_diameter"] = t_avg_diameter * voxel_size
+    net["throat.inscribed_diameter"] = t_ins_diameter * voxel_size
+    net["throat.integrated_diameter"] = t_int_diameter * voxel_size
     if throat_area is not None:
-        net['throat.equivalent_diameter'] = t_equ_diameter * voxel_size
-    net['pore.inscribed_diameter'] = p_diameter * voxel_size
-    net['pore.equivalent_diameter'] = p_diameter_equivalent * voxel_size
-    net['pore.index'] = np.arange(0, Np)
+        net["throat.equivalent_diameter"] = t_equ_diameter * voxel_size
+    net["pore.inscribed_diameter"] = p_diameter * voxel_size
+    net["pore.equivalent_diameter"] = p_diameter_equivalent * voxel_size
+    net["pore.index"] = np.arange(0, Np)
     return net
 
 
@@ -725,11 +718,11 @@ def pad_faces_for_skeletonization(im, pad_width=5, r=3):
 
     """
     dt = edt(im)
-    faces = borders(im.shape, mode='faces')
-    mx = im * faces * (spim.maximum_filter(dt*faces, size=3) == dt)
-    mx = np.pad(mx, pad_width, mode='edge')
+    faces = borders(im.shape, mode="faces")
+    mx = im * faces * (spim.maximum_filter(dt * faces, size=3) == dt)
+    mx = np.pad(mx, pad_width, mode="edge")
     mx = spim.binary_dilation(mx, structure=ps_round(r, im.ndim, False))
-    im_new = np.pad(im, pad_width, mode='constant', constant_values=False)
+    im_new = np.pad(im, pad_width, mode="constant", constant_values=False)
     im_new = im_new + mx
     return im_new
 
@@ -750,10 +743,10 @@ def skeletonize_magnet2(im):
     """
     if im.ndim == 2:
         pw = 5
-        im = fill_invalid_pores(im, conn='max')
+        im = fill_invalid_pores(im, conn="max")
         shape = np.array(im.shape)
-        im = np.pad(im, pad_width=pw, mode='edge')
-        im = np.pad(im, pad_width=shape, mode='symmetric')
+        im = np.pad(im, pad_width=pw, mode="edge")
+        im = np.pad(im, pad_width=shape, mode="symmetric")
         sk = skeletonize(im) > 0
         sk = extract_subsection(sk, shape)
         return sk
@@ -761,34 +754,39 @@ def skeletonize_magnet2(im):
         shape = np.array(im.shape)  # Save for later
         dt3D = edt(im)
         # Tidy-up image so skeleton is clean
-        im2 = fill_invalid_pores(im, conn='max')
-        im2 = trim_floating_solid(im2, conn='min')
+        im2 = fill_invalid_pores(im, conn="max")
+        im2 = trim_floating_solid(im2, conn="min")
         # Add one layer to outside where holes will be defined
-        im2 = np.pad(im2, 1, mode='edge')
+        im2 = np.pad(im2, 1, mode="edge")
         # This is needed for later since numpy is getting harder and harder to
         # deal with using indexing
         inds = np.arange(im2.size).reshape(im2.shape)
         # strel = ps_rect(w=1, ndim=2)  # This defines the hole size
         # Extract skeleton of each face, find junctions, and put holes on outer
         # layer of im2 at each one
-        for face in [(0, 1), (0, im2.shape[0]),
-                     (1, 1), (1, im2.shape[1]),
-                     (2, 1), (2, im2.shape[2])]:
+        for face in [
+            (0, 1),
+            (0, im2.shape[0]),
+            (1, 1),
+            (1, im2.shape[1]),
+            (2, 1),
+            (2, im2.shape[2]),
+        ]:
             s = []
             for ax in range(im2.ndim):
                 if face[0] == ax:
-                    s.append(slice(face[1]-1, face[1]))
+                    s.append(slice(face[1] - 1, face[1]))
                 else:
                     s.append(slice(0, im2.shape[ax]))
             im_face = im[tuple(s)].squeeze()
             dt = spim.gaussian_filter(dt3D[tuple(s)].squeeze(), sigma=0.4)
-            peaks = im_face*(spim.maximum_filter(dt, size=5) == dt)
+            peaks = im_face * (spim.maximum_filter(dt, size=5) == dt)
             # # Dilate junctions and endpoints to create larger 'thru-holes'
             # juncs_dil = spim.binary_dilation(peaks, strel)
             # Insert image of holes onto corresponding face of im2
             np.put(im2, inds[tuple(s)].flatten(), peaks.flatten())
         # Extend the faces to convert holes into tunnels
-        im2 = np.pad(im2, 20, mode='edge')
+        im2 = np.pad(im2, 20, mode="edge")
         # Perform skeletonization
         sk = skeletonize(im2) > 0
         # Extract the original 'center' of the image prior to padding
@@ -817,19 +815,19 @@ def partition_skeleton(sk, juncs, dt):
         the labelled clusters of connected voxels.
     """
     strel = ps_rect(3, sk.ndim)
-    labels = spim.label(sk*~juncs, structure=strel)[0]
+    labels = spim.label(sk * ~juncs, structure=strel)[0]
     sizes = region_size(labels)
     # Add voxels from skeleton to junctions if they are too close to each other
     if isinstance(dt, (int, float)):  # If dt is a scalar, use hard threshold
-        juncs += (sizes <= dt)*(labels > 0)
+        juncs += (sizes <= dt) * (labels > 0)
     else:  # If dt is proper dt, threshold each voxel specifically
         # Division by root(ndim) limits range since size of cluster is not quite
         # equal to distance between end points since size does not account for
         # diagonally oriented or windy segements.
-        dists = flood_func(dt, np.amin, labels=labels) / (sk.ndim)**0.5
-        juncs += (sizes <= dists)*(labels > 0)
+        dists = flood_func(dt, np.amin, labels=labels) / (sk.ndim) ** 0.5
+        juncs += (sizes <= dists) * (labels > 0)
     # Label the surviving pieces of skeleton as throats
-    throats = spim.label(sk*~juncs, structure=strel)[0]
+    throats = spim.label(sk * ~juncs, structure=strel)[0]
     pores = spim.label(juncs, structure=strel)[0]
     return pores, throats
 
@@ -838,10 +836,10 @@ def sk_to_network(pores, throats, dt):
     # Find conns
     dil = spim.binary_dilation(pores > 0, structure=ps_rect(w=3, ndim=pores.ndim))
     pores = flood_func(pores, np.amax, spim.label(dil)[0]).astype(int)
-    joints = (throats > 0)*(pores > 0)
+    joints = (throats > 0) * (pores > 0)
     pts = np.where(joints)
-    P1 = np.inf*np.ones(pts[0].size)
-    P2 = -np.inf*np.ones(pts[0].size)
+    P1 = np.inf * np.ones(pts[0].size)
+    P2 = -np.inf * np.ones(pts[0].size)
     np.minimum.at(P1, throats[pts], pores[pts])
     np.maximum.at(P2, throats[pts], pores[pts])
     mask = np.isfinite(P1) * np.isfinite(P2)
@@ -863,13 +861,12 @@ def sk_to_network(pores, throats, dt):
         index[i] = im_ind[s][dt[s] == Pradii[i]][0]
     coords = np.vstack(np.unravel_index(index, dt.shape)).T
     if dt.ndim == 2:
-        coords = np.vstack(
-            (coords[:, 0], coords[:, 1], np.zeros_like(coords[:, 0]))).T
+        coords = np.vstack((coords[:, 0], coords[:, 1], np.zeros_like(coords[:, 0]))).T
     d = {}
-    d['pore.coords'] = coords
-    d['throat.conns'] = conns
-    d['throat.diameter'] = 2*Tradii
-    d['pore.diameter'] = 2*Pradii
+    d["pore.coords"] = coords
+    d["throat.conns"] = conns
+    d["throat.diameter"] = 2 * Tradii
+    d["pore.diameter"] = 2 * Pradii
     return d
 
 
@@ -889,12 +886,14 @@ def _check_skeleton_health(sk):
         detected a warning is triggered.
     """
     sk = np.pad(sk, 1)  # pad by 1 void voxel to avoid false warning
-    _, N = spim.label(input=~sk.astype('bool'))
+    _, N = spim.label(input=~sk.astype("bool"))
     N_shells = N - 1
     if N_shells > 0:
-        logger.warning(f"{N_shells} shells were detected in the skeleton. "
-                       "Trim floating solids using: "
-                       "porespy.filters.trim_floating_solid()")
+        logger.warning(
+            f"{N_shells} shells were detected in the skeleton. "
+            "Trim floating solids using: "
+            "porespy.filters.trim_floating_solid()"
+        )
 
     return N_shells
 
@@ -948,7 +947,7 @@ def _get_normal(sk, throats):
                 else:
                     x = coord[:, 0] + i
                     y = coord[:, 1] + j
-                    coords = np.array([x-1, y-1]).T
+                    coords = np.array([x - 1, y - 1]).T
                     is_1st = sk_pad[x, y] * mask  # first neighbour
                     neighbour_coords[:, 0, :][is_1st] = coords[is_1st]
                     is_2nd = sk_pad[x, y] * (~mask)  # second neighbour
@@ -965,7 +964,7 @@ def _get_normal(sk, throats):
                         x = coord[:, 0] + i
                         y = coord[:, 1] + j
                         z = coord[:, 2] + k
-                        coords = np.array([x-1, y-1, z-1]).T
+                        coords = np.array([x - 1, y - 1, z - 1]).T
                         is_1st = sk_pad[x, y, z] * mask  # first neighbour
                         neighbour_coords[:, 0, :][is_1st] = coords[is_1st]
                         is_2nd = sk_pad[x, y, z] * (~mask)  # second neighbour
@@ -976,7 +975,7 @@ def _get_normal(sk, throats):
     n = np.diff(neighbour_coords, axis=1).reshape((n_throat_nodes, sk.ndim))
     # make normal a unit normal
     norm = np.linalg.norm(n, axis=1).reshape(n_throat_nodes, 1)
-    n = n/norm
+    n = n / norm
     coord -= 1
 
     return n, coord
@@ -1004,13 +1003,13 @@ def _cartesian_to_spherical(n):
     x = n[:, 0]
     y = n[:, 1]
     theta = np.arctan2(y, x)  # arctan2 is from 0 to pi
-    theta[theta < 0] += 2*np.pi  # make range from 0 to 2*pi
+    theta[theta < 0] += 2 * np.pi  # make range from 0 to 2*pi
     if n.shape[1] == 3:
         z = n[:, 2]
         r = np.sqrt(x**2 + y**2 + z**2)
-        phi = np.arccos(z/r)  # arccos is from 0 to pi
+        phi = np.arccos(z / r)  # arccos is from 0 to pi
     else:
-        phi = np.pi/2  # if 2D assume z = 0 plane
+        phi = np.pi / 2  # if 2D assume z = 0 plane
     angles = np.zeros((n.shape[0], 2))
     angles[:, 0] = theta
     angles[:, 1] = phi
@@ -1066,16 +1065,16 @@ def _walk_jit(im, path, step_size, n_walkers_total, max_n_steps):
     while i < n_walkers_total:
         i += 100
         # retrieve old coords
-        x_old = path[step-1, :, 1]
-        y_old = path[step-1, :, 2]
-        z_old = path[step-1, :, 3]
+        x_old = path[step - 1, :, 1]
+        y_old = path[step - 1, :, 2]
+        z_old = path[step - 1, :, 3]
         # get x, y, z
         # round, take integer, and clip in case step_size > 1
         # add one for padding
-        x = np.round(x_old+1).astype(np.int64).clip(0, im.shape[0]-1)
-        y = np.round(y_old+1).astype(np.int64).clip(0, im.shape[1]-1)
+        x = np.round(x_old + 1).astype(np.int64).clip(0, im.shape[0] - 1)
+        y = np.round(y_old + 1).astype(np.int64).clip(0, im.shape[1] - 1)
         if im.ndim == 3:
-            z = np.round(z_old+1).astype(np.int64).clip(0, im.shape[2]-1)
+            z = np.round(z_old + 1).astype(np.int64).clip(0, im.shape[2] - 1)
         # check if void
         # cannot use advanced indexing with numba
         for j in range(len(x)):
@@ -1084,22 +1083,22 @@ def _walk_jit(im, path, step_size, n_walkers_total, max_n_steps):
             else:
                 is_void[j] = im[x[j], y[j], z[j]]
         # calculate step in each direction
-        delta_x = r*np.sin(path[step-1, :, 5])*np.cos(path[step-1, :, 4])
-        delta_y = r*np.sin(path[step-1, :, 5])*np.sin(path[step-1, :, 4])
-        delta_z = r*np.cos(path[step-1, :, 5])
+        delta_x = r * np.sin(path[step - 1, :, 5]) * np.cos(path[step - 1, :, 4])
+        delta_y = r * np.sin(path[step - 1, :, 5]) * np.sin(path[step - 1, :, 4])
+        delta_z = r * np.cos(path[step - 1, :, 5])
         # calculate new coords
         x_new = delta_x + x_old
         y_new = delta_y + y_old
         z_new = delta_z + z_old
         # create a new row in rw...
-        new_step = np.zeros_like(path[step-1:, :, :])
-        new_step[0, :, :] = path[step-1, :, :].copy()
+        new_step = np.zeros_like(path[step - 1 :, :, :])
+        new_step[0, :, :] = path[step - 1, :, :].copy()
         new_step[0, :, 1][is_void] = x_new[is_void]
         new_step[0, :, 2][is_void] = y_new[is_void]
         new_step[0, :, 3][is_void] = z_new[is_void]
         path = np.vstack((path, new_step))
         if step == max_n_steps:
-            print('Maximum number of steps reached, ending walk')
+            print("Maximum number of steps reached, ending walk")
             break
         # update step counter
         step += 1
@@ -1109,12 +1108,7 @@ def _walk_jit(im, path, step_size, n_walkers_total, max_n_steps):
     return path
 
 
-def walk(im,
-         normals,
-         coords,
-         n_walkers,
-         step_size=0.5,
-         max_n_steps=None):
+def walk(im, normals, coords, n_walkers, step_size=0.5, max_n_steps=None):
     r"""
     Performs walk out to solid
 
@@ -1167,8 +1161,8 @@ def walk(im,
     # build 'path' array for walkers
     n_throat_nodes = coords.shape[0]
     path = np.zeros((1, n_throat_nodes, 6))  # label, x, y, z, theta, phi
-    path[0, :, 0] = np.arange(1, n_throat_nodes+1)
-    path[0, :, 1:(im.ndim+1)] = coords
+    path[0, :, 0] = np.arange(1, n_throat_nodes + 1)
+    path[0, :, 1 : (im.ndim + 1)] = coords
     # duplicate path by n_walkers along second axis
     path = np.tile(path, (1, n_walkers, 1))
     # get theta and phi of normals
@@ -1178,17 +1172,17 @@ def walk(im,
     for w in range(n_walkers):
         if im.ndim == 2:
             # In 2d we have two walkers: (theta + pi/2) and (theta - pi/2)
-            theta = angles[:, 0] + (-1)**w*np.pi/2
+            theta = angles[:, 0] + (-1) ** w * np.pi / 2
             phi = angles[:, 1]
         if im.ndim == 3:
-            theta = w/n_walkers*2*np.pi
+            theta = w / n_walkers * 2 * np.pi
             # take dot product with normal to get phi2
-            phi = np.arctan(-1/np.tan(phin)/np.cos(thetan-theta))
-            phi[phin == 0] = np.pi/2  # b/c tan(0) is zero
+            phi = np.arctan(-1 / np.tan(phin) / np.cos(thetan - theta))
+            phi[phin == 0] = np.pi / 2  # b/c tan(0) is zero
             phi[phi < 0] += np.pi  # fix so phi is from 0 to pi
         # add theta and phi to path for walker w
-        path[0, n_throat_nodes*w:n_throat_nodes*(w+1), 4] = theta
-        path[0, n_throat_nodes*w:n_throat_nodes*(w+1), 5] = phi
+        path[0, n_throat_nodes * w : n_throat_nodes * (w + 1), 4] = theta
+        path[0, n_throat_nodes * w : n_throat_nodes * (w + 1), 5] = phi
     # start walk
     i = 0  # initialize count of walkers reaching solid
     # if step_size is array it MUST be dt, pad dt
@@ -1203,14 +1197,14 @@ def walk(im,
     n_walkers_total = n_throat_nodes * n_walkers
     while i < n_walkers_total:
         # retrieve old coords
-        x_old = path[step-1, :, 1]
-        y_old = path[step-1, :, 2]
-        z_old = path[step-1, :, 3]
+        x_old = path[step - 1, :, 1]
+        y_old = path[step - 1, :, 2]
+        z_old = path[step - 1, :, 3]
         # get x, y, z
         # round, take integer, and clip in case step_size > 1
-        x = np.round(x_old+1).astype(int).clip(0, im_pad.shape[0]-1)
-        y = np.round(y_old+1).astype(int).clip(0, im_pad.shape[1]-1)
-        z = np.round(z_old+1).astype(int).clip(0, im_pad.shape[-1]-1)
+        x = np.round(x_old + 1).astype(int).clip(0, im_pad.shape[0] - 1)
+        y = np.round(y_old + 1).astype(int).clip(0, im_pad.shape[1] - 1)
+        z = np.round(z_old + 1).astype(int).clip(0, im_pad.shape[-1] - 1)
         # check if void, add one for padding
         if im.ndim == 2:
             is_void = im_pad[x, y]
@@ -1219,26 +1213,26 @@ def walk(im,
         # overwrite r with dt values if using adaptive stepping
         if isinstance(step_size, np.ndarray):
             if im.ndim == 2:
-                r = dt[x, y]*0.9
+                r = dt[x, y] * 0.9
             else:
-                r = dt[x, y, z]*0.9
+                r = dt[x, y, z] * 0.9
         # calculate step in each direction
-        delta_x = r*np.sin(path[step-1, :, 5])*np.cos(path[step-1, :, 4])
-        delta_y = r*np.sin(path[step-1, :, 5])*np.sin(path[step-1, :, 4])
-        delta_z = r*np.cos(path[step-1, :, 5])
+        delta_x = r * np.sin(path[step - 1, :, 5]) * np.cos(path[step - 1, :, 4])
+        delta_y = r * np.sin(path[step - 1, :, 5]) * np.sin(path[step - 1, :, 4])
+        delta_z = r * np.cos(path[step - 1, :, 5])
         # calculate new coords
         x_new = delta_x + x_old
         y_new = delta_y + y_old
         z_new = delta_z + z_old
         # create a new row in rw...
-        new_step = np.zeros_like(path[step-1:, :, :])
-        new_step[0, :, :] = path[step-1, :, :].copy()
+        new_step = np.zeros_like(path[step - 1 :, :, :])
+        new_step[0, :, :] = path[step - 1, :, :].copy()
         new_step[0, :, 1][is_void] = x_new[is_void]
         new_step[0, :, 2][is_void] = y_new[is_void]
         new_step[0, :, 3][is_void] = z_new[is_void]
         path = np.vstack((path, new_step))
         if step == max_n_steps:
-            print('Maximum number of steps reached, ending walk')
+            print("Maximum number of steps reached, ending walk")
             break
         # update step counter
         step += 1
@@ -1248,13 +1242,9 @@ def walk(im,
     return path
 
 
-def get_throat_area(im,
-                    sk,
-                    throats,
-                    voxel_size=1,
-                    n_walkers=10,
-                    step_size=0.5,
-                    max_n_steps=None):
+def get_throat_area(
+    im, sk, throats, voxel_size=1, n_walkers=10, step_size=0.5, max_n_steps=None
+):
     r"""
     This function returns the cross-sectional acrea of throats.
 
@@ -1313,16 +1303,16 @@ def get_throat_area(im,
     # perform walk
     path = walk(im, normals, coords, n_walkers, step_size, max_n_steps)
     # sort array by throat label again
-    ind = np.argsort(path[0, :, 0], kind='stable')
+    ind = np.argsort(path[0, :, 0], kind="stable")
     path = path[:, ind, :]
     # calculate throat area
     throat_area = np.zeros_like(throats, dtype=float)
     # number of throats
     n_throat_nodes = np.sum(throats > 0)
     for n in range(n_throat_nodes):
-        coord1 = path[-1, n*n_walkers:(n+1)*n_walkers, 1:4]
-        coord2 = path[0, n*n_walkers:(n+1)*n_walkers, 1:4]
-        r = np.sum((coord1 - coord2)**2, axis=1)**(1/2)
+        coord1 = path[-1, n * n_walkers : (n + 1) * n_walkers, 1:4]
+        coord2 = path[0, n * n_walkers : (n + 1) * n_walkers, 1:4]
+        r = np.sum((coord1 - coord2) ** 2, axis=1) ** (1 / 2)
         if im.ndim == 2:
             area = r[0] + r[1]  # cross-section length is area in 2D
             x, y, z = coord2[0].astype(int)
@@ -1330,8 +1320,8 @@ def get_throat_area(im,
         else:
             r1 = r
             r2 = np.roll(r1, 1)
-            angle = 2*np.pi/n_walkers
-            area = np.sum(r1*r2*np.sin(angle)/2)
+            angle = 2 * np.pi / n_walkers
+            area = np.sum(r1 * r2 * np.sin(angle) / 2)
             x, y, z = coord2[0].astype(int)
             throat_area[x, y, z] = area * voxel_size**2
 

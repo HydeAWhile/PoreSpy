@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.ndimage as spim
 from GenericTest import GenericTest
-from skimage.morphology import square
+from skimage.morphology import footprint_rectangle
 
 import porespy as ps
 from porespy.tools import get_edt
@@ -39,7 +39,7 @@ class IBIPTest(GenericTest):
         im[tuple(crds)] = False
         crds = ps.generators.line_segment([30, 64], [49, 80])
         im[tuple(crds)] = False
-        im = ~spim.binary_dilation(~im, structure=square(3))
+        im = ~spim.binary_dilation(~im, structure=footprint_rectangle((3, 3)))
         return im
 
     def test_ibip_equals_qbip(self):

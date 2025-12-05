@@ -1171,13 +1171,13 @@ def randomize_colors(im, keep_vals=[0]):
     '''
     im_flat = im.flatten()
     keep_vals = np.array(keep_vals)
-    swap_vals = ~np.in1d(im_flat, keep_vals)
+    swap_vals = ~np.isin(im_flat, keep_vals)
     im_vals = np.unique(im_flat[swap_vals])
     new_vals = np.random.permutation(im_vals)
     im_map = np.zeros(shape=[np.amax(im_vals) + 1, ], dtype=int)
     im_map[im_vals] = new_vals
     im_new = im_map[im_flat]
-    im_new = np.reshape(im_new, newshape=np.shape(im))
+    im_new = np.reshape(im_new, shape=np.shape(im))
     return im_new
 
 

@@ -1,6 +1,6 @@
 [project]
 name = "porespy"
-version = "3.0.2"
+version = "3.0.2-dev1"
 description = "A set of tools for analyzing 3D images of porous materials"
 authors = [{ name = "PoreSpy Team", email = "jgostick@gmail.com" }]
 maintainers = [
@@ -32,25 +32,28 @@ dependencies = [
     "pandas",
     "psutil",
     "rich",
-    "scikit-image",
+    "scikit-image>=0.25.0",
     "scipy",
     "tqdm",
     "setuptools",
-    "trimesh>=4.5.3",
-    "pyevtk>=1.6.0",
     "matplotlib-inline>=0.1.7",
-    "numpy-stl>=3.2.0",
-    "imageio>=2.37.0",
-    "nanomesh>=0.9.1",
-    "pywavelets>=1.8.0",
-    "matplotlib-inline",
     "tomli>=2.2.1",
 ]
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.14"
 
 [project.optional-dependencies]
-extras = ["scikit-learn", "openpnm", "pandoc>=2.4"]
+extras = [
+    "scikit-learn",
+    "openpnm",
+    "trimesh",
+    "pyevtk",
+    "numpy-stl",
+    "imageio",
+    "nanomesh",
+    "pywavelets",
+    "pandoc>=2.4",
+]
 
 [project.urls]
 Homepage = "https://porespy.org"
@@ -237,7 +240,7 @@ path = "src/porespy/__version__.py"
 packages = ["src/porespy"]
 
 [tool.bumpversion]
-current_version = "3.0.2"
+current_version = "3.0.2-dev1"
 parse = """(?x)
     (?P<major>0|[1-9]\\d*)\\.
     (?P<minor>0|[1-9]\\d*)\\.
@@ -262,7 +265,7 @@ tag_name = "v{new_major}.{new_minor}.{new_patch}"
 tag_message = "Bump version: {current_version} → {new_version}"
 allow_dirty = false
 commit = true
-message = "Bump version: {current_version} → {new_version} [no ci]"
+message = "maint: bump version: {current_version} → {new_version} [skip bump]"
 commit_args = ""
 
 [tool.bumpversion.parts.pre_l]

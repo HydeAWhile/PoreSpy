@@ -5,7 +5,7 @@ from typing import Literal
 import numpy as np
 import numpy.typing as npt
 from numba import njit, prange
-from skimage.morphology import ball, cube, disk, square
+from skimage.morphology import ball, disk, footprint_rectangle
 
 from porespy.tools import (
     _insert_disk_at_points,
@@ -18,7 +18,10 @@ from porespy.tools import (
 edt = get_edt()
 tqdm = get_tqdm()
 logger = logging.getLogger(__name__)
-strel = {2: {'min': disk(1), 'max': square(3)}, 3: {'min': ball(1), 'max': cube(3)}}
+strel = {
+    2: {'min': disk(1), 'max': footprint_rectangle((3, 3))},
+    3: {'min': ball(1), 'max': footprint_rectangle((3, 3, 3))}
+}
 
 __all__ = [
     "local_thickness_bf",

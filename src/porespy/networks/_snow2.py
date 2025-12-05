@@ -258,7 +258,7 @@ def snow2(
         W = boundary_width.flatten()
         L = ['xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax'][:phases.ndim*2]
         L = [L[i]*int(W[i] > 0) for i in range(len(L))]
-        L = np.reshape(L, newshape=boundary_width.shape)
+        L = np.reshape(L, shape=boundary_width.shape)
         net = label_boundaries(net, labels=L)
     result = Results()
     result.network = net
