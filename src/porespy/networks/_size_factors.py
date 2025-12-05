@@ -307,8 +307,8 @@ def _calc_bound_box_bi(regions, pore_1, pore_2):
         x_min, y_min, z_min, x_max, y_max, z_max.
 
     """
-    slice_x, slice_y, slice_z = spim.find_objects(regions == pore_1 + 1)[0]
-    slice_x2, slice_y2, slice_z2 = spim.find_objects(regions == pore_2 + 1)[0]
+    slice_x, slice_y, slice_z = spim.find_objects((regions == pore_1 + 1).astype(int))[0]
+    slice_x2, slice_y2, slice_z2 = spim.find_objects((regions == pore_2 + 1).astype(int))[0]
     min_box = [
         min(slice_x.start, slice_x2.start),
         min(slice_y.start, slice_y2.start),

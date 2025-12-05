@@ -24,7 +24,7 @@ class FilterTest():
     def test_im_in_not_im_out(self):
         im = self.im[:, :, 50]
         for item in ps.filters.__dir__():
-            if ~item.startswith('__'):
+            if not item.startswith('__'):
                 temp = getattr(ps.filters, item)
                 assert temp is not im
 
@@ -55,7 +55,7 @@ class FilterTest():
     def test_porosimetry_with_sizes(self):
         s = np.logspace(0.01, 0.6, 5)
         mip = ps.filters.porosimetry(im=self.im, sizes=s)
-        assert np.all(np.in1d(np.unique(mip)[1:], s))
+        assert np.all(np.isin(np.unique(mip)[1:], s))
 
     def test_apply_chords_axis0(self):
         c = ps.filters.apply_chords(im=self.im, spacing=3, axis=0)

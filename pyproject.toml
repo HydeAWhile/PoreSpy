@@ -32,25 +32,28 @@ dependencies = [
     "pandas",
     "psutil",
     "rich",
-    "scikit-image",
+    "scikit-image>=0.25.0",
     "scipy",
     "tqdm",
     "setuptools",
-    "trimesh>=4.5.3",
-    "pyevtk>=1.6.0",
     "matplotlib-inline>=0.1.7",
-    "numpy-stl>=3.2.0",
-    "imageio>=2.37.0",
-    "nanomesh>=0.9.1",
-    "pywavelets>=1.8.0",
-    "matplotlib-inline",
     "tomli>=2.2.1",
 ]
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.14"
 
 [project.optional-dependencies]
-extras = ["scikit-learn", "openpnm", "pandoc>=2.4"]
+extras = [
+    "scikit-learn",
+    "openpnm",
+    "trimesh",
+    "pyevtk",
+    "numpy-stl",
+    "imageio",
+    "nanomesh",
+    "pywavelets",
+    "pandoc>=2.4",
+]
 
 [project.urls]
 Homepage = "https://porespy.org"

@@ -6,7 +6,7 @@ import numpy as np
 import scipy.ndimage as spim
 import scipy.spatial as sptl
 from numba import njit, prange
-from skimage.morphology import cube, square
+from skimage.morphology import footprint_rectangle
 from skimage.segmentation import watershed
 
 from porespy.tools import (
@@ -377,11 +377,8 @@ def reduce_peaks(peaks):
     to view online example.
 
     """
-    if peaks.ndim == 2:
-        strel = square
-    else:
-        strel = cube
-    markers, N = spim.label(input=peaks, structure=strel(3))
+    strel = footprint_rectangle((3,) * peaks.ndim)
+    markers, N = spim.label(input=peaks, structure=strel)
     inds = spim.center_of_mass(
         input=peaks, labels=markers, index=np.arange(1, N + 1)
     )
@@ -428,10 +425,7 @@ def trim_saddle_points(peaks, dt, maxiter=20):
 
     """
     new_peaks = np.zeros_like(peaks, dtype=bool)
-    if dt.ndim == 2:
-        from skimage.morphology import square as cube
-    else:
-        from skimage.morphology import cube
+    strel = footprint_rectangle((3,) * dt.ndim)
     labels, N = spim.label(peaks > 0)
     slices = spim.find_objects(labels)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -443,7 +437,7 @@ def trim_saddle_points(peaks, dt, maxiter=20):
         iters = 0
         while iters < maxiter:
             iters += 1
-            peaks_dil = spim.binary_dilation(input=peaks_i, structure=cube(3))
+            peaks_dil = spim.binary_dilation(input=peaks_i, structure=strel)
             peaks_max = peaks_dil * np.amax(dt_i * peaks_dil)
             peaks_extended = (peaks_max == dt_i) * im_i
             if np.all(peaks_extended == peaks_i):
@@ -503,10 +497,7 @@ def trim_saddle_points_legacy(peaks, dt, maxiter=10):
     to view online example.
     """
     new_peaks = np.zeros_like(peaks, dtype=bool)
-    if dt.ndim == 2:
-        from skimage.morphology import square as cube
-    else:
-        from skimage.morphology import cube
+    strel = footprint_rectangle((3,) * dt.ndim)
     labels, N = spim.label(peaks > 0)
     slices = spim.find_objects(labels)
     desc = inspect.currentframe().f_code.co_name  # Get current func name
@@ -518,7 +509,7 @@ def trim_saddle_points_legacy(peaks, dt, maxiter=10):
         iters = 0
         while iters < maxiter:
             iters += 1
-            peaks_dil = spim.binary_dilation(input=peaks_i, structure=cube(3))
+            peaks_dil = spim.binary_dilation(input=peaks_i, structure=strel)
             peaks_max = peaks_dil * np.amax(dt_i * peaks_dil)
             peaks_extended = (peaks_max == dt_i) * im_i
             if np.all(peaks_extended == peaks_i):
@@ -586,12 +577,8 @@ def trim_nearby_peaks(peaks, dt, f=1):
     to view online example.
 
     """
-    if dt.ndim == 2:
-        from skimage.morphology import square as cube
-    else:
-        from skimage.morphology import cube
-
-    labels, N = spim.label(peaks > 0, structure=cube(3))
+    strel = footprint_rectangle((3,) * dt.ndim)
+    labels, N = spim.label(peaks > 0, structure=strel)
     crds = spim.center_of_mass(peaks > 0, labels=labels, index=np.arange(1, N + 1))
     try:
         crds = np.vstack(crds).astype(int)  # Convert to numpy array of ints
