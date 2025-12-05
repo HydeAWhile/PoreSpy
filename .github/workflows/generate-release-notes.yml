@@ -1,9 +1,10 @@
 name: Release Notes
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - release
+    tags:
+      - "v*"
 
 jobs:
   build:
@@ -14,10 +15,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0 # Retrieve entire history of refs/tags
+          fetch-depth: 0
 
-      - name: get-recent-tag
-        id: get-recent-tag
+      - name: Generate changelog
+        id: changelog
         run: |
           git fetch --all --tags --force
           chmod +x .github/workflows/logger.sh
@@ -27,12 +28,10 @@ jobs:
           echo "TAG=$(get_most_recent_tag)" >> $GITHUB_OUTPUT
 
       - name: Create GitHub release
-        uses: Roang-zero1/github-create-release-action@v3
-        with:
-          version_regex: ^v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+
-          create_draft: true
-          created_tag: ${{ steps.get-recent-tag.outputs.TAG }}
-          update_existing: false
-          release_title: ${{ steps.get-recent-tag.outputs.TAG }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.changelog.outputs.TAG }}" \
+            --title "${{ steps.changelog.outputs.TAG }}" \
+            --notes-file CHANGELOG.md \
+            --draft
