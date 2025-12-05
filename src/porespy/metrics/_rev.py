@@ -21,7 +21,6 @@ __all__ = [
 
 
 logger = logging.getLogger()
-logger.setLevel(50)
 tqdm = get_tqdm()
 
 
