@@ -12,6 +12,19 @@ modules, occasionally with basic embedded examples on how to use them.
 
 """
 
+import logging
+from pathlib import Path
+
+from rich.logging import RichHandler
+
+FORMAT = "%(message)s"
+logging.basicConfig(
+    format=FORMAT, datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)]
+)
+
+logger = logging.getLogger("porespy")
+
+
 from . import tools
 from . import filters
 from . import metrics
