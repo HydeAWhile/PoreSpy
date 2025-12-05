@@ -51,7 +51,7 @@ if _pyproject.exists():
     with open(_pyproject, "rb") as f:
         data = _toml.load(f)
         __version__ = data["project"]["version"]
-        logger.error("Loaded version from pyproject.toml")
+        logger.debug("Loaded version from pyproject.toml")
 else:
     __version__ = _metadata.version(__package__ or __name__)
-    logger.error("Loaded version from importlib.metadata")
+    logger.debug("Loaded version from importlib.metadata")
