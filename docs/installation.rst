@@ -20,6 +20,8 @@ When using ``uv`` we recommend `VSCode <https://code.visualstudio.com/>`_ as the
 
 PoreSpy is also available via the `conda <https://docs.conda.io/en/latest/>`_ package manager. If you prefer to use ``conda``, you can install PoreSpy by running the following command in your terminal or command prompt:
 
+.. code-block:: bash
+
    $ conda install conda-forge::porespy
 
 Installing the ``dev`` version
