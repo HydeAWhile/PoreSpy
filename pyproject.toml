@@ -25,7 +25,7 @@ classifiers = [
 dependencies = [
     "dask",
     "deprecated",
-    "edt",
+    "edt<3.1",
     "matplotlib",
     "numba",
     "numpy",
