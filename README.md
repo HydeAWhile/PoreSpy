@@ -62,6 +62,9 @@ in **PoreSpy** that are implemented natively, but only when necessary.
 
 # Installation
 
+> [!NOTE]
+> We no longer support macOS on x86_64 (Intel) systems. A few dependencies—`triangle` among them—are no longer maintained there, and that breaks our build. These packages are mostly optional, though, so if you need PoreSpy on that platform, you can still build it from source.
+
 For detailed and up to date installation instructions, [see here](https://porespy.org/installation.html)
 
 # Contributing

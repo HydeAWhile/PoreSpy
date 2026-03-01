@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
-        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - name: Checkout code
@@ -49,7 +49,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
-        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - name: Install uv
@@ -60,7 +60,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install PoreSpy from PyPI
-        run: uv pip install porespy[extras] pytest pytest-cov
-
-      - name: Run tests
-        run: uv run pytest -v
+        run: |
+          uv venv
+          uv pip install porespy[extras] pytest pytest-cov
+          uv run python -c "import porespy; print(porespy.__version__)"
