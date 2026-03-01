@@ -7,7 +7,7 @@
 [![Tests](https://github.com/PMEAL/porespy/actions/workflows/run-tests.yml/badge.svg?branch=dev)](https://github.com/PMEAL/porespy/actions/workflows/run-tests.yml)
 [![Examples](https://github.com/PMEAL/porespy/actions/workflows/run-examples.yml/badge.svg?branch=dev)](https://github.com/PMEAL/porespy/actions/workflows/run-examples.yml)
 
-# What is PoreSpy?
+# Overview
 
 **PoreSpy** is a collection of image analysis tools used to extract
 information from 3D images of porous materials (typically obtained from
