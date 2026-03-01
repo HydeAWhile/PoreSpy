@@ -8,6 +8,72 @@ __all__ = [
 
 
 def gyroid(shape, method='schoen', skew=0.5, phi=0.5):
+    r"""
+    Generate a boolean image of a triply periodic minimal surface (TPMS).
+
+    One full period of the selected surface is mapped onto a cubic domain of
+    ``shape`` voxels per side. The surface field is thresholded to produce a
+    solid phase, with the band centre and half-width controlled by ``skew``
+    and ``phi`` respectively.
+
+    Parameters
+    ----------
+    shape : int
+        Number of voxels along each side of the cubic output array. The output
+        shape is ``(shape, shape, shape)``.
+    method : str, optional
+        The TPMS geometry to generate. Options are:
+
+        ============  ==========================================================
+        Value         Surface
+        ============  ==========================================================
+        ``'schoen'``  Schoen Gyroid (default)
+        ``'primitive'`` Schwartz Primitive (P surface)
+        ``'diamond'`` Schwartz Diamond (D surface)
+        ``'diagonal'`` Diagonal surface
+        ``'diamond2'`` Diamond variant (second form)
+        ``'lidinoid'`` Lidinoid
+        ``'split-p'`` Split-P
+        ``'neovius'`` Neovius
+        ``'FKS'``     Fischer–Koch S surface
+        ``'FRD'``     F-RD surface
+        ``'pw-hybrid'`` PW-Hybrid
+        ``'iWP'``     Schoen I-WP
+        ============  ==========================================================
+
+    skew : float, optional
+        Centre of the isovalue band used for thresholding the TPMS field.
+        Shifting this value moves the solid phase toward higher or lower field
+        values, effectively skewing which region of the surface is selected.
+        Default is 0.5.
+    phi : float, optional
+        Half-width of the isovalue band. Voxels are set to ``True`` where
+        ``skew - phi < v < skew + phi``. Larger values produce a thicker solid
+        phase and lower porosity. Default is 0.5.
+
+    Returns
+    -------
+    im : ndarray of bool
+        A 3-D boolean array of shape ``(shape, shape, shape)`` where ``True``
+        indicates the solid phase defined by the TPMS level set.
+
+    Notes
+    -----
+    The TPMS field ``v`` is evaluated on a regular grid spanning
+    :math:`[0, 2\pi]` in each direction (one full unit cell). The solid phase
+    is the set of voxels satisfying :math:`\text{skew} - \phi < v <
+    \text{skew} + \phi`.
+
+    Examples
+    --------
+    Generate a 100-voxel gyroid image:
+
+    >>> import porespy as ps
+    >>> im = gyroid(shape=100, method='schoen', phi=0.5)
+    >>> im.shape
+    (100, 100, 100)
+
+    """
     step = np.linspace(0, 2*np.pi, shape)
     x, y, z = np.meshgrid(step, step, step)
 
@@ -57,6 +123,44 @@ def gyroid(shape, method='schoen', skew=0.5, phi=0.5):
 
 
 def tile(im, n, mode='periodic'):
+    r"""
+    Tile a TPMS image to create a larger domain.
+
+    Parameters
+    ----------
+    im : ndarray
+        The 3-D boolean image to tile, typically produced by `gyroid`.
+    n : int or sequence of int
+        Number of repetitions along each axis. A single integer tiles equally
+        in all directions; a sequence (e.g. ``(3, 3, 1)``) tiles each axis
+        independently.
+    mode : str, optional
+        Tiling strategy. Options are:
+
+        ============  =========================================================
+        Value         Behaviour
+        ============  =========================================================
+        ``'periodic'`` Repeat the image using simple copy (default).
+        ``'reflect'``  Mirror the image at each boundary so that features meet
+                       smoothly across tile edges.
+        ============  =========================================================
+
+    Returns
+    -------
+    im2 : ndarray
+        Tiled boolean array. Its shape along each axis is
+        ``im.shape[i] * n[i]``.
+
+    Examples
+    --------
+    Generate one gyroid unit cell and tile it 3x3 in-plane:
+
+    >>> im = gyroid(shape=100)
+    >>> im2 = tile(im, n=(3, 3, 1), mode='periodic')
+    >>> im2.shape
+    (300, 300, 100)
+
+    """
     if mode == 'periodic':
         im2 = np.tile(im, n)
     elif mode == 'reflect':
