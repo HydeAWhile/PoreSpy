@@ -1,6 +1,5 @@
 import numpy as np
 import pyvista as pv
-import open3d as o3d
 import scipy.ndimage as spim
 import skimage.measure as ms
 from porespy.tools import sanitize_filename
@@ -244,6 +243,11 @@ def voxels_to_stl(
     mesh : open3d.geometry.TriangleMesh
         The resulting mesh.
     """
+    try:
+        import open3d as o3d
+    except ImportError:
+            raise ImportError('open3d must be installed to use this function, which requires Python<=3.12')
+    
     # Get initial mesh
     verts, faces, normals, values = ms.marching_cubes(voxel_array)
 

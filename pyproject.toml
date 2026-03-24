@@ -38,7 +38,6 @@ dependencies = [
     "setuptools",
     "matplotlib-inline>=0.1.7",
     "tomli>=2.2.1",
-    "open3d>=0.19.0",
     "pyevtk>=1.6.0",
 ]
 readme = "README.md"

@@ -72,7 +72,7 @@ def to_vtk(im, filename, divide=False, downsample=False, voxel_size=1, vox=False
         files, divided at z = half. This allows for large data sets to be
         imaged without loss of information
     downsample : bool
-        very large images acan be downsampled to half the size in each
+        Very large images can be downsampled to half the size in each
         dimension, this doubles the effective voxel size
     voxel_size : int
         The side length of the voxels (voxels  are cubic)
