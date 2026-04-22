@@ -3,12 +3,12 @@ import pyvista as pv
 import scipy.ndimage as spim
 import skimage.measure as ms
 from porespy.tools import sanitize_filename
+from numba import njit
 
 
 __all__ = [
     "from_stl",
     "to_stl",
-    "voxels_to_stl",
 ]
 
 
@@ -20,10 +20,10 @@ def _shell(stl_path, density, fill_holes=False):
     ----------
     stl_path : str or path object
         The location and name of the STL file
-    density : int 
+    density : int
         Controls the resolution of the final image. This is the number of
         voxels along the longest axis of the bounding box, with higher
-        values leading to more voxels and hence better resolution. 
+        values leading to more voxels and hence better resolution.
     fill_holes : bool (default=False)
         If `True` then steps are taken to ensure the mesh has no holes.
         This process can be slow so is not performed unless requested.
@@ -44,7 +44,8 @@ def _shell(stl_path, density, fill_holes=False):
     try:
         import open3d as o3d
     except ImportError:
-            raise ImportError('open3d must be installed to use this function, which requires Python<=3.12')
+        msg = 'open3d is required to use this function, which requires Python<=3.12'
+        raise ImportError(msg)
 
     # Read the mesh
     mesh = o3d.io.read_triangle_mesh(stl_path)
@@ -211,7 +212,6 @@ def from_stl(stl_path, method='shell', density=100, fill_holes=False):
         A boolean array with `True` values indicating the solid phase.
 
     """
-    
     if method == 'shell':
         im = _shell(stl_path=stl_path, density=density, fill_holes=fill_holes)
     elif method == 'voxelize':
@@ -226,33 +226,56 @@ def from_stl(stl_path, method='shell', density=100, fill_holes=False):
     return im
 
 
-def to_stl(im, filename, divide=False, downsample=False, voxel_size=1, vox=False):
+def to_stl(
+    im,
+    filename=None,
+    voxel_size=1,
+    method='direct',
+    fmt='openstl',
+    remove_duplicates=False,
+    tol=None,
+):
     r"""
-    Converts an array to an STL file.
+    Converts an voxel image to an STL mesh in a variety of formats
 
     Parameters
     ----------
     im : 3D image
         The image of the porous material
-    path : string
-        Path to output file
-    divide : bool
-        vtk files can get very large, this option allows you for two output
-        files, divided at z = half. This allows for large data sets to be
-        imaged without loss of information
-    downsample : bool
-        very large images can be downsampled to half the size in each
-        dimension, this doubles the effective voxel size
     voxel_size : int
         The side length of the voxels (voxels  are cubic)
-    vox : bool
-        For an image that is binary (1's and 0's) this reduces the file size by
-        using int8 format (can also be used to reduce file size when accuracy
-        is not necessary ie: just visulization)
+    method : str
+        Can be one of the options listed below:
+
+        ---------------- ------------------------------------------------------------
+        method           Description
+        ================ ============================================================
+        'direct'         Converts each exposed face of each voxel into 2 triangles
+                         to generate a mesh that maps directly to the voxel image.
+        'marching-cubes' Uses the marching cubes method in scikit-image to generate
+                         a mesh. The result is naturally smoother than the 'direct'
+                         approach, but this is due to last information.
+        ---------------- ------------------------------------------------------------
+
+    fmt : str
+        The format of the returned mesh. Options are:
+
+        - 'openstl' (default)
+        - 'skimage'
+        - 'pyvista'
+        - 'trimesh'
+        - 'open3d'
+        - 'numpy-stl'
 
     Notes
     -----
-    Outputs an STL file that can opened in Paraview
+        The `openstl` package has the fastest read/write performance. It
+        uses a basic numpy array of shape `[N, 4, 3]`. `N` is the number of
+        triangles, `4` refers to `norms, vert1, vert2, vert3`, where `norms` and
+        `vert<i>` are each `3` components long. Nn 'stl' file saved using `openstl`
+        can be opened by most other packages, which convert it to a usable mesh.
+        For example `mesh = pyvista.read('openstl-formatted-file.stl')` will create
+        `mesh` that can be plotted with `pyvista.plot(mesh, eye_dome_lighting=True)`.
 
     Examples
     --------
@@ -261,28 +284,252 @@ def to_stl(im, filename, divide=False, downsample=False, voxel_size=1, vox=False
     to view online example.
 
     """
-    filename = sanitize_filename(filename, ext="stl", exclude_ext=True)
+    # filename = sanitize_filename(filename, ext="stl", exclude_ext=True)
     if len(im.shape) == 2:
         im = im[:, :, np.newaxis]
-    if im.dtype == bool:
-        vox = True
-    if vox:
-        im = im.astype(np.int8)
-    vs = voxel_size
-    if divide:
-        split = np.round(im.shape[2] / 2).astype(np.int)
-        im1 = im[:, :, 0:split]
-        im2 = im[:, :, split:]
-        _save_stl(im1, vs, f"{filename}_1")
-        _save_stl(im2, vs, f"{filename}_2")
-    elif downsample:
-        im = spim.interpolation.zoom(im, zoom=0.5, order=0, mode="reflect")
-        _save_stl(im, vs * 2, filename)
+    if method == 'marching-cubes':
+        tris = _to_stl_marching_cubes(im, voxel_size)
+    elif method == 'direct':
+        tris = _to_stl_porespy(im, voxel_size)
+
+    if fmt == 'openstl' and not remove_duplicates:
+        return tris
+
+    v, f, n = triangles_to_indexed(tris)
+    if remove_duplicates:
+        v, f = remove_duplicate_vertices(v, f, tol=tol)
+        v, f = remove_duplicate_faces(verts=v, faces=f)
+        tris = indexed_to_triangles(v, f)
+        n = tris[:, 0, :]
+
+    if fmt == 'openstl':
+        return tris
+    elif fmt == 'skimage':
+        mesh = v, f, n
+    elif fmt == 'pyvista':
+        mesh = pv.PolyData.from_regular_faces(v, f)
+    elif fmt == 'trimesh':
+        try:
+            import trimesh
+        except ModuleNotFoundError:
+            msg = "trimesh can be installed with pip install trimesh"
+            raise ModuleNotFoundError(msg)
+        mesh = trimesh.Trimesh(vertices=v, faces=f, face_normals=n, process=False)
+    elif fmt == 'open3d':
+        try:
+            import open3d as o3d
+        except ModuleNotFoundError:
+            msg = "open3d can be installed with pip install open3d"
+            raise ModuleNotFoundError(msg)
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(v)
+        mesh.triangles = o3d.utility.Vector3iVector(f.astype(np.int32))
+        mesh.compute_vertex_normals()
+    elif fmt == 'numpy-stl':
+        try:
+            from stl import mesh as stl_mesh
+        except ModuleNotFoundError:
+            msg = "numpy-stl can be installed with pip install numpy-stl"
+            raise ModuleNotFoundError(msg)
+        mesh = stl_mesh.Mesh(np.zeros(f.shape[0], dtype=stl_mesh.Mesh.dtype))
+        mesh.vectors = v[f].astype(np.float32, copy=False)
+        mesh.normals = n.astype(np.float32, copy=False)
+    elif fmt == 'meshio':
+        try:
+            import meshio
+        except ModuleNotFoundError:
+            msg = "meshio can be installed with pip install meshio"
+            raise ModuleNotFoundError(msg)
+        mesh = meshio.Mesh(points=v, cells=[("triangle", f)], cell_data={"Normals": [n]})
+    return mesh
+
+
+def triangles_to_indexed(tris):
+    """
+    Convert openstl-style triangles to vertices/faces/face-normals.
+
+    Parameters
+    ----------
+    tris : ndarray
+        Shape (N, 4, 3), laid out as [normal, v0, v1, v2].
+
+    Returns
+    -------
+    verts : ndarray
+        Vertex coordinates, shape (M, 3)
+    faces : ndarray
+        Face indices, shape (N, 3)
+    face_normals : ndarray
+        Face normals, shape (N, 3)
+    """
+    tris = np.asarray(tris)
+    if tris.ndim != 3 or tris.shape[1:] != (4, 3):
+        raise ValueError("tris must have shape (N, 4, 3)")
+
+    n = tris[:, 0, :].astype(np.float32, copy=False)
+    v = tris[:, 1:, :].reshape(-1, 3).astype(np.float32, copy=False)
+    f = np.arange(v.shape[0], dtype=np.int64).reshape(-1, 3)
+
+    return v, f, n
+
+
+def indexed_to_triangles(verts, faces, vertex_normals=None, voxel_size=1):
+    """
+    Convert indexed format (vertices/faces/vertex-normals) output to openstl-style triangle format.
+
+    Parameters
+    ----------
+    verts : ndarray
+        Vertex coordinates of shape (V, 3).
+    faces : ndarray
+        Triangle indices of shape (F, 3).
+    vertex_normals : ndarray, optional
+        Vertex normals from skimage.measure.marching_cubes, shape (V, 3).
+        Accepted for API compatibility, but face normals are recomputed from
+        geometry because openstl stores one normal per face.
+    voxel_size : float
+        Scalar voxel size used to scale vertex coordinates.
+
+    Returns
+    -------
+    tris : ndarray
+        Array of shape (F, 4, 3) in openstl layout:
+        [face_normal, v0, v1, v2]
+    """
+    verts = np.asarray(verts, dtype=np.float32)
+    faces = np.asarray(faces, dtype=np.int64)
+
+    if verts.ndim != 2 or verts.shape[1] != 3:
+        raise ValueError("verts must have shape (V, 3)")
+    if faces.ndim != 2 or faces.shape[1] != 3:
+        raise ValueError("faces must have shape (F, 3)")
+
+    verts = verts * voxel_size
+
+    v0 = verts[faces[:, 0]]
+    v1 = verts[faces[:, 1]]
+    v2 = verts[faces[:, 2]]
+
+    # Recompute per-face normals for openstl
+    face_normals = np.cross(v1 - v0, v2 - v0)
+    mag = np.linalg.norm(face_normals, axis=1, keepdims=True)
+    mag[mag == 0] = 1.0
+    face_normals = face_normals / mag
+
+    tris = np.empty((faces.shape[0], 4, 3), dtype=np.float32)
+    tris[:, 0] = face_normals
+    tris[:, 1] = v0
+    tris[:, 2] = v1
+    tris[:, 3] = v2
+    return tris
+
+
+def remove_duplicate_vertices(verts, faces, tol=None):
+    """
+    Deduplicate vertices in an indexed mesh, remapping faces to the new indices.
+
+    Parameters
+    ----------
+    verts : (V, 3) array
+        Vertex coordinates.
+    faces : (F, 3) array
+        Triangle vertex indices.
+    tol : float or None
+        If None, use exact equality. Otherwise quantize coordinates by `tol`
+        before comparison. A good value is the `voxel_size`.
+
+    Returns
+    -------
+    verts : (V2, 3) array
+        Deduplicated vertex coordinates, V2 <= V.
+    faces : (F, 3) array
+        Face indices remapped to the new vertex array. Face count is unchanged.
+    """
+    verts = np.asarray(verts, dtype=np.float32)
+    faces = np.asarray(faces, dtype=np.int64)
+
+    if tol is None:
+        _, unique_idx, inverse = np.unique(
+            verts, axis=0, return_index=True, return_inverse=True
+        )
     else:
-        _save_stl(im, vs, filename)
+        key = np.rint(verts / tol).astype(np.int64)
+        _, unique_idx, inverse = np.unique(
+            key, axis=0, return_index=True, return_inverse=True
+        )
+
+    order = np.argsort(unique_idx)
+    verts = verts[unique_idx[order]]
+    remap = np.empty(order.shape[0], dtype=np.int64)
+    remap[order] = np.arange(order.shape[0], dtype=np.int64)
+    faces = remap[inverse][faces]
+
+    return verts, faces
 
 
-def _save_stl(im, vs, filename):
+def remove_duplicate_faces(faces=None, verts=None, tris=None, tol=None):
+    """
+    Remove duplicate faces from an indexed mesh or a triangle soup.
+
+    For an indexed mesh, two faces are duplicates if they reference the same
+    set of vertex indices (regardless of winding order). For a triangle soup,
+    two triangles are duplicates if their vertex coordinates are the same set
+    (optionally within `tol`). Normals are recomputed from geometry when
+    `tris` is returned.
+
+    Parameters
+    ----------
+    faces : (F, 3) int array, optional
+        Face vertex indices. Provide together with `verts` for the indexed
+        mesh path.
+    verts : (V, 3) float array, optional
+        Vertex coordinates. Returned unchanged; provided only so the caller
+        does not have to unpack the pair.
+    tris : (N, 4, 3) float array, optional
+        Triangle soup in openstl layout ``[normal, v0, v1, v2]``. Provide
+        instead of `faces`/`verts` for the triangle-soup path.
+    tol : float or None
+        Coordinate tolerance used only for the triangle-soup path. If None,
+        exact float equality is used.
+
+    Returns
+    -------
+    If `tris` was provided:
+        tris : (M, 4, 3) array  —  M <= N, with recomputed normals.
+    If `faces` was provided:
+        verts : (V, 3) array  —  unchanged.
+        faces : (F2, 3) array  —  F2 <= F.
+    """
+    if tris is not None:
+        tris = np.asarray(tris, dtype=np.float32)
+        v_3x3 = tris[:, 1:, :].copy()  # (N, 3, 3)
+        if tol is not None:
+            v_3x3 = np.rint(v_3x3 / tol).astype(np.int64)
+        # Sort the 3 vertices within each triangle for order-independent comparison
+        for i in range(len(v_3x3)):
+            v_3x3[i] = v_3x3[i][np.lexsort(v_3x3[i].T[::-1])]
+        key = v_3x3.reshape(-1, 9)
+        _, keep = np.unique(key, axis=0, return_index=True)
+        keep = np.sort(keep)
+        tris = tris[keep].copy()
+        # Recompute normals for the kept triangles
+        v0, v1, v2 = tris[:, 1], tris[:, 2], tris[:, 3]
+        fn = np.cross(v1 - v0, v2 - v0)
+        mag = np.linalg.norm(fn, axis=1, keepdims=True)
+        mag[mag == 0] = 1.0
+        tris[:, 0] = fn / mag
+        return tris
+    else:
+        faces = np.asarray(faces, dtype=np.int64)
+        faces_sorted = np.sort(faces, axis=1)
+        _, keep = np.unique(faces_sorted, axis=0, return_index=True)
+        faces = faces[np.sort(keep)]
+        if verts is not None:
+            return verts, faces
+        return faces
+
+
+def _to_stl_marching_cubes(im, voxel_size):
     r"""
     Helper method to convert an array to an STL file.
 
@@ -292,92 +539,170 @@ def _save_stl(im, vs, filename):
         The image of the porous material
     voxel_size : int
         The side length of the voxels (voxels are cubic)
-    filename : string
-        Path to output file
 
     """
-    try:
-        from stl import mesh
-    except ModuleNotFoundError:
-        msg = 'numpy-stl can be installed with pip install numpy-stl'
-        raise ModuleNotFoundError(msg)
-    im = np.pad(im, pad_width=10, mode="constant", constant_values=True)
-    vertices, faces, norms, values = ms.marching_cubes(im)
-    vertices *= vs
-    # Export the STL file
-    export = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
-    for i, f in enumerate(faces):
-        for j in range(3):
-            export.vectors[i][j] = vertices[f[j], :]
-    export.save(f"{filename}.stl")
-
-
-def voxels_to_stl(
-    voxel_array,
-    voxel_size=1.0,
-    output_path=None,
-    simplify=True,
-    smooth=0,
-):
-    """
-    Alternative version of to_stl that uses Open3d functions to simplify and
-    smooth mesh.
-
-    Parameters
-    ----------
-    voxel_array : ndarray
-        3D boolean array of voxels
-    voxel_size : float
-        Size of each voxel
-    output_path : str
-        Path to save the STL file. If `None` (default) then no file is written, and
-        only a the mesh object is returned.
-    simplify : bool
-        Whether to simplify the mesh
-    smooth : int
-        The number of times to smooth the mesh. The default is 0.
-
-    Returns
-    -------
-    mesh : open3d.geometry.TriangleMesh
-        The resulting mesh.
-    """
-    try:
-        import open3d as o3d
-    except ImportError:
-            raise ImportError('open3d must be installed to use this function, which requires Python<=3.12')
-
-    # Get initial mesh
-    verts, faces, normals, values = ms.marching_cubes(voxel_array)
-
-    # Scale vertices by voxel size
+    mask = np.pad(im, pad_width=1, mode="constant", constant_values=False)
+    verts, faces, _, _ = ms.marching_cubes(mask)
     verts = verts * voxel_size
 
-    # Create Open3D mesh
-    mesh = o3d.geometry.TriangleMesh()
-    mesh.vertices = o3d.utility.Vector3dVector(verts)
-    mesh.triangles = o3d.utility.Vector3iVector(faces)
+    v0 = verts[faces[:, 0]]
+    v1 = verts[faces[:, 1]]
+    v2 = verts[faces[:, 2]]
 
-    if simplify:
-        # Simplify mesh while preserving shape
-        mesh = mesh.simplify_vertex_clustering(
-            voxel_size=voxel_size,
-            contraction=o3d.geometry.SimplificationContraction.Average
-        )
+    fn = np.cross(v1 - v0, v2 - v0)
+    mag = np.linalg.norm(fn, axis=1, keepdims=True)
+    mag[mag == 0] = 1.0
+    fn = fn / mag
 
-    if smooth:
-        # Smooth the mesh
-        mesh = mesh.filter_smooth_simple(number_of_iterations=smooth)
+    tris = np.empty((faces.shape[0], 4, 3), dtype=np.float32)
+    tris[:, 0] = fn
+    tris[:, 1] = v0
+    tris[:, 2] = v1
+    tris[:, 3] = v2
+    return tris
 
-    # Ensure normals are computed
-    mesh.compute_vertex_normals()
 
-    # Optional: Remove any duplicate vertices
-    mesh.remove_duplicated_vertices()
-    mesh.remove_duplicated_triangles()
+def _to_stl_porespy(im, voxel_size=1):
+    mask = np.pad(im, pad_width=1, mode='constant', constant_values=False)
+    xm, xp, ym, yp, zm, zp = _exposed_face_masks(mask)
+    xm = xm[1:-1, 1:-1, 1:-1]
+    xp = xp[1:-1, 1:-1, 1:-1]
+    ym = ym[1:-1, 1:-1, 1:-1]
+    yp = yp[1:-1, 1:-1, 1:-1]
+    zm = zm[1:-1, 1:-1, 1:-1]
+    zp = zp[1:-1, 1:-1, 1:-1]
+    tris = _build_triangles(im, xm, xp, ym, yp, zm, zp)
+    tris[:, 1:, :] *= voxel_size
+    return tris
 
-    # Save to STL
-    if output_path:
-        o3d.io.write_triangle_mesh(output_path, mesh)
 
-    return mesh
+@njit
+def _exposed_face_masks(mask):
+    nx, ny, nz = mask.shape
+    xm = np.zeros(mask.shape, dtype=np.bool_)
+    xp = np.zeros(mask.shape, dtype=np.bool_)
+    ym = np.zeros(mask.shape, dtype=np.bool_)
+    yp = np.zeros(mask.shape, dtype=np.bool_)
+    zm = np.zeros(mask.shape, dtype=np.bool_)
+    zp = np.zeros(mask.shape, dtype=np.bool_)
+
+    for x in range(nx):
+        for y in range(ny):
+            for z in range(nz):
+                if not mask[x, y, z]:
+                    continue
+                xm[x, y, z] = (x == 0) or (not mask[x - 1, y, z])
+                xp[x, y, z] = (x == nx - 1) or (not mask[x + 1, y, z])
+                ym[x, y, z] = (y == 0) or (not mask[x, y - 1, z])
+                yp[x, y, z] = (y == ny - 1) or (not mask[x, y + 1, z])
+                zm[x, y, z] = (z == 0) or (not mask[x, y, z - 1])
+                zp[x, y, z] = (z == nz - 1) or (not mask[x, y, z + 1])
+    return xm, xp, ym, yp, zm, zp
+
+
+@njit
+def _build_triangles(mask, xm, xp, ym, yp, zm, zp):
+    n_faces = (
+        xm.sum() + xp.sum() + ym.sum() +
+        yp.sum() + zm.sum() + zp.sum()
+    )
+    triangles = np.zeros((2 * n_faces, 4, 3), dtype=np.int32)
+    j = 0
+
+    nx, ny, nz = mask.shape
+    for x in range(nx):
+        for y in range(ny):
+            for z in range(nz):
+                if not mask[x, y, z]:
+                    continue
+
+                if zm[x, y, z]:
+                    triangles[j] = np.array(
+                        [[0, 0, -1], [x, y, z], [x, y+1, z], [x+1, y, z]],
+                        dtype=np.int32,
+                    )
+                    triangles[j+1] = np.array(
+                        [[0, 0, -1], [x, y+1, z], [x+1, y+1, z], [x+1, y, z]],
+                        dtype=np.int32,
+                    )
+                    j += 2
+
+                if zp[x, y, z]:
+                    triangles[j] = np.array(
+                        [[0, 0, 1], [x, y, z+1], [x+1, y, z+1], [x, y+1, z+1]],
+                        dtype=np.int32,
+                    )
+                    triangles[j+1] = np.array(
+                        [[0, 0, 1], [x, y+1, z+1], [x+1, y, z+1], [x+1, y+1, z+1]],
+                        dtype=np.int32,
+                    )
+                    j += 2
+
+                if ym[x, y, z]:
+                    triangles[j] = np.array(
+                        [[0, -1, 0], [x, y, z], [x+1, y, z], [x, y, z+1]],
+                        dtype=np.int32,
+                    )
+                    triangles[j+1] = np.array(
+                        [[0, -1, 0], [x, y, z+1], [x+1, y, z], [x+1, y, z+1]],
+                        dtype=np.int32,
+                    )
+                    j += 2
+
+                if yp[x, y, z]:
+                    triangles[j] = np.array(
+                        [[0, 1, 0], [x, y+1, z], [x, y+1, z+1], [x+1, y+1, z]],
+                        dtype=np.int32,
+                    )
+                    triangles[j+1] = np.array(
+                        [[0, 1, 0], [x, y+1, z+1], [x+1, y+1, z+1], [x+1, y+1, z]],
+                        dtype=np.int32,
+                    )
+                    j += 2
+
+                if xm[x, y, z]:
+                    triangles[j] = np.array(
+                        [[-1, 0, 0], [x, y, z], [x, y, z+1], [x, y+1, z]],
+                        dtype=np.int32,
+                    )
+                    triangles[j+1] = np.array(
+                        [[-1, 0, 0], [x, y, z+1], [x, y+1, z+1], [x, y+1, z]],
+                        dtype=np.int32,
+                    )
+                    j += 2
+
+                if xp[x, y, z]:
+                    triangles[j] = np.array(
+                        [[1, 0, 0], [x+1, y, z], [x+1, y+1, z], [x+1, y, z+1]],
+                        dtype=np.int32,
+                    )
+                    triangles[j+1] = np.array(
+                        [[1, 0, 0], [x+1, y, z+1], [x+1, y+1, z], [x+1, y+1, z+1]],
+                        dtype=np.int32,
+                    )
+                    j += 2
+
+    return triangles[:j]
+
+
+if __name__ == "__main__":
+    import porespy as ps
+    import pyvista as pv
+    import openstl
+
+    im = ps.generators.random_spheres([150, 150, 150], r=10, clearance=5, edges='extended')
+
+    ps.tools.tic()
+    mesh1 = to_stl(im=im, method='marching-cubes')
+    ps.tools.toc()
+    openstl.write("marching-cubes.stl", mesh1, openstl.format.binary)
+    mesh1a = pv.read("marching-cubes.stl")
+
+    mesh3 = to_stl(im=im, method='direct')
+    ps.tools.tic()
+    mesh3 = to_stl(im=im, method='direct')
+    ps.tools.toc()
+    openstl.write("porespy.stl", mesh3, openstl.format.binary)
+    mesh3a = pv.read("porespy.stl")
+
+    pv.plot(mesh3, eye_dome_lighting=True)
