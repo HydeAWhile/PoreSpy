@@ -2938,7 +2938,7 @@ wheels = [
 
 [[package]]
 name = "porespy"
-version = "3.0.3.dev3"
+version = "3.0.3.dev4"
 source = { editable = "." }
 dependencies = [
     { name = "dask" },
@@ -2951,6 +2951,7 @@ dependencies = [
     { name = "pandas" },
     { name = "psutil" },
     { name = "pyevtk" },
+    { name = "pyvista" },
     { name = "rich" },
     { name = "scikit-image" },
     { name = "scipy" },
@@ -3032,6 +3033,7 @@ requires-dist = [
     { name = "psutil" },
     { name = "pyevtk", specifier = ">=1.6.0" },
     { name = "pyevtk", marker = "extra == 'extras'" },
+    { name = "pyvista", specifier = ">=0.46.4" },
     { name = "pywavelets", marker = "extra == 'extras'" },
     { name = "rich" },
     { name = "scikit-image", specifier = ">=0.25.0" },
