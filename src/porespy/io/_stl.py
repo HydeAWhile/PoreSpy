@@ -2,7 +2,6 @@ import numpy as np
 import pyvista as pv
 import scipy.ndimage as spim
 import skimage.measure as ms
-from porespy.tools import sanitize_filename
 from numba import njit
 
 
@@ -295,11 +294,11 @@ def to_stl(
     if fmt == 'openstl' and not remove_duplicates:
         return tris
 
-    v, f, n = triangles_to_indexed(tris)
+    v, f, n = tris_to_vfn(tris)
     if remove_duplicates:
         v, f = remove_duplicate_vertices(v, f, tol=tol)
         v, f = remove_duplicate_faces(verts=v, faces=f)
-        tris = indexed_to_triangles(v, f)
+        tris = vfn_to_tris(v, f)
         n = tris[:, 0, :]
 
     if fmt == 'openstl':
@@ -344,7 +343,7 @@ def to_stl(
     return mesh
 
 
-def triangles_to_indexed(tris):
+def tris_to_vfn(tris):
     """
     Convert openstl-style triangles to vertices/faces/face-normals.
 
@@ -373,7 +372,7 @@ def triangles_to_indexed(tris):
     return v, f, n
 
 
-def indexed_to_triangles(verts, faces, vertex_normals=None, voxel_size=1):
+def vfn_to_tris(verts, faces, vertex_normals=None, voxel_size=1):
     """
     Convert indexed format (vertices/faces/vertex-normals) output to openstl-style triangle format.
 
@@ -490,7 +489,7 @@ def remove_duplicate_faces(faces=None, verts=None, tris=None, tol=None):
         instead of `faces`/`verts` for the triangle-soup path.
     tol : float or None
         Coordinate tolerance used only for the triangle-soup path. If None,
-        exact float equality is used.
+        exact float equality is used. A good value is the `voxel_size`.
 
     Returns
     -------
