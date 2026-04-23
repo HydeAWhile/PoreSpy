@@ -246,7 +246,7 @@ def to_stl(
     method : str
         Can be one of the options listed below:
 
-        ---------------- ------------------------------------------------------------
+        ================ ============================================================
         method           Description
         ================ ============================================================
         'direct'         Converts each exposed face of each voxel into 2 triangles
@@ -254,27 +254,28 @@ def to_stl(
         'marching-cubes' Uses the marching cubes method in scikit-image to generate
                          a mesh. The result is naturally smoother than the 'direct'
                          approach, but this is due to last information.
-        ---------------- ------------------------------------------------------------
+        ================ ============================================================
 
     fmt : str
         The format of the returned mesh. Options are:
 
-        - 'openstl' (default)
-        - 'skimage'
-        - 'pyvista'
-        - 'trimesh'
-        - 'open3d'
-        - 'numpy-stl'
+        - 'openstl' or 'triangles' (default)
+        - 'skimage' or 'vfn' (as in verts, faces, vertex normals)
+        - 'pyvista' (installed with PoreSpy)
+        - 'trimesh' (not automatically installed with PoreSpy)
+        - 'open3d' (not automatically installed with PoreSpy)
+        - 'numpy-stl' (not automatically installed with PoreSpy)
+        - 'meshio' (not automatically installed with PoreSpy)
 
     Notes
     -----
-        The `openstl` package has the fastest read/write performance. It
-        uses a basic numpy array of shape `[N, 4, 3]`. `N` is the number of
-        triangles, `4` refers to `norms, vert1, vert2, vert3`, where `norms` and
-        `vert<i>` are each `3` components long. Nn 'stl' file saved using `openstl`
-        can be opened by most other packages, which convert it to a usable mesh.
-        For example `mesh = pyvista.read('openstl-formatted-file.stl')` will create
-        `mesh` that can be plotted with `pyvista.plot(mesh, eye_dome_lighting=True)`.
+    The `openstl` package has the fastest read/write performance. It
+    uses a basic numpy array of shape `[N, 4, 3]`. `N` is the number of
+    triangles, `4` refers to `norms, vert1, vert2, vert3`, where `norms` and
+    `vert<i>` are each `3` components long. Nn 'stl' file saved using `openstl`
+    can be opened by most other packages, which convert it to a usable mesh.
+    For example `mesh = pyvista.read('openstl-formatted-file.stl')` will create
+    `mesh` that can be plotted with `pyvista.plot(mesh, eye_dome_lighting=True)`.
 
     Examples
     --------
@@ -301,9 +302,9 @@ def to_stl(
         tris = vfn_to_tris(v, f)
         n = tris[:, 0, :]
 
-    if fmt == 'openstl':
+    if fmt in ['openstl', 'triangles']:
         return tris
-    elif fmt == 'skimage':
+    elif fmt in ['skimage', 'vfn']:
         mesh = v, f, n
     elif fmt == 'pyvista':
         mesh = pv.PolyData.from_regular_faces(v, f)
@@ -339,7 +340,11 @@ def to_stl(
         except ModuleNotFoundError:
             msg = "meshio can be installed with pip install meshio"
             raise ModuleNotFoundError(msg)
-        mesh = meshio.Mesh(points=v, cells=[("triangle", f)], cell_data={"Normals": [n]})
+        mesh = meshio.Mesh(
+            points=v,
+            cells=[("triangle", f)],
+            cell_data={"Normals": [n]},
+        )
     return mesh
 
 
@@ -374,7 +379,8 @@ def tris_to_vfn(tris):
 
 def vfn_to_tris(verts, faces, vertex_normals=None, voxel_size=1):
     """
-    Convert indexed format (vertices/faces/vertex-normals) output to openstl-style triangle format.
+    Convert indexed format (vertices/faces/vertex-normals) output to
+    openstl-style triangle format.
 
     Parameters
     ----------
@@ -691,17 +697,12 @@ if __name__ == "__main__":
 
     im = ps.generators.random_spheres([150, 150, 150], r=10, clearance=5, edges='extended')
 
-    ps.tools.tic()
-    mesh1 = to_stl(im=im, method='marching-cubes')
-    ps.tools.toc()
-    openstl.write("marching-cubes.stl", mesh1, openstl.format.binary)
-    mesh1a = pv.read("marching-cubes.stl")
+    mesh1 = to_stl(im=im, method='marching-cubes', fmt='pyvista')
+    mesh2 = to_stl(im=im, method='marching-cubes', remove_duplicates=True, fmt='pyvista')
+    mesh3 = to_stl(im=im, method='direct', fmt='pyvista')
+    mesh4 = to_stl(im=im, method='direct', remove_duplicates=True, fmt='pyvista')
 
-    mesh3 = to_stl(im=im, method='direct')
-    ps.tools.tic()
-    mesh3 = to_stl(im=im, method='direct')
-    ps.tools.toc()
-    openstl.write("porespy.stl", mesh3, openstl.format.binary)
-    mesh3a = pv.read("porespy.stl")
-
-    pv.plot(mesh3, eye_dome_lighting=True)
+    plotter = pv.Plotter()
+    plotter.add_mesh(mesh1, opacity=0.5)
+    plotter.add_mesh(mesh3, color='r')
+    plotter.show()
