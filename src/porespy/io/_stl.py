@@ -291,6 +291,8 @@ def to_stl(
         tris = _to_stl_marching_cubes(im, voxel_size)
     elif method == 'direct':
         tris = _to_stl_porespy(im, voxel_size)
+    else:
+        raise ValueError(f"{method} is not a supported method")
 
     if fmt == 'openstl' and not remove_duplicates:
         return tris
@@ -345,6 +347,8 @@ def to_stl(
             cells=[("triangle", f)],
             cell_data={"Normals": [n]},
         )
+    else:
+        raise ValueError(f"{fmt} is not a supported format")
     return mesh
 
 
@@ -693,7 +697,6 @@ def _build_triangles(mask, xm, xp, ym, yp, zm, zp):
 if __name__ == "__main__":
     import porespy as ps
     import pyvista as pv
-    import openstl
 
     im = ps.generators.random_spheres([150, 150, 150], r=10, clearance=5, edges='extended')
 
