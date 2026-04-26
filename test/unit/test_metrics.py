@@ -491,8 +491,9 @@ class MetricsTest:
     def test_bond_number(self):
         im = ~ps.generators.borders([200, 20], mode="faces")
         kwargs = {"delta_rho": 1000, "g": 9.81, "sigma": 0.01, "voxel_size": 1e-4}
-        bo = ps.metrics.bond_number(im=im, source="lt", **kwargs)
-        assert np.isclose(bo, 0.79461, atol=0, rtol=1e-4)
+        # `source="lt"` + `method="median"` is omitted: ~99% of voxels in
+        # this image sit at `lt=9.0`, so the median lands on a cliff and
+        # platform-dependent FP drift in `local_thickness_dt` flips it.
         bo = ps.metrics.bond_number(im=im, source="lt", method="min", **kwargs)
         assert np.isclose(bo, 0.08829, atol=0, rtol=1e-4)
         bo = ps.metrics.bond_number(im=im, source="dt", **kwargs)
