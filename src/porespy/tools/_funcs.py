@@ -1539,7 +1539,7 @@ def insert_sphere(im, c, r, v=True, overwrite=True):
     return im
 
 
-def insert_cylinder(im, xyz0, xyz1, r):
+def insert_cylinder(im, xyz0, xyz1, r, v=True, overwrite=True):
     r"""
     Inserts a cylinder of given radius onto an image
 
@@ -1568,6 +1568,10 @@ def insert_cylinder(im, xyz0, xyz1, r):
     to view online example.
 
     """
+    # Convert image to same type as v for eventual insertion
+    if im.dtype != type(v):
+        im = im.astype(type(v))
+
     if im.ndim != 3:
         raise Exception('This function is only implemented for 3D images')
     # Converting coordinates to numpy array
@@ -1581,9 +1585,7 @@ def insert_cylinder(im, xyz0, xyz1, r):
             raise Exception('Given endpoint coordinates lie outside image')
         if c.max() > im.shape[i]:
             raise Exception('Given endpoint coordinates lie outside image')
-        c += r
 
-    im = np.pad(im, r)
     xyz_min = np.amin(xyz_line, axis=1) - r
     xyz_max = np.amax(xyz_line, axis=1) + r
     shape_template = xyz_max - xyz_min + 1
@@ -1602,11 +1604,40 @@ def insert_cylinder(im, xyz0, xyz1, r):
         template[tuple(xyz_line_in_template_coords)] = 1
         template = edt(template == 0) <= r
 
-    im[xyz_min[0]: xyz_max[0] + 1,
-       xyz_min[1]: xyz_max[1] + 1,
-       xyz_min[2]: xyz_max[2] + 1] += template
+    slices = []
+    template_slices = []
 
-    im = unpad(im, r)
+    for i in range(3):
+        lo = max(xyz_min[i], 0)
+        hi = min(xyz_max[i] + 1, im.shape[i])
+        slices.append(slice(lo, hi))
+
+        # convert back into template-space slice
+        t_lo = lo - xyz_min[i]
+        t_hi = t_lo + (hi - lo)
+        template_slices.append(slice(t_lo, t_hi))
+
+    slices = tuple(slices)
+    template_slices = tuple(template_slices)
+
+    # extract matching part of template
+    cyl = template[template_slices].astype(bool)
+
+    # ------------------------------------------------------------
+    # >>> NEW: overwrite & value handling copied from insert_sphere
+    # ------------------------------------------------------------
+    im_chunk = im[slices]
+
+    if overwrite:
+        # clear cyl region before writing
+        im_chunk[cyl] = 0
+        im_chunk[cyl] = v
+    else:
+        # write only into empty voxels
+        mask = cyl & (im_chunk == 0)
+        im_chunk[mask] = v
+
+    im[slices] = im_chunk
 
     return im
 
